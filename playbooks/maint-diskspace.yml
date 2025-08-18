@@ -4,7 +4,7 @@
   become: true
   vars:
     disk_path: /
-    max_usage_percent: 70
+    max_usage_percent: 60
     log_dirs:
       - /var/log
       - /var/log/journal
@@ -15,126 +15,130 @@
     temp_age_days: 15
 
   tasks:
-    - name: Gather installed package facts
-      package_facts:
-        manager: auto
+    - block:
+        - name: Gather installed package facts
+          package_facts:
+            manager: auto
 
-    - name: Get disk usage before cleanup
-      shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
-      register: disk_usage_before
-      changed_when: false
+        - name: Get disk usage before cleanup
+          shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
+          register: disk_usage_before
+          changed_when: false
 
-    - name: Show disk usage before
-      debug:
-        msg: "Disk usage before: {{ disk_usage_before.stdout }}%"
+        - name: Show disk usage before
+          debug:
+            msg: "Disk usage before: {{ disk_usage_before.stdout }}%"
 
-    - name: Cleanup if threshold exceeded
-      when: (disk_usage_before.stdout | int) > max_usage_percent
-      block:
-        - name: Clean journalctl logs
-          shell: journalctl --vacuum-time={{ log_age_days }}d
-          when: ansible_facts.os_family in ['Debian', 'RedHat']
-
-        - name: Clean apt cache and autoremove packages
-          apt:
-            autoclean: yes
-            autoremove: yes
-          when: ansible_facts.pkg_mgr == 'apt'
-
-        - name: Clean dnf cache and autoremove packages
-          dnf:
-            autoremove: yes
-          when: ansible_facts.pkg_mgr == 'dnf'
-
-        - name: Run apt-get clean
-          shell: apt-get clean
-          when: ansible_facts.pkg_mgr == 'apt'
-
-        - name: Remove junk directories from /root
-          file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - /root/.trae-server
-            - /root/.cursor-server
-            - /root/.zed_server
-
-        - name: Find old logs
-          find:
-            paths: "{{ item }}"
-            age: "{{ log_age_days }}d"
-            recurse: yes
-            file_type: file
-          loop: "{{ log_dirs }}"
-          register: old_logs
-
-        - name: Delete old logs
-          file:
-            path: "{{ item.path }}"
-            state: absent
-          loop: "{{ old_logs.results | map(attribute='files') | sum(start=[]) }}"
-
-        - name: Find old temp files
-          find:
-            paths: "{{ item }}"
-            age: "{{ temp_age_days }}d"
-            recurse: yes
-            file_type: file
-          loop: "{{ temp_dirs }}"
-          register: old_temps
-
-        - name: Delete old temp files
-          file:
-            path: "{{ item.path }}"
-            state: absent
-          loop: "{{ old_temps.results | map(attribute='files') | sum(start=[]) }}"
-
-        - name: Docker cleanup
-          when: "'docker' in ansible_facts.packages"
+        - name: Cleanup if threshold exceeded
+          when: (disk_usage_before.stdout | int) > max_usage_percent
           block:
-            - name: Remove stopped containers
-              shell: docker container prune -f
+            - name: Clean journalctl logs
+              shell: journalctl --vacuum-time={{ log_age_days }}d
+              when: ansible_facts.os_family in ['Debian', 'RedHat']
 
-            - name: Remove unused images
-              shell: docker image prune -a -f
+            - name: Clean apt cache and autoremove packages
+              apt:
+                autoclean: yes
+                autoremove: yes
+              when: ansible_facts.pkg_mgr == 'apt'
 
-            - name: Remove dangling volumes
-              shell: docker volume prune -f
+            - name: Clean dnf cache and autoremove packages
+              dnf:
+                autoremove: yes
+              when: ansible_facts.pkg_mgr == 'dnf'
 
-            - name: Remove dangling networks
-              shell: docker network prune -f
+            - name: Run apt-get clean
+              shell: apt-get clean
+              when: ansible_facts.pkg_mgr == 'apt'
 
-            - name: Remove builder cache
-              shell: docker builder prune -a -f
+            - name: Remove junk directories from /root
+              file:
+                path: "{{ item }}"
+                state: absent
+              loop:
+                - /root/.trae-server
+                - /root/.cursor-server
+                - /root/.zed_server
 
-        - name: Get current kernel version
-          shell: uname -r
-          register: current_kernel
+            - name: Find old logs
+              find:
+                paths: "{{ item }}"
+                age: "{{ log_age_days }}d"
+                recurse: yes
+                file_type: file
+              loop: "{{ log_dirs }}"
+              register: old_logs
 
-        - name: List installed kernels
-          shell: dpkg -l | grep linux-image | awk '{print $2}'
-          register: installed_kernels
-          when: ansible_facts.pkg_mgr == 'apt'
+            - name: Delete old logs
+              no_log: true
+              file:
+                path: "{{ item.path }}"
+                state: absent
+              loop: "{{ old_logs.results | map(attribute='files') | sum(start=[]) }}"
 
-        - name: Remove old kernels
-          when: ansible_facts.pkg_mgr == 'apt'
-          apt:
-            name: "{{ item }}"
-            state: absent
-            purge: yes
-          loop: "{{ installed_kernels.stdout_lines | reject('search', current_kernel.stdout) | list }}"
+            - name: Find old temp files
+              no_log: true
+              find:
+                paths: "{{ item }}"
+                age: "{{ temp_age_days }}d"
+                recurse: yes
+                file_type: file
+              loop: "{{ temp_dirs }}"
+              register: old_temps
 
-        - name: Update grub configuration
-          when: ansible_facts.pkg_mgr == 'apt'
-          shell: update-grub
+            - name: Delete old temp files
+              no_log: true
+              file:
+                path: "{{ item.path }}"
+                state: absent
+              loop: "{{ old_temps.results | map(attribute='files') | sum(start=[]) }}"
 
-    - name: Get disk usage after cleanup
-      shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
-      register: disk_usage_after
-      changed_when: false
+            - name: Docker cleanup
+              when: "'docker' in ansible_facts.packages"
+              block:
+                - name: Remove stopped containers
+                  shell: docker container prune -f
 
-    - name: Show disk usage after
-      debug:
-        msg:
-          - "Disk usage before: {{ disk_usage_before.stdout }}%"
-          - "Disk usage after:  {{ disk_usage_after.stdout }}%"
+                - name: Remove unused images
+                  shell: docker image prune -a -f
+
+                - name: Remove dangling volumes
+                  shell: docker volume prune -f
+
+                - name: Remove dangling networks
+                  shell: docker network prune -f
+
+                - name: Remove builder cache
+                  shell: docker builder prune -a -f
+
+            - name: Get current kernel version
+              shell: uname -r
+              register: current_kernel
+
+            - name: List installed kernels
+              shell: dpkg -l | grep linux-image | awk '{print $2}'
+              register: installed_kernels
+              when: ansible_facts.pkg_mgr == 'apt'
+
+            - name: Remove old kernels
+              when: ansible_facts.pkg_mgr == 'apt'
+              apt:
+                name: "{{ item }}"
+                state: absent
+                purge: yes
+              loop: "{{ installed_kernels.stdout_lines | reject('search', current_kernel.stdout) | list }}"
+
+            - name: Update grub configuration
+              when: ansible_facts.pkg_mgr == 'apt'
+              shell: update-grub
+
+        - name: Get disk usage after cleanup
+          shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
+          register: disk_usage_after
+          
+        - name: Show disk usage after
+          debug:
+            msg:
+              - "Disk usage before: {{ disk_usage_before.stdout }}%"
+              - "Disk usage after:  {{ disk_usage_after.stdout }}%"
+      when: "'vpnserver_role' in group_names"

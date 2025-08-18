@@ -2,5 +2,6 @@
 - name: Include common file copy tasks
   include_tasks: "{{ playbook_dir }}/../roles/common/tasks/filescopy.yml"
   vars:
-    restart_handler_name: "restart docker watchtower"
+    up_handler_name: "docker up watchtower"
+    down_handler_name: "docker down watchtower"
     files_source_dir: "{{ role_path }}/files/"

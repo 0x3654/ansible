@@ -1,6 +1,7 @@
 - name: Include common certbot tasks
   include_tasks: "{{ playbook_dir }}/../roles/common/tasks/certbot.yml"
   vars:
-    certbot_notify_handler: "restart docker nginx_proxy_sub"
+    up_handler_name: "docker up 3xuiproxy"
+    down_handler_name: "docker down 3xuiproxy"
     domain_name: "{{ sub_all_url }}"
   tags: [ssl]

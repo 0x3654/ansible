@@ -2,5 +2,6 @@
 - name: Include common file copy tasks
   include_tasks: "{{ playbook_dir }}/../roles/common/tasks/filescopy.yml"
   vars:
-    restart_handler_name: "restart docker nginx_proxy_sub"
+    up_handler_name: "docker up 3xuiproxy"
+    down_handler_name: "docker down 3xuiproxy"
     files_source_dir: "{{ role_path }}/files/"

@@ -60,5 +60,7 @@
       vars:
         prohibited_rules:
           - "-A INPUT -p tcp --dport 80 -j ACCEPT"
-  notify: "{{ certbot_notify_handler }}"
+  notify: 
+    - '{{ down_handler_name }}'
+    - '{{ up_handler_name }}'
   tags: [ssl]

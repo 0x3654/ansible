@@ -21,8 +21,9 @@ force_repo_update: true
 
 # Common paths
 PWD: "/server"
-xray_path: "{{ PWD }}/3x-ui"
+vpnserver: "{{ PWD }}/vpnserver"
+xray_path: "{{ vpnserver }}/3x-ui"
 xray_db_path: "{{ xray_path }}/db"
 cert_path: "{{ PWD }}/certbot"
-amneziawg_path: "{{ PWD }}/amneziawg"
-fail2ban_path: "{{ PWD }}/fail2ban"
+amneziawg_path: "{{ vpnserver }}/amneziawg"
+fail2ban_path: "{{ vpnserver }}/fail2ban"

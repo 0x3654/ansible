@@ -17,8 +17,6 @@ Thumbs.db
 #TO DO
 *.todo
 
-# Исключаем инвентрию
-inventory/inventory.yml
 
 # Исключаем сгенерированные конфигурации
 configs/*

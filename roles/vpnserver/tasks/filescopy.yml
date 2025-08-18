@@ -2,5 +2,6 @@
 - name: Include common file copy tasks
   include_tasks: "{{ playbook_dir }}/../roles/common/tasks/filescopy.yml"
   vars:
-    restart_handler_name: "restart vpn docker containers"
+    up_handler_name: "docker up vpnserver"
+    down_handler_name: "docker down vpnserver"
     files_source_dir: "{{ role_path }}/files/"

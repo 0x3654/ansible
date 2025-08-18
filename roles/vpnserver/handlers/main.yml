@@ -16,13 +16,20 @@
   register: compose_result
   changed_when: compose_result.stdout is search('Creating') or compose_result.stdout is search('Recreating') or compose_result.stdout is search('Starting')
 
-- name: restart vpn docker containers
-  command: "{{ compose_command }} down && {{ compose_command }} up -d"
+- name: docker down vpnserver
+  command: "{{ compose_command }} down"
   args:
-    chdir: "{{ PWD }}"
-  register: compose_result
-  #changed_when: compose_result.stdout is search('Creating') or compose_result.stdout is search('Recreating') or compose_result.stdout is search('Starting')
-  changed_when: true
+        chdir: "{{ vpnserver }}"
+  register: compose_down_result
+  changed_when: compose_down_result.stdout is search('Removing') or compose_down_result.stdout is search('Stopped')
+  ignore_errors: true
+
+- name: docker up vpnserver
+  command: "{{ compose_command }} up -d"
+  args:
+        chdir: "{{ vpnserver }}"
+  register: compose_up_result
+  changed_when: compose_up_result.stdout is search('Creating') or compose_up_result.stdout is search('Recreating') or compose_up_result.stdout is search('Starting')
 
 - name: stop docker 3x-ui
   community.docker.docker_container:

@@ -30,7 +30,7 @@ sub-cleanup:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/cleanup-sub-3x-ui.yml -e "target_hosts=$(or $(h),all)"
 
 fix-dns:
-	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/fix_dns.yml -e "target_hosts=$(or $(h),all)"
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/fix-dns.yml -e "target_hosts=$(or $(h),all)"
 
 deploy-sub-nginx:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/deploy.yml --tags sub_nginx_3xui -e "target_hosts=$(or $(h),all)"
@@ -39,7 +39,7 @@ init-new-server:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/init-new-server.yml -k -e "target_hosts=$(or $(h),all)"
 	
 diskspace-cleanup:
-	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/maint-diskspace.yml -e "target_hosts=$(or $(h),all)"
+	ANSIBLE_STDOUT_CALLBACK=default ANSIBLE_DISPLAY_SKIPPED_HOSTS=False ansible-playbook -i inventory/inventory.yml playbooks/maint-diskspace.yml -e "target_hosts=$(or $(h),all)"
 
 add-dns:
 	ansible-playbook -i inventory/inventory.yml playbooks/add-dns.yml -e "target_hosts=$(or $(h),all)"

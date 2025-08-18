@@ -1,5 +1,5 @@
 ---
-- name: Deploy ALL servers
+- name: Start deploy with target hosts
   hosts: "{{ target_hosts | default('all') }}"
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
