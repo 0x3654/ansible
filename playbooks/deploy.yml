@@ -32,7 +32,13 @@
         label: "{{ item.path | basename }}"
       ignore_errors: true
       tags: [always]
-      
+    
+    - name: Load host_vars
+      include_vars:
+        file: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      ignore_errors: true
+      tags: [always]
+
   tasks:
     # Динамическое подключение ролей на основе групп в инвентори
     - name: Include role if host is in corresponding group
