@@ -7,3 +7,6 @@
 [submodule "vpnserver"]
 	path = roles/vpnserver/files/vpnserver
 	url = https://github.com/0x3654/vpnserver.git
+[submodule "roles/mediaserver/files/mediaserver"]
+	path = roles/mediaserver/files/mediaserver
+	url = https://github.com/0x3654/mediaserver.git

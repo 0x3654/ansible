@@ -17,13 +17,16 @@ Thumbs.db
 #TO DO
 *.todo
 
-
 # Исключаем сгенерированные конфигурации
 configs/*
-
+# Исключаем данные
 data_*
 
 # Исключаем файлы с секретами
 *.vault
 vault_password_file
 *secrets.yml
+
+# исключаем host_vars кроме example
+/host_vars/*
+!/host_vars/example.yml
