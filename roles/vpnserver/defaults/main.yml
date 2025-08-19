@@ -2,8 +2,8 @@
 # defaults file for vpn_servers
 
 required_packages:
-  - docker.io
-  - docker-compose
+  - docker-ce
+  - docker-compose-plugin
   - curl
   - bash
   - openssl
@@ -14,6 +14,9 @@ required_packages:
   - python3-setuptools
   - fail2ban
   - whois
+
+# Управление установкой Docker репозитория
+install_docker_repo: true
 
 # Parameters for repository update control
 update_repo: true

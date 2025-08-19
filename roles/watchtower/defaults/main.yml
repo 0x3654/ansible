@@ -1,15 +1,15 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# defaults file for vpn_servers
-
 required_packages:
-  - docker.io
-  - docker-compose
-  
+  - docker-ce
+  - docker-compose-plugin
+
+# Управление установкой Docker репозитория
+install_docker_repo: true
+
 # Parameters for repository update control
 update_repo: true
-force_repo_update: true
+force_repo_update: false
 
-# Common paths
+
 PWD: "/server"
-watchtower_path: "{{ PWD }}/watchtower"
+path: "{{ PWD }}/{{ role_name | basename }}"
