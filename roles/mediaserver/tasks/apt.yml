@@ -1,0 +1,4 @@
+---
+- name: APT Management
+  include_tasks: "{{ playbook_dir }}/../roles/common/tasks/apt.yml"
+  tags: [apt, upgrade]
