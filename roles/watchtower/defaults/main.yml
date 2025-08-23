@@ -10,6 +10,12 @@ install_docker_repo: true
 update_repo: true
 force_repo_update: false
 
+# Docker user
+docker_user: "{{ role_name | basename }}"
 
 PWD: "/server"
 path: "{{ PWD }}/{{ role_name | basename }}"
+
+# File permissions
+directory_mode: "0755"
+file_mode: "0644"

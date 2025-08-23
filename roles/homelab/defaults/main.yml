@@ -11,18 +11,18 @@ install_docker_repo: true
 update_repo: true
 force_repo_update: false
 
+# Docker user
+docker_user: "{{ role_name | basename }}"
+
 # Common paths
 PWD: "/server/"
 path: "{{ PWD }}/{{ role_name | basename }}"
 
-#plex
-tsdproxy_enable: true
-nvidia_gpu_passthrough: true
-
-PLEX_UID: 998
-PLEX_GID: 998
-PUID: 998
-PGID: 998
+# File permissions
+directory_mode: "0755"
+file_mode: "0644"
 
 #tautulli
 tautulliport: "8181"
+#tailscale proxy
+tsdproxy_enable: true

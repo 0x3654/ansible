@@ -2,6 +2,9 @@
 - name: Include common file copy tasks
   include_tasks: "{{ playbook_dir }}/../roles/common/tasks/filescopy.yml"
   vars:
-    up_handler_name: "docker up 3xuiproxy"
-    down_handler_name: "docker down 3xuiproxy"
+    up_handler_name: "docker up {{ role_name | basename }}"
+    down_handler_name: "docker down {{ role_name | basename }}"
     files_source_dir: "{{ role_path }}/files/"
+    common_docker_user: "{{ docker_user }}"
+    common_directory_mode: "{{ directory_mode }}"
+    common_file_mode: "{{ file_mode }}"

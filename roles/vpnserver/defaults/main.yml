@@ -22,6 +22,9 @@ install_docker_repo: true
 update_repo: true
 force_repo_update: true
 
+# Docker user
+docker_user: "{{ role_name | basename }}"
+
 # Common paths
 PWD: "/server"
 vpnserver: "{{ PWD }}/vpnserver"
@@ -30,3 +33,7 @@ xray_db_path: "{{ xray_path }}/db"
 cert_path: "{{ PWD }}/certbot"
 amneziawg_path: "{{ vpnserver }}/amneziawg"
 fail2ban_path: "{{ vpnserver }}/fail2ban"
+
+# File permissions
+directory_mode: "0755"
+file_mode: "0600"

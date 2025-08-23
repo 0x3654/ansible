@@ -13,7 +13,14 @@ install_docker_repo: true
 update_repo: true
 force_repo_update: true
 
+# Docker user
+docker_user: "{{ role_name | basename }}"
+
 # Common paths
 PWD: "/server"
 nginx_proxy_sub: "{{ PWD }}/3x-ui-sub"
 cert_path: "{{ PWD }}/certbot"
+
+# File permissions
+directory_mode: "0755"
+file_mode: "0644"
