@@ -1,0 +1,4 @@
+---
+# Ansible Lint Configuration
+skip_list:
+  - collection

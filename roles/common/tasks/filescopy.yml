@@ -1,46 +1,46 @@
 ---
-- name: Check if docker user exists
+- name: Check if folder user exists
   ansible.builtin.getent:
     database: passwd
-    key: "{{ docker_user }}"
-  register: docker_user_exists
+    key: "{{ folder_user }}"
+  register: folder_user_exists
   failed_when: false
 
-- name: Create docker user if not exists
+- name: Create folder user if not exists
   ansible.builtin.user:
-    name: "{{ docker_user }}"
+    name: "{{ folder_user }}"
     state: present
     system: false
     create_home: true
     shell: /bin/bash
-  when: docker_user_exists.ansible_facts.getent_passwd is not defined
+  when: folder_user_exists.ansible_facts.getent_passwd is not defined
   become: true
-  register: docker_user_created
+  register: folder_user_created
 
-- name: Get docker user info (UID and GID)
+- name: Get folder user info (UID and GID)
   ansible.builtin.getent:
     database: passwd
-    key: "{{ docker_user }}"
-  register: docker_user_info
-  when: docker_user_exists.ansible_facts.getent_passwd is defined or docker_user_created is changed
+    key: "{{ folder_user }}"
+  register: folder_user_info
+  when: folder_user_exists.ansible_facts.getent_passwd is defined or folder_user_created is changed
 
-- name: Set docker user UID and GID variables
+- name: Set folder user UID and GID variables
   ansible.builtin.set_fact:
-    docker_user_uid: "{{ docker_user_info.ansible_facts.getent_passwd[docker_user][1] }}"
-    docker_user_gid: "{{ docker_user_info.ansible_facts.getent_passwd[docker_user][2] }}"
-  when: docker_user_info.ansible_facts.getent_passwd is defined
+    folder_user_uid: "{{ folder_user_info.ansible_facts.getent_passwd[folder_user][1] }}"
+    folder_user_gid: "{{ folder_user_info.ansible_facts.getent_passwd[folder_user][2] }}"
+  when: folder_user_info.ansible_facts.getent_passwd is defined
 
 
 - name: Process files and directories
-  no_log: true
+#  no_log: true
   block:
     - name: Create directories tree
       when: directory.state == 'directory'
       ansible.builtin.file:
         path: '{{ PWD }}/{{ directory.path }}'
         state: directory
-        owner: '{{ docker_user | d(ansible_user | d("root")) }}'
-        group: '{{ docker_user | d(ansible_user | d("root")) }}'
+        owner: '{{ ansible_user | d("root") }}'
+        group: '{{ ansible_user | d("root") }}'
         mode: '{{ directory_mode }}'
       with_community.general.filetree: '{{ files_source_dir | default("files/") }}'
       loop_control:
@@ -51,17 +51,19 @@
       - '{{ up_handler_name }}'
 
     - name: Copy files
-      when: file.state == 'file' and not file.path.endswith('.DS_Store')
+      when: 
+        - file.state == 'file' 
+        - not file.path.endswith('.DS_Store')
       ansible.builtin.template:
         src: '{{ file.src }}'
-        dest: '{{ PWD }}/{{ file.path }}'
- #       force: no
+        dest: >-
+          {{ PWD }}/{{ file.path }}
       with_community.general.filetree: '{{ files_source_dir | default("files/") }}'
       loop_control:
         loop_var: file
       notify:
-      - '{{ down_handler_name }}'
-      - '{{ up_handler_name }}'
+        - '{{ down_handler_name }}'
+        - '{{ up_handler_name }}'
 
     - name: Set files permissions
       when: 
@@ -69,29 +71,15 @@
         - not file.path.endswith('.DS_Store')
       ansible.builtin.file:
         path: '{{ PWD }}/{{ file.path }}'
-        owner: '{{ docker_user | d(ansible_user | d("root")) }}'
-        group: '{{ docker_user | d(ansible_user | d("root")) }}'
+        owner: '{{ ansible_user | d("root") }}'
+        group: '{{ ansible_user | d("root") }}'
         mode: '{{ file.mode | d(file_mode) }}'
       with_community.general.filetree: '{{ files_source_dir | default("files/") }}'
       loop_control:
         loop_var: file
       notify:
-      - '{{ down_handler_name }}'
-      - '{{ up_handler_name }}'
-
-    - name: Set permissions on host media folders
-      when: homelab_media_binds is defined    
-      ansible.builtin.file:
-        path: "{{ folder.split(':')[0] }}"
-        owner: "{{ docker_user | d(ansible_user | d('root')) }}"
-        group: "{{ docker_user | d(ansible_user | d('root')) }}"
-        mode: '{{ file.mode | d(file_mode) }}'
-        recurse: yes
-      loop: "{{ homelab_media_binds }}"
-      loop_control:
-        loop_var: folder
-  
-  
+        - '{{ down_handler_name }}'
+        - '{{ up_handler_name }}'
 
   tags: [files_copy]
       

@@ -17,6 +17,8 @@ Thumbs.db
 #TO DO
 *.todo
 
+.ansible
+
 # Исключаем сгенерированные конфигурации
 configs/*
 

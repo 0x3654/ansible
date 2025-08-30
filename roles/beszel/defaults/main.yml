@@ -10,8 +10,8 @@ install_docker_repo: true
 update_repo: true
 force_repo_update: false
 
-# Docker user
-docker_user: "{{ role_name | basename }}"
+# user for folders permission
+folder_user: "{{ role_name | basename }}"
 
 # Common paths
 PWD: "/server"

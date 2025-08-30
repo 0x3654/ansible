@@ -1,5 +1,9 @@
 - import_tasks: apt.yml
   tags: [apt, upgrade]
 
+- name: Set role-specific media binds
+  set_fact:
+    homelab_role_media_binds: "{{ homelab_media_binds | default([]) }}"
+
 - import_tasks: filescopy.yml
   tags: [filescopy]

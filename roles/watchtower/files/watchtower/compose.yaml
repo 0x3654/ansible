@@ -17,8 +17,19 @@ services:
       - WATCHTOWER_NOTIFICATIONS_HOSTNAME={{ ansible_host }}
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
       - WATCHTOWER_NOTIFICATION_URL=telegram://{{tg_wt_bot_token}}@telegram/?channels={{tg_wt_chat_id}}
-# OR if youn need support topic
-# in api link replace ":" with "%3A"
-#      - 'WATCHTOWER_NOTIFICATION_URL=generic://api.telegram.org/bot{{tg_wt_bot_token}}/sendMessage'
-#      - 'WATCHTOWER_NOTIFICATION_TEMPLATE={% raw %}{{if .}}{"text":"{{range .}}{{.Message}}\n{{end}}","chat_id":"{% endraw %}{{ tg_wt_chat_id }}{% raw %}"{% endraw %}{{ tg_wt_topic_id | d("") }}{% raw %}"}{{end}}{% endraw %}'
+        # OR if youn need support topic
+        # in api link replace ":" with "%3A"
+        #      - 'WATCHTOWER_NOTIFICATION_URL=generic://api.telegram.org/bot{{tg_wt_bot_token}}/sendMessage'
+        #      - 'WATCHTOWER_NOTIFICATION_TEMPLATE={% raw %}{{if .}}{"text":"{{range .}}{{.Message}}\n{{end}}","chat_id":"{% endraw %}{{ tg_wt_chat_id }}{% raw %}"{% endraw %}{{ tg_wt_topic_id | d("") }}{% raw %}"}{{end}}{% endraw %}'
     restart: unless-stopped
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 5
+      AUTOHEAL_START_PERIOD: 5
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 10
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
