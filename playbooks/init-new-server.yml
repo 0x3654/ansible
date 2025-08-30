@@ -3,39 +3,50 @@
   hosts: "{{ target_hosts | default('all') }}"
   gather_facts: false
   become: true
-  become_method: sudo
+  become_method: ansible.builtin.sudo
 
   vars:
     ubuntu_user: ubuntu
     ansible_user: root
     ansible_python_interpreter: /bin/sh
+    forse_update_htop: "true"
+    required_packages:
+      - docker-ce
+      - docker-compose-plugin
+    install_docker_repo: true
 
   pre_tasks:
     - name: Install python3 if not present
-      raw: |
+      ansible.builtin.raw: |
         if ! command -v python3 >/dev/null 2>&1; then
           apt update && apt install -y python3
         fi
       changed_when: false
 
     - name: Install python3-apt if missing (needed for Ansible apt module)
-      raw: |
+      ansible.builtin.raw: |
         if ! dpkg -s python3-apt >/dev/null 2>&1; then
           apt update && apt install -y python3-apt
         fi
       changed_when: false
 
     - name: Set python interpreter to python3 for subsequent tasks
-      set_fact:
+      ansible.builtin.set_fact:
         ansible_python_interpreter: /usr/bin/python3
 
     - name: Set ansible_user for Ubuntu servers
       when: "'ubuntu_servers' in group_names"
-      set_fact:
+      ansible.builtin.set_fact:
         ansible_user: "{{ ubuntu_user }}"
 
     - name: Gather facts with new interpreter
-      setup:
+      ansible.builtin.setup:
+
+  handlers:
+    - name: Restart sshd service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
 
   tasks:
     - name: Ensure root SSH login is enabled
@@ -44,14 +55,8 @@
         regexp: '^PermitRootLogin'
         line: 'PermitRootLogin yes'
         state: present
-      register: ssh_config
+      notify: Restart sshd service
 
-    - name: Restart sshd service if config changed
-      when: ssh_config.changed
-      ansible.builtin.service:
-        name: ssh
-        state: restarted
-      
     - name: Install public keys for root
       ansible.posix.authorized_key:
         user: root
@@ -62,7 +67,7 @@
       become: true
       when: >
         ansible_facts['os_family'] == "Debian"
-        and ansible_facts['distribution_major_version'] is version('11', '>=')
+        and ansible_facts['distribution_major_version'] is version('11', '>')
         and ansible_facts['distribution'] == 'Debian'
       ansible.builtin.lineinfile:
         path: /etc/sudoers
@@ -70,3 +75,150 @@
         regexp: '^%sudo'
         line: '%sudo ALL=(ALL) NOPASSWD: ALL'
         validate: /usr/sbin/visudo -cf %s
+
+    - name: Disable password authentication for SSH
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: Restart sshd service
+
+    - name: Check and build htop
+      when: forse_update_htop | default(false) | bool
+      block:
+        - name: Check installed htop version
+          ansible.builtin.command: htop --version
+          register: htop_version
+          ignore_errors: true
+          changed_when: false
+
+        - name: Set fact current_htop_version
+          ansible.builtin.set_fact:
+            current_htop_version: "{{ htop_version.stdout.split(' ')[1] if htop_version.rc == 0 else '0' }}"
+
+        - name: Get latest htop release tag from GitHub
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/htop-dev/htop/releases/latest
+            return_content: true
+            headers:
+              Accept: "application/vnd.github.v3+json"
+          register: htop_latest_release
+          changed_when: false
+
+        - name: Set fact latest_htop_version
+          ansible.builtin.set_fact:
+            latest_htop_version: "{{ htop_latest_release.json.tag_name }}"
+
+        - name: Determine if htop needs update
+          ansible.builtin.set_fact:
+            htop_needs_update: "{{ current_htop_version is version(latest_htop_version, '<') }}"
+          changed_when: false
+
+        - name: Build and install latest htop only if needed
+          when: htop_needs_update
+          block:
+            - name: Install build dependencies
+              ansible.builtin.apt:
+                name:
+                  - build-essential
+                  - ncurses-dev
+                  - autotools-dev
+                  - autoconf
+                  - pkg-config
+                  - libncursesw5-dev
+                  - git
+                state: present
+                update_cache: true
+
+            - name: Clone latest htop source
+              ansible.builtin.git:
+                repo: https://github.com/htop-dev/htop.git
+                dest: /tmp/htop-latest
+                version: main
+                update: true
+
+            - name: Build and install latest htop
+              ansible.builtin.command: ./autogen.sh && ./configure --prefix=/usr && make && make install
+              args:
+                chdir: /tmp/htop-latest
+              changed_when: true
+
+            - name: Remove build dependencies
+              ansible.builtin.apt:
+                name:
+                  - build-essential
+                  - ncurses-dev
+                  - autotools-dev
+                  - autoconf
+                  - pkg-config
+                  - libncursesw5-dev
+                  - git
+                state: absent
+                update_cache: true
+
+    - name: Add Docker repository
+      when: install_docker_repo | default(false) | bool
+      block:
+        - name: Ensure /etc/apt/keyrings exists
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+          register: docker_key_result
+
+        - name: Add Docker GPG key to keyrings
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+            dest: /etc/apt/keyrings/docker.gpg
+            mode: '0644'
+          register: docker_key_result
+
+        - name: Add Docker repository with Signed-By
+          ansible.builtin.apt_repository:
+            repo: >
+              deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
+              signed-by=/etc/apt/keyrings/docker.gpg]
+              https://download.docker.com/linux/{{ ansible_distribution | lower }}
+              {{ ansible_distribution_release }} stable
+            state: present
+            filename: docker
+          register: docker_repo_result
+          changed_when: docker_key_result.changed or docker_repo_result.changed
+
+        - name: APT update, upgrade, and install packages
+          when: ansible_pkg_mgr == 'apt'
+          block:
+            - name: APT Dist upgrade
+              ansible.builtin.apt:
+                upgrade: dist
+
+            - name: APT Install required packages
+              ansible.builtin.apt:
+                name: "{{ required_packages }}"
+                state: present
+
+# TODO FIX THIS TASK. add permission for media folders
+    - name: Ensure host media folders exist
+      when: homelab_role_media_binds is defined
+      ansible.builtin.file:
+        path: "{{ media_file.split(':')[0] }}"
+        state: directory
+        owner: "{{ folder_user | d(ansible_user | d('root')) }}"
+        group: "{{ folder_user | d(ansible_user | d('root')) }}"
+        mode: '{{ directory_mode }}'
+      loop: "{{ homelab_role_media_binds }}"
+      loop_control:
+        loop_var: media_file
+
+    - name: Set permissions on host media folders
+      when: homelab_role_media_binds is defined
+      ansible.builtin.file:
+        path: "{{ media_file.split(':')[0] }}"
+        owner: "{{ folder_user | d(ansible_user | d('root')) }}"
+        group: "{{ folder_user | d(ansible_user | d('root')) }}"
+        mode: "{{ file.mode | d(file_mode) }}"
+        recurse: true
+      loop: "{{ homelab_role_media_binds }}"
+      loop_control:
+        loop_var: media_file

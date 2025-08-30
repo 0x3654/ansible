@@ -22,19 +22,19 @@ path: "{{ PWD }}/{{ role_name | basename }}"
 directory_mode: "0755"
 file_mode: "0644"
 
-#tautulli
+# tautulli
 tautulliport: "8181"
-#tailscale proxy
+# tailscale proxy
 tsdproxy_enable: true
 
-#transmisiion
+# transmisiion
 transmission_port: "9091"
 transmission_download_dir: "/mnt/torrent/"
 transmission_incomplete_dir: "/tmp"
 transmission_watch_dir: "/mnt/torrent/new"
-#transmisiion-rss
+# transmisiion-rss
 trans_rss_download_path: "/mnt/torrent"
 trans_rss_url: "https://datalostfilmfeed.byalex.dev/rssfeeds/aa111fef-aa5d-4f43-8a34-191634420162.xml"
 trans_rss_update_interval: "600"
-#torrserver
+# torrserver
 torrserverport: "8090"

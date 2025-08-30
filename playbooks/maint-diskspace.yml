@@ -64,7 +64,7 @@
               find:
                 paths: "{{ item }}"
                 age: "{{ log_age_days }}d"
-                recurse: yes
+                recurse: true
                 file_type: file
               loop: "{{ log_dirs }}"
               register: old_logs
@@ -81,7 +81,7 @@
               find:
                 paths: "{{ item }}"
                 age: "{{ temp_age_days }}d"
-                recurse: yes
+                recurse: true
                 file_type: file
               loop: "{{ temp_dirs }}"
               register: old_temps
@@ -125,7 +125,7 @@
               apt:
                 name: "{{ item }}"
                 state: absent
-                purge: yes
+                purge: true
               loop: "{{ installed_kernels.stdout_lines | reject('search', current_kernel.stdout) | list }}"
 
             - name: Update grub configuration

@@ -1,5 +1,5 @@
 - name: Include common certbot tasks
-  include_tasks: "{{ playbook_dir }}/../roles/common/tasks/certbot.yml"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../roles/common/tasks/certbot.yml"
   vars:
       up_handler_name: "docker up vpnserver"
       down_handler_name: "docker down vpnserver"
