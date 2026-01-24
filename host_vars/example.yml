@@ -7,9 +7,9 @@ homelab_media_binds:
   - /mnt/backup:/mnt/backup
 
 
-# plex mediaserver vars 
-PLEX_CLAIM: "claim-xxx123"
-PLEX_UID: 998
-PLEX_GID: 998
+# plex mediaserver vars
+plex_claim: "claim-xxx123"
+plex_uid: 998
+plex_gid: 998
 nvidia_gpu_passthrough: true
 tsdproxy_enable: true

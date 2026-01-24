@@ -1,26 +1,26 @@
 # SPDX-License-Identifier: MIT-0
 ---
 # defaults file for sub_nginx_3xui
-required_packages:
+subnginx3xui_required_packages:
   - docker-ce
   - docker-compose-plugin
   - certbot
 
 # Управление установкой Docker репозитория
-install_docker_repo: true
+subnginx3xui_install_docker_repo: true
 
 # Parameters for repository update control
-update_repo: true
-force_repo_update: true
+subnginx3xui_update_repo: true
+subnginx3xui_force_repo_update: true
 
 # user for folders permission
-folder_user: "{{ role_name | basename }}"
+subnginx3xui_folder_user: "{{ role_name | basename }}"
 
 # Common paths
-PWD: "/server"
-nginx_proxy_sub: "{{ PWD }}/3x-ui-sub"
-cert_path: "{{ PWD }}/certbot"
+subnginx3xui_pwd: "/server"
+subnginx3xui_nginx_proxy_sub: "{{ subnginx3xui_pwd }}/3x-ui-sub"
+subnginx3xui_cert_path: "{{ subnginx3xui_pwd }}/certbot"
 
 # File permissions
-directory_mode: "0755"
-file_mode: "0644"
+subnginx3xui_directory_mode: "0755"
+subnginx3xui_file_mode: "0644"

@@ -1,7 +1,9 @@
 - name: Include common certbot tasks
-  include_tasks: "{{ playbook_dir }}/../roles/common/tasks/certbot.yml"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: certbot.yml
   vars:
-    up_handler_name: "docker up 3xuiproxy"
-    down_handler_name: "docker down 3xuiproxy"
-    domain_name: "{{ sub_all_url }}"
+    common_up_handler_name: "docker up 3xuiproxy"
+    common_down_handler_name: "docker down 3xuiproxy"
+    common_domain_name: "{{ sub_all_url }}"
   tags: [ssl]

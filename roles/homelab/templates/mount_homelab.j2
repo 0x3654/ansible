@@ -1,0 +1,30 @@
+-- Mounting homelab servers
+
+try
+    tell application "Finder"
+        {% for bind in homelab_media_binds %}
+            {% set share_name = inventory_hostname + '_' + bind.split(':')[1].split('/')[-1] %}
+            try
+                if not (disk "{{ share_name }}" exists) then
+                    mount volume "smb://" & "{{ ansible_default_ipv4.address }}" & "/{{ bind.split(':')[0].split('/')[-1] }}" as user name "{{ homelab_samba_user }}" with password "{{ homelab_samba_password }}"
+                end if
+            on error errMsg
+                display dialog "Failed to mount {{ share_name }}: " & errMsg buttons {"OK"} default button "OK"
+            end try
+        {% endfor %}
+    end tell
+
+    -- Post-mount file operations for server {{ inventory_hostname }}
+    try
+        do shell script "mv -f ~/Library/Mobile\\ Documents/com~apple~CloudDocs/Downloads/*.torrent /Volumes/{{ inventory_hostname }}_new/ &>/dev/null &"
+        do shell script "mv -f ~/Library/Mobile\\ Documents/com~apple~CloudDocs/Downloads/*.conf /Volumes/{{ inventory_hostname }}_new/ &>/dev/null &"
+        do shell script "sleep 5"
+        do shell script "mv -f /Volumes/{{ inventory_hostname }}_new/*.added /Volumes/new/torrent &>/dev/null &"
+        do shell script "rm -f /Volumes/{{ inventory_hostname }}_new/._* &>/dev/null &"
+    on error errMsg
+        display dialog "Post-mount operations failed for {{ inventory_hostname }}: " & errMsg buttons {"OK"} default button "OK"
+    end try
+
+on error errMsg
+    display dialog "One or more servers are unreachable: " & errMsg buttons {"OK"} default button "OK"
+end try

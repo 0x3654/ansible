@@ -1,5 +1,7 @@
-- import_tasks: apt.yml
+- name: Import APT management tasks
+  ansible.builtin.import_tasks: apt.yml
   tags: [apt, upgrade]
 
-- import_tasks: filescopy.yml
+- name: Import file copy tasks
+  ansible.builtin.import_tasks: filescopy.yml
   tags: [filescopy]

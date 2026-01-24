@@ -1,42 +1,53 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # handlers file for vpn_servers
 
-- name: restart docker amneziawg
-  command: "{{ compose_command }} down && {{ compose_command }} up -d"
+- name: Restart docker amneziawg
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
     chdir: "{{ amneziawg_path }}"
-  register: compose_result
-  changed_when: compose_result.stdout is search('Creating') or compose_result.stdout is search('Recreating') or compose_result.stdout is search('Starting')
+  register: vpnserver_compose_result
+  changed_when: >-
+    vpnserver_compose_result.stdout is search('Creating')
+    or vpnserver_compose_result.stdout is search('Recreating')
+    or vpnserver_compose_result.stdout is search('Starting')
 
-- name: restart docker fail2ban
-  command: "{{ compose_command }} down && {{ compose_command }} up -d"
+- name: Restart docker fail2ban
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
     chdir: "{{ fail2ban_path }}"
-  register: compose_result
-  changed_when: compose_result.stdout is search('Creating') or compose_result.stdout is search('Recreating') or compose_result.stdout is search('Starting')
+  register: vpnserver_compose_result
+  changed_when: >-
+    vpnserver_compose_result.stdout is search('Creating')
+    or vpnserver_compose_result.stdout is search('Recreating')
+    or vpnserver_compose_result.stdout is search('Starting')
 
-- name: docker down vpnserver
-  command: "{{ compose_command }} down"
+- name: Docker down vpnserver
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
   args:
-        chdir: "{{ vpnserver }}"
-  register: compose_down_result
-  changed_when: compose_down_result.stdout is search('Removing') or compose_down_result.stdout is search('Stopped')
+    chdir: "{{ vpnserver }}"
+  register: vpnserver_compose_down_result
+  changed_when: >-
+    vpnserver_compose_down_result.stdout is search('Removing')
+    or vpnserver_compose_down_result.stdout is search('Stopped')
   ignore_errors: true
 
-- name: docker up vpnserver
-  command: "{{ compose_command }} up -d"
+- name: Docker up vpnserver
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
-        chdir: "{{ vpnserver }}"
-  register: compose_up_result
-  changed_when: compose_up_result.stdout is search('Creating') or compose_up_result.stdout is search('Recreating') or compose_up_result.stdout is search('Starting')
+    chdir: "{{ vpnserver }}"
+  register: vpnserver_compose_up_result
+  changed_when: >-
+    vpnserver_compose_up_result.stdout is search('Creating')
+    or vpnserver_compose_up_result.stdout is search('Recreating')
+    or vpnserver_compose_up_result.stdout is search('Starting')
 
-- name: stop docker 3x-ui
+- name: Stop docker 3x-ui
   community.docker.docker_container:
     name: 3x-ui
     state: stopped
 
-- name: start docker 3x-ui
+- name: Start docker 3x-ui
   community.docker.docker_container:
     name: 3x-ui
     state: started

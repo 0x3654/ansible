@@ -1,17 +1,24 @@
-- import_tasks: apt.yml
+---
+- name: Import APT management tasks
+  ansible.builtin.import_tasks: apt.yml
   tags: [apt, upgrade]
 
-- import_tasks: certbot.yml
+- name: Import certbot tasks
+  ansible.builtin.import_tasks: certbot.yml
   tags: [certbot]
 
-- import_tasks: filescopy.yml
+- name: Import file copy tasks
+  ansible.builtin.import_tasks: filescopy.yml
   tags: [filescopy]
 
-- import_tasks: 3x-ui.yml
+- name: Import 3x-ui tasks
+  ansible.builtin.import_tasks: 3x-ui.yml
   tags: [3x-ui]
 
-- import_tasks: amneziawg.yml
+- name: Import AmneziaWG tasks
+  ansible.builtin.import_tasks: amneziawg.yml
   tags: [amneziawg]
 
-- import_tasks: firewall.yml
+- name: Import firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]

@@ -1,10 +1,10 @@
 ---
 # Including the file with secrets
-include_vars: secrets.yml
+homelab_include_vars: secrets.yml
 
 # Ports for firewall configuration
-#firewall_ports:
-#  - { port: 22, protocol: tcp, comment: "SSH" }
-#  - { port: 443, protocol: tcp, comment: "https" }
-#  - { port: 2408, protocol: tcp, comment: "WASP Cloudflare" }
-#  - { port: 40000, protocol: tcp, comment: "WASP local" }
+# firewall_ports:
+#   - { port: 22, protocol: tcp, comment: "SSH" }
+#   - { port: 443, protocol: tcp, comment: "https" }
+#   - { port: 2408, protocol: tcp, comment: "WASP Cloudflare" }
+#   - { port: 40000, protocol: tcp, comment: "WASP local" }

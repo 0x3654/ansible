@@ -15,44 +15,52 @@
     temp_age_days: 15
 
   tasks:
-    - block:
+    - name: Cleanup block
+      when: "'vpnserver_role' in group_names"
+      block:
         - name: Gather installed package facts
-          package_facts:
+          ansible.builtin.package_facts:
             manager: auto
 
         - name: Get disk usage before cleanup
-          shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
+          ansible.builtin.shell: |
+            set -o pipefail
+            df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
           register: disk_usage_before
           changed_when: false
+          args:
+            executable: /bin/bash
 
         - name: Show disk usage before
-          debug:
+          ansible.builtin.debug:
             msg: "Disk usage before: {{ disk_usage_before.stdout }}%"
 
         - name: Cleanup if threshold exceeded
           when: (disk_usage_before.stdout | int) > max_usage_percent
           block:
             - name: Clean journalctl logs
-              shell: journalctl --vacuum-time={{ log_age_days }}d
+              ansible.builtin.command: journalctl --vacuum-time={{ log_age_days }}d
               when: ansible_facts.os_family in ['Debian', 'RedHat']
+              changed_when: false
 
             - name: Clean apt cache and autoremove packages
-              apt:
-                autoclean: yes
-                autoremove: yes
+              ansible.builtin.apt:
+                autoclean: true
+                autoremove: true
               when: ansible_facts.pkg_mgr == 'apt'
 
             - name: Clean dnf cache and autoremove packages
-              dnf:
-                autoremove: yes
+              ansible.builtin.dnf:
+                autoremove: true
               when: ansible_facts.pkg_mgr == 'dnf'
 
             - name: Run apt-get clean
-              shell: apt-get clean
+              ansible.builtin.apt:
+                clean: true
               when: ansible_facts.pkg_mgr == 'apt'
 
             - name: Remove junk directories from /root
-              file:
+              ansible.builtin.file:
                 path: "{{ item }}"
                 state: absent
               loop:
@@ -61,7 +69,7 @@
                 - /root/.zed_server
 
             - name: Find old logs
-              find:
+              ansible.builtin.find:
                 paths: "{{ item }}"
                 age: "{{ log_age_days }}d"
                 recurse: true
@@ -71,14 +79,14 @@
 
             - name: Delete old logs
               no_log: true
-              file:
+              ansible.builtin.file:
                 path: "{{ item.path }}"
                 state: absent
               loop: "{{ old_logs.results | map(attribute='files') | sum(start=[]) }}"
 
             - name: Find old temp files
               no_log: true
-              find:
+              ansible.builtin.find:
                 paths: "{{ item }}"
                 age: "{{ temp_age_days }}d"
                 recurse: true
@@ -88,7 +96,7 @@
 
             - name: Delete old temp files
               no_log: true
-              file:
+              ansible.builtin.file:
                 path: "{{ item.path }}"
                 state: absent
               loop: "{{ old_temps.results | map(attribute='files') | sum(start=[]) }}"
@@ -97,32 +105,43 @@
               when: "'docker' in ansible_facts.packages"
               block:
                 - name: Remove stopped containers
-                  shell: docker container prune -f
+                  ansible.builtin.command: docker container prune -f
+                  changed_when: false
 
                 - name: Remove unused images
-                  shell: docker image prune -a -f
+                  ansible.builtin.command: docker image prune -a -f
+                  changed_when: false
 
                 - name: Remove dangling volumes
-                  shell: docker volume prune -f
+                  ansible.builtin.command: docker volume prune -f
+                  changed_when: false
 
                 - name: Remove dangling networks
-                  shell: docker network prune -f
+                  ansible.builtin.command: docker network prune -f
+                  changed_when: false
 
                 - name: Remove builder cache
-                  shell: docker builder prune -a -f
+                  ansible.builtin.command: docker builder prune -a -f
+                  changed_when: false
 
             - name: Get current kernel version
-              shell: uname -r
+              ansible.builtin.command: uname -r
               register: current_kernel
+              changed_when: false
 
             - name: List installed kernels
-              shell: dpkg -l | grep linux-image | awk '{print $2}'
+              ansible.builtin.shell: |
+                set -o pipefail
+                dpkg -l | grep linux-image | awk '{print $2}'
               register: installed_kernels
               when: ansible_facts.pkg_mgr == 'apt'
+              changed_when: false
+              args:
+                executable: /bin/bash
 
             - name: Remove old kernels
               when: ansible_facts.pkg_mgr == 'apt'
-              apt:
+              ansible.builtin.apt:
                 name: "{{ item }}"
                 state: absent
                 purge: true
@@ -130,15 +149,20 @@
 
             - name: Update grub configuration
               when: ansible_facts.pkg_mgr == 'apt'
-              shell: update-grub
+              ansible.builtin.command: update-grub
+              changed_when: false
 
         - name: Get disk usage after cleanup
-          shell: df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
+          ansible.builtin.shell: |
+            set -o pipefail
+            df -P {{ disk_path }} | awk 'NR==2 {gsub(/%/, "", $5); print $5}'
           register: disk_usage_after
-          
+          changed_when: false
+          args:
+            executable: /bin/bash
+
         - name: Show disk usage after
-          debug:
+          ansible.builtin.debug:
             msg:
               - "Disk usage before: {{ disk_usage_before.stdout }}%"
               - "Disk usage after:  {{ disk_usage_after.stdout }}%"
-      when: "'vpnserver_role' in group_names"

@@ -1,7 +1,0 @@
-- name: Add DNS A record to Namecheap
-  hosts: "{{ target_hosts | default('all') }}"
-  gather_facts: no
-  roles:
-    - common
-  tasks:
-    - include_tasks: "{{ playbook_dir }}/../roles/common/tasks/add-dns.yml"

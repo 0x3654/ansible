@@ -1,7 +1,7 @@
 ---
 # defaults file for vpn_servers
 
-required_packages:
+vpnserver_required_packages:
   - docker-ce
   - docker-compose-plugin
   - curl
@@ -15,24 +15,24 @@ required_packages:
   - whois
 
 # Управление установкой Docker репозитория
-install_docker_repo: true
+vpnserver_install_docker_repo: true
 
 # Parameters for repository update control
-update_repo: true
-force_repo_update: true
+vpnserver_update_repo: true
+vpnserver_force_repo_update: true
 
 # user for folders permission
-folder_user: "{{ role_name | basename }}"
+vpnserver_folder_user: "{{ role_name | basename }}"
 
 # Common paths
-PWD: "/server"
-vpnserver: "{{ PWD }}/vpnserver"
-xray_path: "{{ vpnserver }}/3x-ui"
-xray_db_path: "{{ xray_path }}/db"
-cert_path: "{{ PWD }}/certbot"
-amneziawg_path: "{{ vpnserver }}/amneziawg"
-fail2ban_path: "{{ vpnserver }}/fail2ban"
+vpnserver_pwd: "/server"
+vpnserver_path: "{{ vpnserver_pwd }}/vpnserver"
+vpnserver_xray_path: "{{ vpnserver_path }}/3x-ui"
+vpnserver_xray_db_path: "{{ vpnserver_xray_path }}/db"
+vpnserver_cert_path: "{{ vpnserver_pwd }}/certbot"
+vpnserver_amneziawg_path: "{{ vpnserver_path }}/amneziawg"
+vpnserver_fail2ban_path: "{{ vpnserver_path }}/fail2ban"
 
 # File permissions
-directory_mode: "0755"
-file_mode: "0600"
+vpnserver_directory_mode: "0755"
+vpnserver_file_mode: "0600"

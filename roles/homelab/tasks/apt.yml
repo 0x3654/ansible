@@ -1,4 +1,6 @@
 ---
 - name: APT Management
-  include_tasks: "{{ playbook_dir }}/../roles/common/tasks/apt.yml"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: apt.yml
   tags: [apt, upgrade]

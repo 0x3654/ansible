@@ -8,14 +8,14 @@
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
-      register: docker_key_result
+      register: common_docker_key_result
 
     - name: Add Docker GPG key to keyrings
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
         dest: /etc/apt/keyrings/docker.gpg
         mode: '0644'
-      register: docker_key_result
+      register: common_docker_key_result
 
     - name: Add Docker repository with Signed-By
       ansible.builtin.apt_repository:
@@ -26,8 +26,8 @@
           {{ ansible_distribution_release }} stable
         state: present
         filename: docker
-      register: docker_repo_result
-      changed_when: docker_key_result.changed or docker_repo_result.changed
+      register: common_docker_repo_result
+      changed_when: common_docker_key_result.changed or common_docker_repo_result.changed
 
 - name: APT update, upgrade, and install packages
   when: ansible_pkg_mgr == 'apt'
@@ -43,11 +43,10 @@
 
 - name: Check docker compose availability
   ansible.builtin.command: docker compose version
-  register: docker_compose_check
-  ignore_errors: true
+  register: common_docker_compose_check
   failed_when: false
   changed_when: false
 
 - name: Set compose_command fact
   ansible.builtin.set_fact:
-    compose_command: "{{ 'docker compose' if docker_compose_check.rc == 0 else 'docker-compose' }}"
+    common_compose_command: "{{ 'docker compose' if common_docker_compose_check.rc == 0 else 'docker-compose' }}"

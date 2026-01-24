@@ -1,0 +1,21 @@
+#!/bin/bash
+# DevOps stack status checker
+
+echo "🐳 Docker Containers:"
+docker ps --filter "name=devops" --format "{% raw %}{{.Names}}\t{{.Status}}\t{{.Ports}}{% endraw %}"
+
+echo ""
+echo "📊 K3s Cluster:"
+kubectl cluster-info 2>/dev/null || echo "K3s cluster not running"
+
+echo ""
+echo "🔍 K3s Nodes:"
+kubectl get nodes 2>/dev/null || echo "Cannot connect to cluster"
+
+echo ""
+echo "📦 K3s Pods:"
+kubectl get pods -A 2>/dev/null | head -10 || echo "No pods found"
+
+echo ""
+echo "💾 Disk Usage:"
+du -sh {{ macbook_devops_dir }}/data/* 2>/dev/null || echo "No data found"

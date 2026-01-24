@@ -1,13 +1,13 @@
 ---
 # Including the file with secrets
-include_vars: secrets.yml
+vpnserver_include_vars: secrets.yml
 
 # Ports for firewall configuration
-#firewall_ports:
-#  - { port: 22, protocol: tcp, comment: "SSH" }
-#  - { port: 443, protocol: tcp, comment: "https" }
-#  - { port: 2408, protocol: tcp, comment: "WASP Cloudflare" }
-#  - { port: 40000, protocol: tcp, comment: "WASP local" }
+# vpnserver_firewall_ports:
+#   - { port: 22, protocol: tcp, comment: "SSH" }
+#   - { port: 443, protocol: tcp, comment: "https" }
+#   - { port: 2408, protocol: tcp, comment: "WASP Cloudflare" }
+#   - { port: 40000, protocol: tcp, comment: "WASP local" }
 
 # IP addresses of all VPN servers for fail2ban
-all_vpn_ips: "{{ groups['vpn_servers'] | map('extract', hostvars, ['ansible_host']) | join(' ') }}"
+vpnserver_all_vpn_ips: "{{ groups['vpn_servers'] | map('extract', hostvars, ['ansible_host']) | join(' ') }}"

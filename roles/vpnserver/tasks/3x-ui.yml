@@ -1,10 +1,12 @@
 ---
 - name: 3x-ui db Import
+  tags: [3x-ui]
   block:
     - name: Check if database is already configured
-      shell: |
-        if [ -f "{{ xray_db_path }}/x-ui.db" ]; then
-          count=$(sqlite3 "{{ xray_db_path }}/x-ui.db" "SELECT COUNT(*) FROM settings;" 2>/dev/null || echo "0")
+      ansible.builtin.shell: |
+        set -o pipefail
+        if [ -f "{{ vpnserver_xray_db_path }}/x-ui.db" ]; then
+          count=$(sqlite3 "{{ vpnserver_xray_db_path }}/x-ui.db" "SELECT COUNT(*) FROM settings;" 2>/dev/null || echo "0")
           if [ "$count" = "0" ]; then
             echo "no_db"
           elif [ "$count" = "1" ]; then
@@ -15,88 +17,96 @@
         else
           echo "no_db"
         fi
-      register: db_check
+      args:
+        executable: /bin/bash
+      register: vpnserver_db_check
       changed_when: false
 
     - name: Start 3x-ui container if no DB
-      when: db_check.stdout == "no_db"
-      shell: docker start 3x-ui
+      when: vpnserver_db_check.stdout == "no_db"
+      ansible.builtin.shell: docker start 3x-ui
+      changed_when: true
 
     - name: Set import_needed fact
-      set_fact:
-        import_needed: "{{ db_check.stdout == 'need_import_db' or force_import | default(false) | bool }}"
+      ansible.builtin.set_fact:
+        vpnserver_import_needed: "{{ vpnserver_db_check.stdout == 'need_import_db' or force_import | default(false) | bool }}"
 
     - name: Prepare config for import
-      when: import_needed
+      when: vpnserver_import_needed
       block:
         - name: Check if config file exists
-          stat:
+          ansible.builtin.stat:
             path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-          register: config_file
+          register: vpnserver_config_file
           delegate_to: localhost
 
         - name: Extract values from config file
-          when: config_file.stat.exists
+          when: vpnserver_config_file.stat.exists
           block:
             - name: Read config content
-              slurp:
+              ansible.builtin.slurp:
                 path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-              register: config_content
+              register: vpnserver_config_content
               delegate_to: localhost
 
             - name: Parse YAML
-              set_fact:
-                config_yaml: "{{ config_content.content | b64decode | from_yaml }}"
+              ansible.builtin.set_fact:
+                vpnserver_config_yaml: "{{ vpnserver_config_content.content | b64decode | from_yaml }}"
 
             - name: Extract values from YAML
-              set_fact:
-                webPort: "{{ config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
-                webBasePath: "{{ config_yaml.panel.url | regex_search('https://.*:\\d+/(.*?)/', '\\1') | first }}"
-                subPort: "{{ config_yaml.subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
-                subPath: "{{ config_yaml.subscription.suburl | regex_search('https://.*:\\d+/(.*?)/', '\\1') | first }}"
-                subJsonPath: "{{ config_yaml.subscription.subJsonPath }}"
-                username: "{{ config_yaml.panel.username }}"
-                password: "{{ config_yaml.panel.password }}"
+              ansible.builtin.set_fact:
+                vpnserver_web_port: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+                vpnserver_web_base_path: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:\\d+/(.*?)/', '\\1') | first }}"
+                vpnserver_sub_port: "{{ vpnserver_config_yaml.subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+                vpnserver_sub_path: "{{ vpnserver_config_yaml.subscription.suburl | regex_search('https://.*:\\d+/(.*?)/', '\\1') | first }}"
+                vpnserver_sub_json_path: "{{ vpnserver_config_yaml.subscription.subJsonPath }}"
+                vpnserver_username: "{{ vpnserver_config_yaml.panel.username }}"
+                vpnserver_password: "{{ vpnserver_config_yaml.panel.password }}"
 
         - name: Generate values if config is missing
-          when: config_file.stat is defined and not config_file.stat.exists
-          set_fact:
-            webPort: "{{ 20000 | random(10000) }}"
-            webBasePath: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
-            subPort: "{{ 30000 | random(20001) }}"
-            subPath: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
-            subJsonPath: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
-            username: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
-            password: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits,ascii_uppercase length=16') }}"
+          when: vpnserver_config_file.stat is defined and not vpnserver_config_file.stat.exists
+          ansible.builtin.set_fact:
+            vpnserver_web_port: "{{ 20000 | random(10000) }}"
+            vpnserver_web_base_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_sub_port: "{{ 30000 | random(20001) }}"
+            vpnserver_sub_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_sub_json_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_username: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_password: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits,ascii_uppercase length=16') }}"
 
         - name: Generate client UUID
-          shell: |
+          ansible.builtin.shell: |
+            set -o pipefail
             printf "%08x-%04x-%04x-%04x-%012x" \
               $((0x$(openssl rand -hex 4))) \
               $((0x$(openssl rand -hex 2))) \
               $((0x$(openssl rand -hex 2))) \
               $((0x$(openssl rand -hex 2))) \
               $((0x$(openssl rand -hex 6)))
-          register: client_id_result
+          args:
+            executable: /bin/bash
+          register: vpnserver_client_id_result
           changed_when: false
 
         - name: Set client ID fact
-          set_fact:
-            client_id: "{{ client_id_result.stdout }}"
+          ansible.builtin.set_fact:
+            vpnserver_client_id: "{{ vpnserver_client_id_result.stdout }}"
 
         - name: Generate Reality keys and SQL
           block:
             - name: Generate X25519 key pair via xray
-              shell: docker exec 3x-ui /app/bin/xray-linux-amd64 x25519
-              register: keygen_result
+              ansible.builtin.shell: docker exec 3x-ui /app/bin/xray-linux-amd64 x25519
+              register: vpnserver_keygen_result
+              changed_when: false
 
             - name: Parse Reality keys
-              set_fact:
-                reality_private_key: "{{ keygen_result.stdout_lines[0] | regex_replace('^Private key: ', '') }}"
-                reality_public_key: "{{ keygen_result.stdout_lines[1] | regex_replace('^Public key: ', '') }}"
+              ansible.builtin.set_fact:
+                vpnserver_reality_private_key: "{{ vpnserver_keygen_result.stdout_lines[0] | regex_replace('^Private key: ', '') }}"
+                vpnserver_reality_public_key: "{{ vpnserver_keygen_result.stdout_lines[1] | regex_replace('^Public key: ', '') }}"
 
             - name: Generate Short IDs
-              shell: |
+              ansible.builtin.shell: |
+                set -o pipefail
                 lengths=(2 4 6 8 10 12 14 16)
                 for len in "${lengths[@]}"; do
                   openssl rand -hex $((len/2))
@@ -106,87 +116,98 @@
                 done
               args:
                 executable: /bin/bash
-              register: short_ids_result
+              register: vpnserver_short_ids_result
+              changed_when: false
 
             - name: Format Short IDs
-              set_fact:
-                reality_short_ids: >-
-                  {% for id in short_ids_result.stdout.split(',') %}
+              ansible.builtin.set_fact:
+                vpnserver_reality_short_ids: >-
+                  {% for id in vpnserver_short_ids_result.stdout.split(',') %}
                   "{{ id | trim }}"{% if not loop.last %},{% endif %}
                   {% endfor %}
 
             - name: Clean Short IDs
-              set_fact:
-                reality_short_ids: "{{ reality_short_ids | replace('\n', '') | replace('  ', ' ') }}"
+              ansible.builtin.set_fact:
+                vpnserver_reality_short_ids: "{{ vpnserver_reality_short_ids | replace('\n', '') | replace('  ', ' ') }}"
 
             - name: Create import SQL file from template
-              template:
+              ansible.builtin.template:
                 src: 3x-ui/import.sql.j2
-                dest: "{{ xray_path }}/import.sql"
+                dest: "{{ vpnserver_xray_path }}/import.sql"
+                mode: '0600'
 
         - name: Stop 3x-ui before import
-          shell: docker stop 3x-ui
+          ansible.builtin.command: docker stop 3x-ui
+          changed_when: true
 
         - name: Import SQL to database
-          shell: |
-            if [ -f "{{ xray_db_path }}/x-ui.db" ]; then
-              sqlite3 "{{ xray_db_path }}/x-ui.db" < "{{ xray_path }}/import.sql"
+          ansible.builtin.shell: |
+            set -o pipefail
+            if [ -f "{{ vpnserver_xray_db_path }}/x-ui.db" ]; then
+              sqlite3 "{{ vpnserver_xray_db_path }}/x-ui.db" < "{{ vpnserver_xray_path }}/import.sql"
               exit $?
             else
               echo "Database file not found"
               exit 1
             fi
-          register: import_result
-          changed_when: import_result.rc == 0
-          failed_when: import_result.rc != 0
+          args:
+            executable: /bin/bash
+          register: vpnserver_import_result
+          changed_when: vpnserver_import_result.rc == 0
+          failed_when: vpnserver_import_result.rc != 0
 
         - name: Save generated config file
-          when: config_file.stat is defined and not config_file.stat.exists
-          template:
+          when: vpnserver_config_file.stat is defined and not vpnserver_config_file.stat.exists
+          ansible.builtin.template:
             src: 3x-ui.yml.j2
             dest: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
+            mode: '0600'
           delegate_to: localhost
 
         - name: Restart 3x-ui container
-          shell: docker start 3x-ui
+          ansible.builtin.command: docker start 3x-ui
+          changed_when: true
 
-- name: Setup WARP proxy
-  when: ruserv is not defined or ruserv != "true"
-  block:
-    - name: Check if port 40000 is in use
-      shell: ss -tuln | grep ':40000 ' || true
-      register: port_check
-      changed_when: false
+    - name: Setup WARP proxy
+      when: ruserv is not defined or ruserv != "true"
+      block:
+        - name: Check if port 40000 is in use
+          ansible.builtin.shell: |
+            set -o pipefail
+            ss -tuln | grep ':40000 ' || true
+          args:
+            executable: /bin/bash
+          register: vpnserver_port_check
+          changed_when: false
 
-    - name: Check if warp is available
-      shell: "command -v warp"
-      register: warp_check
-      changed_when: false
-      failed_when: false
+        - name: Check if warp is available
+          ansible.builtin.command: command -v warp
+          register: vpnserver_warp_check
+          changed_when: false
+          failed_when: false
 
-    - name: Uninstall warp
-      when: warp_check.rc == 0
-      shell: "yes | warp u"
-      args:
-        executable: /bin/bash
-      changed_when: false
-      failed_when: false
+        - name: Uninstall warp
+          when: vpnserver_warp_check.rc == 0
+          ansible.builtin.shell: |
+            set -o pipefail
+            yes | warp u
+          args:
+            executable: /bin/bash
+          changed_when: false
+          failed_when: false
 
-    - name: Set warp_removed fact
-      when: warp_check.rc == 0 and port_check.stdout == ""
-      set_fact:
-        warp_removed: true
-      
+        - name: Set warp_removed fact
+          when: vpnserver_warp_check.rc == 0 and vpnserver_port_check.stdout == ""
+          ansible.builtin.set_fact:
+            vpnserver_warp_removed: true
 
-    - name: Install warp via alt script
-      when: port_check.stdout == "" or warp_removed | default(false)
-      shell: |
-        wget -O - https://raw.githubusercontent.com/hamid-gh98/x-ui-scripts/main/install_warp_proxy.sh | bash -s -- -y
-      args:
-        executable: /bin/bash
-      register: warp_install_result
-      changed_when: warp_install_result.rc == 0
-      failed_when: warp_install_result.rc != 0
-      
-
-  tags: [3x-ui]
+        - name: Install warp via alt script
+          when: vpnserver_port_check.stdout == "" or vpnserver_warp_removed | default(false)
+          ansible.builtin.shell: |
+            set -o pipefail
+            wget -O - https://raw.githubusercontent.com/hamid-gh98/x-ui-scripts/main/install_warp_proxy.sh | bash -s -- -y
+          args:
+            executable: /bin/bash
+          register: vpnserver_warp_install_result
+          changed_when: vpnserver_warp_install_result.rc == 0
+          failed_when: vpnserver_warp_install_result.rc != 0

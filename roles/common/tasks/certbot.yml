@@ -1,66 +1,81 @@
 - name: SSL Certificate Management
   block:
     - name: SSL Check if certificate already exists
-      stat:
-        path: "{{ cert_path }}/live/{{ domain_name }}/fullchain.pem"
-      register: ssl_cert_exists
+      ansible.builtin.stat:
+        path: "{{ cert_path }}/live/{{ common_domain_name | default(domain_name) }}/fullchain.pem"
+      register: common_ssl_cert_exists
 
     - name: Check if certificate exists and is not empty
-      set_fact:
-        ssl_cert_valid: "{{ ssl_cert_exists.stat.exists and ssl_cert_exists.stat.size > 0 }}"
+      ansible.builtin.set_fact:
+        common_ssl_cert_valid: "{{ common_ssl_cert_exists.stat.exists and common_ssl_cert_exists.stat.size > 0 }}"
 
     - name: Check certificate expiration date
-      when: ssl_cert_valid
-      shell: openssl x509 -in {{ cert_path }}/live/{{ domain_name }}/fullchain.pem -noout -enddate | cut -d= -f2
-      register: cert_expiration
+      when: common_ssl_cert_valid
+      ansible.builtin.shell: |
+        set -o pipefail
+        openssl x509 -in {{ cert_path }}/live/{{ common_domain_name | default(domain_name) }}/fullchain.pem -noout -enddate | cut -d= -f2
+      args:
+        executable: /bin/bash
+      register: common_cert_expiration
       changed_when: false
 
     - name: Convert expiration date to timestamp
-      when: ssl_cert_valid and cert_expiration is defined and cert_expiration.stdout is defined
-      shell: date -d "{{ cert_expiration.stdout }}" +%s
-      register: expiration_timestamp
-      
-      ignore_errors: true
+      when: common_ssl_cert_valid and common_cert_expiration is defined and common_cert_expiration.stdout is defined
+      ansible.builtin.command: date -d "{{ common_cert_expiration.stdout }}" +%s
+      register: common_expiration_timestamp
+      failed_when: false
       changed_when: false
 
     - name: Get current timestamp
-      when: ssl_cert_valid and expiration_timestamp is defined and expiration_timestamp.stdout is defined
-      shell: date +%s
-      register: current_timestamp
+      when: common_ssl_cert_valid and common_expiration_timestamp is defined and common_expiration_timestamp.stdout is defined
+      ansible.builtin.command: date +%s
+      register: common_current_timestamp
       changed_when: false
 
     - name: Calculate days until expiration
-      when: ssl_cert_valid and expiration_timestamp is defined and expiration_timestamp.stdout is defined and current_timestamp is defined and current_timestamp.stdout is defined
-      set_fact:
-        days_until_expiration: "{{ ((expiration_timestamp.stdout|int - current_timestamp.stdout|int) / 86400) | int }}"
-      
+      when:
+        - common_ssl_cert_valid
+        - common_expiration_timestamp is defined
+        - common_expiration_timestamp.stdout is defined
+        - common_current_timestamp is defined
+        - common_current_timestamp.stdout is defined
+      ansible.builtin.set_fact:
+        common_days_until_expiration: "{{ ((common_expiration_timestamp.stdout | int - common_current_timestamp.stdout | int) / 86400) | int }}"
 
     - name: Set certificate needs renewal flag
-      when: ssl_cert_valid
-      set_fact:
-        cert_needs_renewal: "{{ not ssl_cert_valid or (days_until_expiration is defined and days_until_expiration | int <= 30) }}"
-      
+      when: common_ssl_cert_valid
+      ansible.builtin.set_fact:
+        common_cert_needs_renewal: "{{ not common_ssl_cert_valid or (common_days_until_expiration is defined and common_days_until_expiration | int <= 30) }}"
 
 - name: SSL Certificate Management only when SSL certificate not exists or invalid
-  when: not ssl_cert_exists.stat.exists or not ssl_cert_valid or cert_needs_renewal
+  when: not common_ssl_cert_exists.stat.exists or not common_ssl_cert_valid or common_cert_needs_renewal
+  notify:
+    - '{{ common_down_handler_name }}'
+    - '{{ common_up_handler_name }}'
+  tags: [ssl]
   block:
     - name: Temporarily open port 80 for certbot
-      include_tasks: ../../../common/tasks/firewall.yml
+      ansible.builtin.include_tasks: firewall.yml
       vars:
-        required_rules:
+        common_required_rules:
           - "-A INPUT -p tcp --dport 80 -j ACCEPT"
 
     - name: Run certbot to obtain certificate
-      shell: certbot certonly --standalone --config-dir {{ cert_path }}/ --work-dir {{ cert_path }}/ -d {{ domain_name }} --non-interactive --agree-tos --register-unsafely-without-email -v
-      register: certbot_result
-      failed_when: certbot_result.rc != 0
+      ansible.builtin.shell: >
+        certbot certonly --standalone
+        --config-dir {{ cert_path }}/
+        --work-dir {{ cert_path }}/
+        -d {{ common_domain_name | default(domain_name) }}
+        --non-interactive
+        --agree-tos
+        --register-unsafely-without-email
+        -v
+      register: common_certbot_result
+      changed_when: true
+      failed_when: common_certbot_result.rc != 0
 
     - name: Close port 80 after certbot
-      include_tasks: ../../../common/tasks/firewall.yml
+      ansible.builtin.include_tasks: firewall.yml
       vars:
-        prohibited_rules:
+        common_prohibited_rules:
           - "-A INPUT -p tcp --dport 80 -j ACCEPT"
-  notify: 
-    - '{{ down_handler_name }}'
-    - '{{ up_handler_name }}'
-  tags: [ssl]

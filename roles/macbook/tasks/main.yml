@@ -1,0 +1,120 @@
+---
+- name: Create DevOps directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ macbook_devops_dir }}"
+    - "{{ macbook_devops_dir }}/prometheus"
+    - "{{ macbook_devops_dir }}/grafana/provisioning/datasources"
+    - "{{ macbook_devops_dir }}/grafana/provisioning/dashboards"
+    - "{{ macbook_devops_dir }}/data/redis"
+    - "{{ macbook_devops_dir }}/data/postgres"
+    - "{{ macbook_devops_dir }}/data/gitea"
+    - "{{ macbook_devops_dir }}/data/prometheus"
+    - "{{ macbook_devops_dir }}/data/grafana"
+    - "{{ macbook_devops_dir }}/data/k3s/server"
+    - "{{ macbook_devops_dir }}/data/k3s/agent1"
+    - "{{ macbook_devops_dir }}/data/k3s/agent2"
+    - "{{ macbook_devops_dir }}/data/k3s/kubeconfig"
+    - "{{ macbook_devops_dir }}/terraform"
+    - "{{ macbook_devops_dir }}/kubernetes"
+    - "{{ macbook_devops_dir }}/scripts"
+
+- name: Check if Homebrew is installed
+  ansible.builtin.stat:
+    path: /opt/homebrew/bin/brew
+  register: macbook_homebrew_check
+
+- name: Install DevOps tools via Homebrew
+  community.general.homebrew:
+    name:
+      - kubectl
+      - helm
+      - terraform
+      - k3d
+    state: present
+  when: macbook_homebrew_check.stat.exists
+  become: false
+
+- name: Generate K3s cluster token
+  ansible.builtin.command: openssl rand -hex 32
+  register: macbook_k3s_token
+  changed_when: false
+
+- name: Create .env file for docker-compose
+  ansible.builtin.copy:
+    dest: "{{ macbook_devops_dir }}/.env"
+    content: "K3S_TOKEN={{ macbook_k3s_token.stdout }}"
+    mode: '0600'
+
+- name: Copy docker-compose.yml for DevOps stack
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ macbook_devops_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Copy Prometheus configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ macbook_devops_dir }}/prometheus/prometheus.yml"
+    mode: '0644'
+
+- name: Copy Grafana datasource provisioning
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: "{{ macbook_devops_dir }}/grafana/provisioning/datasources/prometheus.yml"
+    mode: '0644'
+
+- name: Copy example scripts
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ macbook_devops_dir }}/scripts/{{ item | regex_replace('\\.j2$', '') }}"
+    mode: '0755'
+  loop:
+    - k8s-context.sh.j2
+    - devops-status.sh.j2
+
+- name: Create Docker network for DevOps stack
+  ansible.builtin.shell: docker network create devops-network 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  become: false
+
+- name: Start DevOps stack containers
+  ansible.builtin.shell: |
+    cd {{ macbook_devops_dir }}
+    docker-compose up -d
+  register: macbook_compose_up
+  changed_when: macbook_compose_up.rc == 0
+
+- name: Check if k3d cluster exists
+  ansible.builtin.command: k3d cluster list
+  register: macbook_k3d_check
+  changed_when: false
+  become: false
+
+- name: Create k3d cluster
+  ansible.builtin.command: >
+    k3d cluster create {{ macbook_k3d_cluster_name }}
+    --agents {{ macbook_k3d_cluster_agents }}
+    --api-port {{ macbook_k3d_api_port }}
+    --port {{ macbook_k3d_lb_port }}:80@loadbalancer
+    --network devops-network
+    --kubeconfig-update-default
+    --wait
+  when: "'devops' not in macbook_k3d_check.stdout"
+  changed_when: true
+  become: false
+
+- name: Connect docker-compose containers to devops-network
+  ansible.builtin.shell: |
+    docker network connect devops-network devops-redis 2>/dev/null || true
+    docker network connect devops-network devops-postgres 2>/dev/null || true
+    docker network connect devops-network devops-gitea 2>/dev/null || true
+    docker network connect devops-network devops-prometheus 2>/dev/null || true
+    docker network connect devops-network devops-grafana 2>/dev/null || true
+  changed_when: false
+  become: false

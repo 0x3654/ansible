@@ -4,27 +4,27 @@
   gather_facts: false
   tasks:
     - name: Test initial network connectivity
-      command: ping -c 3 google.com
+      ansible.builtin.command: ping -c 3 google.com
       register: initial_ping
       changed_when: false
       failed_when: false
-      ignore_errors: true
 
     - name: Configure DNS resolvers
+      when: initial_ping.rc != 0
       block:
         - name: Check if resolv.conf is a symlink
-          stat:
+          ansible.builtin.stat:
             path: /etc/resolv.conf
           register: resolv_stat
 
         - name: Remove existing resolv.conf (symlink or file)
-          file:
+          ansible.builtin.file:
             path: /etc/resolv.conf
             state: absent
             force: true
 
         - name: Create new resolv.conf with Cloudflare and Google DNS
-          copy:
+          ansible.builtin.copy:
             content: |
               nameserver 1.1.1.1
               nameserver 8.8.8.8
@@ -32,25 +32,23 @@
             mode: '0644'
 
         - name: Test network connectivity after changes
-          command: ping -c 3 google.com
+          ansible.builtin.command: ping -c 3 google.com
           register: final_ping
           changed_when: false
           failed_when: final_ping.rc != 0
-      when: initial_ping.rc != 0
       rescue:
         - name: Register DNS configuration error
-          set_fact:
+          ansible.builtin.set_fact:
             dns_errors: "{{ dns_errors | default([]) + [{'host': inventory_hostname, 'error': ansible_failed_result | default({})}] }}"
           delegate_to: localhost
 
     - name: Display DNS status
-      debug:
+      ansible.builtin.debug:
         msg: "{{ 'DNS is working fine' if initial_ping.rc == 0 else 'DNS was fixed' if final_ping.rc == 0 else 'Failed to fix DNS' }}"
       delegate_to: localhost
 
     - name: Display DNS errors if any
-      debug:
+      ansible.builtin.debug:
         msg: "DNS configuration errors occurred: {{ dns_errors | default([]) }}"
       when: dns_errors is defined and dns_errors | length > 0
       delegate_to: localhost
-      run_once: true

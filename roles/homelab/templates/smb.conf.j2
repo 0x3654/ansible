@@ -1,0 +1,32 @@
+#======================= Global Settings =======================
+
+[global]
+   workgroup = WORKGROUP
+   security = user
+   map to guest = never
+   dns proxy = no
+   log file = /var/log/samba/log.%m
+   max log size = 1000
+   syslog = 0
+   panic action = /usr/share/samba/panic-action %d
+   server role = standalone server
+   passdb backend = tdbsam
+   printing = cups
+   printcap name = cups
+   cups options = raw
+   create mask = 0774
+   directory mask = 0774
+   read only = no
+   guest ok = no
+   browseable = yes
+   valid users = {{ homelab_samba_user }}
+   force user = {{ homelab_samba_user }}
+   force group = {{ homelab_samba_user }}
+
+#======================= Shares =======================
+
+{% for bind in homelab_media_binds %}
+{% set sharename = inventory_hostname + '_' + bind.split(':')[1].split('/')[-1] %}
+[{{ sharename }}]
+   path = {{ bind.split(':')[0] }}/
+{% endfor %}

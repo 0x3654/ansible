@@ -1,0 +1,37 @@
+---
+- name: Generate Automator AppleScript for homelab servers
+  become: false
+  block:
+    - name: Ensure output directory exists
+      ansible.builtin.file:
+        path: "{{ homelab_applescript_path }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Render AppleScript source
+      ansible.builtin.template:
+        src: mount_homelab.j2
+        dest: "{{ playbook_dir }}/../configs/mount_homelab_{{ inventory_hostname }}.applescript"
+        mode: '0644'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Compile AppleScript to .app
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/osacompile
+          - -o
+          # - "{{ playbook_dir }}/../configs/mount Homelab {{ inventory_hostname }}.app"
+          - "{{ playbook_dir }}/../configs/mount_homelab_{{ inventory_hostname }}.applescript"
+      args:
+        creates: "{{ homelab_applescript_path }}/Mount Homelab {{ inventory_hostname }}.app"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Notify
+      ansible.builtin.debug:
+        msg: "Applet ready at {{ homelab_applescript_path }}/Mount Homelab {{ inventory_hostname }}.app"
+      delegate_to: localhost
+      run_once: true

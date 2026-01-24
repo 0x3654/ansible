@@ -1,0 +1,35 @@
+- name: Install samba
+  ansible.builtin.package:
+    name:
+      - samba
+      - samba-common-bin
+    state: present
+
+- name: Ensure system user exists
+  ansible.builtin.user:
+    name: "{{ homelab_samba_user }}"
+    state: present
+    shell: /sbin/nologin
+
+- name: Ensure samba user is created
+  ansible.builtin.command: "/usr/bin/smbpasswd -a -s {{ homelab_samba_user }}"
+  args:
+    stdin: "{{ homelab_samba_password }}\n{{ homelab_samba_password }}"
+  # no_log: true
+  register: homelab_samba_user_created
+  changed_when: "'added' in homelab_samba_user_created.stdout"
+
+- name: Deploy samba config
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart samba
+
+- name: Ensure samba is started and enabled
+  ansible.builtin.service:
+    name: smbd
+    state: started
+    enabled: true

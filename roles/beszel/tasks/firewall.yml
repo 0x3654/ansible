@@ -1,5 +1,7 @@
 - name: Call firewall role with dynamic rules
-  include_tasks: ../../../common/tasks/firewall.yml
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: firewall.yml
   vars:
-    required_rules:
+    common_required_rules:
       - "-A INPUT -p tcp -m tcp --dport {{ beszel_port }} -j ACCEPT"

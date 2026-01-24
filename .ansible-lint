@@ -1,4 +1,17 @@
 ---
 # Ansible Lint Configuration
+exclude_paths:
+  # Handlers с community.docker (ложное срабатывание lint)
+  # syntax-check unskippable, поэтому исключаем весь файл
+  - roles/vpnserver/handlers/main.yml
+  # Исключаем compose.yaml файлы (содержат Jinja2 шаблоны)
+  - roles/homelab/files/homelab/torrent/compose.yaml
+  - roles/homelab/files/homelab/mediaserver/compose.yaml
+  # Скрытые файлы
+  - .cache/
+  - .git/
 skip_list:
-  - collection
+  - collection  # уже было
+  # Исключаем только то, что реально нельзя исправить:
+  - command-instead-of-shell  # для firewall.yml (iptables) и docker exec
+  - role-name[path]  # для deploy.yml (динамический импорт ролей по пути)

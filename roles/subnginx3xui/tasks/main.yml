@@ -1,33 +1,36 @@
 ---
-- import_tasks: apt.yml
+- name: Import APT management tasks
+  ansible.builtin.import_tasks: apt.yml
   tags: [apt, upgrade]
 
 - name: Configure sub-nginx for 3x-ui
+  tags: [sub_nginx_3xui]
   block:
-    - import_tasks: certbot.yml
+    - name: Import certbot tasks
+      ansible.builtin.import_tasks: certbot.yml
 
     - name: Find all 3x-ui config files
-      find:
+      ansible.builtin.find:
         paths: "{{ playbook_dir }}/../configs"
         patterns: "3x-ui_*.yml"
-      register: config_files
+      register: subnginx3xui_config_files
       delegate_to: localhost
 
     - name: Extract suburls from config files
       no_log: true
-      slurp:
-        src: "{{ current_config_file.path }}"
-      register: config_contents
-      loop: "{{ config_files.files }}"
+      ansible.builtin.slurp:
+        src: "{{ subnginx3xui_current_config_file.path }}"
+      register: subnginx3xui_config_contents
+      loop: "{{ subnginx3xui_config_files.files }}"
       loop_control:
-        loop_var: current_config_file
+        loop_var: subnginx3xui_current_config_file
       delegate_to: localhost
 
     - name: Set vpn_servers_sub variable
-      set_fact:
-        vpn_servers_sub: >-
+      ansible.builtin.set_fact:
+        subnginx3xui_vpn_servers_sub: >-
           {%- set suburls = [] -%}
-          {%- for content in config_contents.results -%}
+          {%- for content in subnginx3xui_config_contents.results -%}
             {%- if content.content is defined -%}
               {%- set config = content.content | b64decode | from_yaml -%}
               {%- if config.subscription is defined and config.subscription.suburl is defined -%}
@@ -40,25 +43,33 @@
           {%- endfor -%}
           {{ suburls | join(' ') }}
 
-    - import_tasks: filescopy.yml
+    - name: Import file copy tasks
+      ansible.builtin.import_tasks: filescopy.yml
 
     - name: Read .env file
-      slurp:
-        src: "{{ nginx_proxy_sub }}/.env"
-      register: env_file
+      ansible.builtin.slurp:
+        src: "{{ subnginx3xui_nginx_proxy_sub }}/.env"
+      register: subnginx3xui_env_file
 
     - name: Parse .env file
-      set_fact:
-        env_vars: "{{ env_file.content | b64decode | regex_replace('^#.*$', '') | regex_replace('\n+', '\n') | regex_replace('^\n', '') | regex_replace('\n$', '') | regex_replace('=', ': ') | from_yaml }}"
+      ansible.builtin.set_fact:
+        subnginx3xui_env_vars: >-
+          {{ subnginx3xui_env_file.content | b64decode
+          | regex_replace('^#.*$', '')
+          | regex_replace('\n+', '\n')
+          | regex_replace('^\n', '')
+          | regex_replace('\n$', '')
+          | regex_replace('=', ': ')
+          | from_yaml
+          }}
 
     - name: Get inbound_sub_id from vpn_servers role
-      set_fact:
-        inbound_sub_id: "{{ hostvars[inventory_hostname]['inbound_sub_id'] }}"
+      ansible.builtin.set_fact:
+        subnginx3xui_inbound_sub_id: "{{ hostvars[inventory_hostname]['inbound_sub_id'] }}"
 
     - name: Create all subs config file
-      template:
+      ansible.builtin.template:
         src: all_subs.yml.j2
         dest: "{{ playbook_dir }}/../configs/all_3x-ui_sub.yml"
         mode: "0644"
       delegate_to: localhost
-  tags: [sub_nginx_3xui]

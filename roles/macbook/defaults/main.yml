@@ -1,0 +1,33 @@
+---
+# DevOps Stack Configuration
+
+# Paths (in ~/code/devops)
+macbook_devops_dir: "{{ ansible_env.HOME }}/code/devops"
+
+# Service ports
+macbook_devops_ports:
+  redis: 6379
+  postgres: 5433
+  gitea_http: 3000
+  gitea_ssh: 2222
+  prometheus: 9090
+  grafana: 3001
+
+# Database credentials
+macbook_devops_db_user: devops
+macbook_devops_db_password: devops123
+macbook_devops_db_name: devops
+
+# K3s cluster configuration
+macbook_k3d_cluster_name: devops
+macbook_k3d_cluster_agents: 2
+macbook_k3d_api_port: 6550
+macbook_k3d_lb_port: 8080
+
+# Grafana credentials
+macbook_grafana_admin_user: admin
+macbook_grafana_admin_password: admin123
+
+# Gitea configuration
+macbook_gitea_user_uid: 1000
+macbook_gitea_user_gid: 1000

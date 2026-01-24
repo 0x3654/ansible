@@ -1,44 +1,47 @@
 - name: Set default values for rule lists
-  set_fact:
-    required_rules: "{{ required_rules | default([]) }}"
-    prohibited_rules: "{{ prohibited_rules | default([]) }}"
+  ansible.builtin.set_fact:
+    common_required_rules: "{{ common_required_rules | default([]) }}"
+    common_prohibited_rules: "{{ common_prohibited_rules | default([]) }}"
 
 - name: Get current iptables rules
-  shell: iptables-save
-  register: current_rules
+  ansible.builtin.shell: iptables-save
+  register: common_current_rules
   changed_when: false
 
 - name: Check which rules are missing
-  set_fact:
-    missing_rules: "{{ required_rules | difference(current_rules.stdout_lines) }}"
-    extra_rules: "{{ prohibited_rules | intersect(current_rules.stdout_lines) }}"
+  ansible.builtin.set_fact:
+    common_missing_rules: "{{ common_required_rules | difference(common_current_rules.stdout_lines) }}"
+    common_extra_rules: "{{ common_prohibited_rules | intersect(common_current_rules.stdout_lines) }}"
 
 - name: Add missing iptables rules
-  when: missing_rules | length > 0
-  shell: iptables {{ rule_data }}
-  loop: "{{ missing_rules }}"
+  when: common_missing_rules | length > 0
+  ansible.builtin.shell: iptables {{ rule_data }}
+  loop: "{{ common_missing_rules }}"
+  changed_when: true
   loop_control:
     loop_var: rule_data
 
 - name: Delete extra iptables rules
-  when: extra_rules | length > 0
-  shell: iptables {{ item | regex_replace('^-A', '-D') }}
-  loop: "{{ extra_rules }}"
+  when: common_extra_rules | length > 0
+  ansible.builtin.shell: iptables {{ item | regex_replace('^-A', '-D') }}
+  loop: "{{ common_extra_rules }}"
+  changed_when: true
 
 - name: Save iptables rules using netfilter-persistent
-  when: (missing_rules | length > 0) or (extra_rules | length > 0)
+  when: (common_missing_rules | length > 0) or (common_extra_rules | length > 0)
   block:
     - name: Install netfilter-persistent
-      apt:
+      ansible.builtin.apt:
         name: netfilter-persistent
         state: present
         update_cache: true
 
     - name: Enable and start netfilter-persistent
-      systemd:
+      ansible.builtin.systemd:
         name: netfilter-persistent
         enabled: true
         state: started
 
     - name: Save
-      command: netfilter-persistent save
+      ansible.builtin.command: netfilter-persistent save
+      changed_when: true

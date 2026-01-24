@@ -9,44 +9,43 @@
       ansible.builtin.find:
         paths: "{{ playbook_dir }}/../roles"
         file_type: directory
-        recurse: no
+        recurse: false
       register: found_roles
       delegate_to: localhost
-      run_once: true
       tags: [always]
-      
+
     # Dynamically include main vars files from all roles
     - name: Include main vars from all roles
-      include_vars: "{{ item.path }}/vars/main.yml"
+      ansible.builtin.include_vars: "{{ item.path }}/vars/main.yml"
       loop: "{{ found_roles.files }}"
       loop_control:
         label: "{{ item.path | basename }}"
-      ignore_errors: true
+      failed_when: false
       tags: [always]
-      
+
     # Dynamically include secrets vars files from all roles
     - name: Include secrets vars from all roles
-      include_vars: "{{ item.path }}/vars/secrets.yml"
+      ansible.builtin.include_vars: "{{ item.path }}/vars/secrets.yml"
       loop: "{{ found_roles.files }}"
       loop_control:
         label: "{{ item.path | basename }}"
-      ignore_errors: true
+      failed_when: false
       tags: [always]
-    
+
     - name: Load host_vars
-      include_vars:
+      ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
-      ignore_errors: true
+      failed_when: false
       tags: [always]
 
   tasks:
     # Динамическое подключение ролей на основе групп в инвентори
     - name: Include role if host is in corresponding group
-      include_role:
-        name: "{{ playbook_dir }}/../roles/{{ role_name }}"
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/../roles/{{ deploy_role_name }}"
       vars:
-        role_name: "{{ item.path | basename }}"
-      when: inventory_hostname in groups[role_name + '_role'] | default([])
+        deploy_role_name: "{{ item.path | basename }}"
+      when: inventory_hostname in groups[deploy_role_name + '_role'] | default([])
       loop: "{{ found_roles.files | sort(attribute='path') }}"
       loop_control:
         label: "{{ item.path | basename }}"

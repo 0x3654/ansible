@@ -6,37 +6,40 @@
 
   tasks:
     - name: Get all container IDs
-      shell: docker ps -aq
+      ansible.builtin.command: docker ps -aq
       register: container_ids
+      changed_when: false
 
     - name: Remove all containers
-      shell: docker rm -f {{ item }}
+      ansible.builtin.command: docker rm -f {{ item }}
       loop: "{{ container_ids.stdout_lines }}"
       when: container_ids.stdout != ""
+      changed_when: true
       loop_control:
         label: "Container {{ item }}"
 
     - name: Remove server directory
-      file:
+      ansible.builtin.file:
         path: /server
         state: absent
       register: server_cleanup
       changed_when: true
 
     - name: Remove Docker images
-      shell: docker rmi $(docker images -q) || true
+      ansible.builtin.shell: docker rmi $(docker images -q) || true
       args:
         executable: /bin/bash
-      ignore_errors: true
+      changed_when: false
+      failed_when: false
       tags: [docker, cleanup, images]
 
-    - name: Check
-      stat:
+    - name: Check server directory
+      ansible.builtin.stat:
         path: /server
       register: server_dir
       tags: [cleanup]
 
-    - name: msg status
-      debug:
+    - name: Display cleanup status
+      ansible.builtin.debug:
         msg: "Folder /server {{ 'exist ERROR!' if server_dir.stat.exists else 'cleanup complite' }}"
       tags: [cleanup]

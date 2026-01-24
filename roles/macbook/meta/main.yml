@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: macbook
+  author: DevOps Team
+  description: Setup DevOps environment on macOS
+  license: MIT
+  min_ansible_version: "2.9"
+
+collections:
+  - community.general

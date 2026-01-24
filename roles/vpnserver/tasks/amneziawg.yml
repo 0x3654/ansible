@@ -1,143 +1,143 @@
 - name: AmneziaWG Create and get AmneziaWG client configuration
+  tags: [amneziawg]
   block:
     - name: AmneziaWG Create directory for client configurations
-      file:
+      ansible.builtin.file:
         path: "{{ amneziawg_path }}/clients"
         state: directory
         mode: '0755'
 
     - name: AmneziaWG Check if client configuration already exists
-      stat:
+      ansible.builtin.stat:
         path: "{{ amneziawg_path }}/clients/awg.conf"
-      register: client_config_file
+      register: vpnserver_client_config_file
 
     - name: AmneziaWG Check if local client configuration exists
-      stat:
+      ansible.builtin.stat:
         path: "{{ playbook_dir }}/../configs/awg_{{ domain_name }}.conf"
       delegate_to: localhost
-      register: local_config_file
+      register: vpnserver_local_config_file
       run_once: true
 
     - name: AmneziaWG API add client and download .conf
-      when: not client_config_file.stat.exists
+      when: not vpnserver_client_config_file.stat.exists
       block:
         - name: Authenticate with WireGuard API
-          uri:
+          ansible.builtin.uri:
             url: "http://localhost:{{ amneziawg_port }}/api/session"
             method: POST
             body_format: json
             body:
               password: "{{ amneziawg_password }}"
             status_code: [200]
-            return_content: yes
-          register: auth_response
+            return_content: true
+          register: vpnserver_auth_response
 
         - name: Extract session cookie from auth response
-          set_fact:
-            amneziawg_session_cookie: "{{ auth_response.cookies_string | default('') }}"
+          ansible.builtin.set_fact:
+            vpnserver_amneziawg_session_cookie: "{{ vpnserver_auth_response.cookies_string | default('') }}"
 
     - name: AmneziaWG API operations
-      when: not client_config_file.stat.exists and amneziawg_session_cookie is defined and amneziawg_session_cookie != ''
+      when: not vpnserver_client_config_file.stat.exists and vpnserver_amneziawg_session_cookie is defined and vpnserver_amneziawg_session_cookie != ''
       block:
         - name: AmneziaWG Get list of clients
-          uri:
+          ansible.builtin.uri:
             url: "http://localhost:{{ amneziawg_port }}/api/wireguard/client"
             method: GET
             status_code: [200, 500]
-            return_content: yes
+            return_content: true
             headers:
-              Cookie: "{{ amneziawg_session_cookie }}"
-          register: clients_response
+              Cookie: "{{ vpnserver_amneziawg_session_cookie }}"
+          register: vpnserver_clients_response
           retries: 2
           delay: 2
-          until: clients_response.status == 200 or clients_response.status == 500
+          until: vpnserver_clients_response.status == 200 or vpnserver_clients_response.status == 500
 
         - name: Check if awg client already exists
-          set_fact:
-            client_exists: "{{ (clients_response.json | selectattr('name', 'equalto', 'awg') | list) | length > 0 }}"
-            client_id: >-
-              {{ (clients_response.json | selectattr('name', 'equalto', 'awg') | list)[0].id
-              if (clients_response.json | selectattr('name', 'equalto', 'awg') | list) | length > 0 else '' }}
+          ansible.builtin.set_fact:
+            vpnserver_client_exists: "{{ (vpnserver_clients_response.json | selectattr('name', 'equalto', 'awg') | list) | length > 0 }}"
+            vpnserver_client_id: >-
+              {{ (vpnserver_clients_response.json | selectattr('name', 'equalto', 'awg') | list)[0].id
+              if (vpnserver_clients_response.json | selectattr('name', 'equalto', 'awg') | list) | length > 0 else '' }}
 
         - name: AmneziaWG Create new WireGuard client
-          when: not client_exists
-          uri:
+          when: not vpnserver_client_exists
+          ansible.builtin.uri:
             url: "http://localhost:{{ amneziawg_port }}/api/wireguard/client"
             method: POST
             body_format: json
             body:
               name: "awg"
             status_code: [200]
-            return_content: yes
+            return_content: true
             headers:
-              Cookie: "{{ amneziawg_session_cookie }}"
-          register: create_response
+              Cookie: "{{ vpnserver_amneziawg_session_cookie }}"
+          register: vpnserver_create_response
           retries: 3
           delay: 2
-          until: create_response.status == 200
+          until: vpnserver_create_response.status == 200
 
         - name: Wait for 1 second after client creation
-          when: create_response is defined
-          pause:
+          when: vpnserver_create_response is defined
+          ansible.builtin.pause:
             seconds: 1
 
         - name: AmneziaWG Get updated list of clients if new client was created
-          when: create_response is defined
-          uri:
+          when: vpnserver_create_response is defined
+          ansible.builtin.uri:
             url: "http://localhost:{{ amneziawg_port }}/api/wireguard/client"
             method: GET
             status_code: 200
-            return_content: yes
+            return_content: true
             headers:
-              Cookie: "{{ amneziawg_session_cookie }}"
-          register: updated_clients_response
+              Cookie: "{{ vpnserver_amneziawg_session_cookie }}"
+          register: vpnserver_updated_clients_response
 
         - name: Extract client ID for awg after creation
-          when: updated_clients_response is defined
-          set_fact:
-            client_id: "{{ (updated_clients_response.json | selectattr('name', 'equalto', 'awg') | list)[0].id }}"
+          when: vpnserver_updated_clients_response is defined
+          ansible.builtin.set_fact:
+            vpnserver_client_id: "{{ (vpnserver_updated_clients_response.json | selectattr('name', 'equalto', 'awg') | list)[0].id }}"
 
         - name: Wait for 2 seconds before getting client configuration
-          when: client_id is defined and client_id != ''
-          pause:
+          when: vpnserver_client_id is defined and vpnserver_client_id != ''
+          ansible.builtin.pause:
             seconds: 2
 
         - name: AmneziaWG Get client configuration
-          when: client_id is defined and client_id != ''
-          uri:
-            url: "http://localhost:{{ amneziawg_port }}/api/wireguard/client/{{ client_id }}/configuration"
+          when: vpnserver_client_id is defined and vpnserver_client_id != ''
+          ansible.builtin.uri:
+            url: "http://localhost:{{ amneziawg_port }}/api/wireguard/client/{{ vpnserver_client_id }}/configuration"
             method: GET
             status_code: 200
-            return_content: yes
+            return_content: true
             headers:
-              Cookie: "{{ amneziawg_session_cookie }}"
-          register: config_response
+              Cookie: "{{ vpnserver_amneziawg_session_cookie }}"
+          register: vpnserver_config_response
 
         - name: Close AmneziaWG API session
-          when: amneziawg_session_cookie is defined and amneziawg_session_cookie != ''
-          uri:
+          when: vpnserver_amneziawg_session_cookie is defined and vpnserver_amneziawg_session_cookie != ''
+          ansible.builtin.uri:
             url: "http://localhost:{{ amneziawg_port }}/api/session"
             method: DELETE
             status_code: [200, 204]
             headers:
-              Cookie: "{{ amneziawg_session_cookie }}"
+              Cookie: "{{ vpnserver_amneziawg_session_cookie }}"
 
     - name: AmneziaWG Save client configuration on server
-      when: not client_config_file.stat.exists and config_response is defined and config_response.content is defined
-      copy:
-        content: "{{ config_response.content }}"
+      when: not vpnserver_client_config_file.stat.exists and vpnserver_config_response is defined and vpnserver_config_response.content is defined
+      ansible.builtin.copy:
+        content: "{{ vpnserver_config_response.content }}"
         dest: "{{ amneziawg_path }}/clients/awg.conf"
         mode: '0600'
 
     - name: AmneziaWG Check if new client configuration exists
-      stat:
+      ansible.builtin.stat:
         path: "{{ amneziawg_path }}/clients/awg.conf"
-      register: new_client_config_file
+      register: vpnserver_new_client_config_file
 
     - name: AmneziaWG Download client configuration to main host
-      when: not local_config_file.stat.exists and new_client_config_file.stat.exists
-      fetch:
+      when: not vpnserver_local_config_file.stat.exists and vpnserver_new_client_config_file.stat.exists
+      ansible.builtin.fetch:
         src: "{{ amneziawg_path }}/clients/awg.conf"
         dest: "{{ playbook_dir }}/../configs/awg_{{ domain_name }}.conf"
-        flat: yes
-  tags: [amneziawg]
+        flat: true

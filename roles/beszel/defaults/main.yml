@@ -1,22 +1,22 @@
 ---
-required_packages:
+beszel_required_packages:
   - docker-ce
   - docker-compose-plugin
 
 # Управление установкой Docker репозитория
-install_docker_repo: true
+beszel_install_docker_repo: true
 
 # Parameters for repository update control
-update_repo: true
-force_repo_update: false
+beszel_update_repo: true
+beszel_force_repo_update: false
 
 # user for folders permission
-folder_user: "{{ role_name | basename }}"
+beszel_folder_user: "{{ role_name | basename }}"
 
 # Common paths
-PWD: "/server"
-path: "{{ PWD }}/{{ role_name | basename }}"
+beszel_pwd: "/server"
+beszel_path: "{{ beszel_pwd }}/{{ role_name | basename }}"
 
 # File permissions
-directory_mode: "0755"
-file_mode: "0644"
+beszel_directory_mode: "0755"
+beszel_file_mode: "0644"

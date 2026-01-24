@@ -1,0 +1,18 @@
+feeds:
+  - url: "{{ trans_rss_url }}"
+    download_path: "{{ trans_rss_download_path }}"
+
+server:
+  host: "transmission"
+  port: {{ transmission_port }}
+  tls: false
+  rpc_path: "/transmission/rpc"
+  seen_by_guid: true
+login:
+  username: {{ trans_username }}
+  password: {{ trans_password }}
+update_interval: {{ trans_rss_update_interval }}
+seen_file: /etc/transmisiion-rss/seen
+privileges:
+  user: "{{ folder_user }}"
+  group: "{{ folder_user }}"

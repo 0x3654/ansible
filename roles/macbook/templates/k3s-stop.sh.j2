@@ -1,0 +1,19 @@
+#!/bin/bash
+# Stop K3s cluster with k3d
+
+CLUSTER_NAME="{{ macbook_k3d_cluster_name }}"
+
+echo "🛑 Stopping K3s cluster: $CLUSTER_NAME"
+
+if k3d cluster list | grep -q "$CLUSTER_NAME"; then
+  echo "🔄 Stopping cluster..."
+  k3d cluster stop "$CLUSTER_NAME"
+  echo "✅ Cluster stopped"
+  echo ""
+  echo "💡 To start again: ~/code/devops/scripts/k3s-start.sh"
+  echo "💡 To delete cluster: k3d cluster delete $CLUSTER_NAME"
+else
+  echo "❌ Cluster '$CLUSTER_NAME' not found"
+  echo "📋 Available clusters:"
+  k3d cluster list
+fi
