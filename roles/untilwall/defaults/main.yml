@@ -1,0 +1,39 @@
+---
+# defaults file for untilwall
+
+untilwall_required_packages:
+  - docker-ce
+  - docker-compose-plugin
+  - curl
+  - bash
+  - openssl
+  - vim
+  - certbot
+  - python3-setuptools
+  - nginx
+
+# Управление установкой Docker репозитория
+untilwall_install_docker_repo: true
+
+# Parameters for repository update control
+untilwall_update_repo: true
+untilwall_force_repo_update: true
+
+# user for folders permission
+untilwall_folder_user: "{{ role_name | basename }}"
+
+# Common paths
+untilwall_pwd: "/untilwall"
+untilwall_path: "{{ untilwall_pwd }}"
+untilwall_cert_path: "/server/certbot"
+
+# File permissions
+untilwall_directory_mode: "0755"
+untilwall_file_mode: "0600"
+
+# Domain name for untilwall
+untilwall_domain_name: "untilwall.0x3654.com"
+
+# Application environment variables (public, not secrets)
+untilwall_domain_url: "https://untilwall.0x3654.com"
+untilwall_icloud_shortcut_url: "https://www.icloud.com/shortcuts/2e1536903783409c9445bb04dc381637"

@@ -1,12 +1,8 @@
-- name: Set default values for rule lists
-  ansible.builtin.set_fact:
-    common_required_rules: "{{ common_required_rules | default([]) }}"
-    common_prohibited_rules: "{{ common_prohibited_rules | default([]) }}"
-
 - name: Get current iptables rules
   ansible.builtin.shell: iptables-save
   register: common_current_rules
   changed_when: false
+  run_once: true
 
 - name: Check which rules are missing
   ansible.builtin.set_fact:
@@ -26,6 +22,8 @@
   ansible.builtin.shell: iptables {{ item | regex_replace('^-A', '-D') }}
   loop: "{{ common_extra_rules }}"
   changed_when: true
+  loop_control:
+    loop_var: item
 
 - name: Save iptables rules using netfilter-persistent
   when: (common_missing_rules | length > 0) or (common_extra_rules | length > 0)

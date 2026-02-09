@@ -7,14 +7,14 @@ server_info:
   location: "{{ city }}"  # Можно добавить местоположение сервера
 
 panel:
-  url: "https://{{ domain_name }}:{{ webPort }}/{{ webBasePath }}/"  # Автоматически формируемый URL
-  username: {{ username }}
-  password: {{ password }}
+  url: "https://{{ domain_name }}:{{ vpnserver_web_port }}/{{ vpnserver_web_base_path }}/"  # Автоматически формируемый URL
+  username: {{ vpnserver_username }}
+  password: {{ vpnserver_password }}
 
 subscription:
-  suburl: "https://{{ domain_name }}:{{ subPort }}/{{ subPath }}/"  # Автоматически формируемый URL
-  suburlid: "https://{{ domain_name }}:{{ subPort }}/{{ subPath }}/{{ inbound_sub_id }}"  # Автоматически формируемый URL
-  subJsonPath: "{{ subJsonPath }}"  # Путь к JSON файлу подписки
+  suburl: "https://{{ domain_name }}:{{ vpnserver_sub_port }}/{{ vpnserver_sub_path }}/"  # Автоматически формируемый URL
+  suburlid: "https://{{ domain_name }}:{{ vpnserver_sub_port }}/{{ vpnserver_sub_path }}/{% if ruserv is defined and ruserv == 'true' %}{{vpnserver_inbound_sub_id_ru}}{% else %}{{vpnserver_inbound_sub_id}}{% endif %}"  # Автоматически формируемый URL
+  subJsonPath: "{{ vpnserver_sub_json_path }}"  # Путь к JSON файлу подписки
 
 # Метаданные для HTML-генерации
 html_meta:

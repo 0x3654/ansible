@@ -1,0 +1,30 @@
+---
+# Playbook to deploy manage role (beszel + watchtower)
+- name: Deploy manage services (beszel + watchtower)
+  hosts: manage_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include vars for manage role
+    - name: Include manage role vars  # noqa: run-once
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/manage/vars/main.yml"
+        - "{{ ansible_roles_path }}/manage/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/secrets.yml"
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      tags: [always]
+
+    # Load host_vars if exists
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run manage role tasks
+      ansible.builtin.include_role:
+        name: manage
+      tags: [manage]

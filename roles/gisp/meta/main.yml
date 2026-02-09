@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: 0x3654
+  description: GISP - Minpromtorg registry search system
+  company: 0x3654
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+  galaxy_tags:
+    - docker
+    - registry
+    - search
+
+dependencies: []

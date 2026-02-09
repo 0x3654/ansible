@@ -1,0 +1,28 @@
+- name: Import APT management tasks
+  ansible.builtin.import_tasks: apt.yml
+  tags: [apt, upgrade]
+
+- name: Cleanup old directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /server/beszel
+    - /server/watchtower
+    - /server/compose.yaml
+
+- name: Create manage directory
+  ansible.builtin.file:
+    path: "{{ manage_path }}"
+    state: directory
+    owner: "{{ manage_folder_user }}"
+    group: "{{ manage_folder_user }}"
+    mode: "{{ manage_directory_mode }}"
+
+- name: Import file copy tasks
+  ansible.builtin.import_tasks: filescopy.yml
+  tags: [filescopy]
+
+- name: Import firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [firewall]

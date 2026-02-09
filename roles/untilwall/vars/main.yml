@@ -1,0 +1,3 @@
+---
+# Including the file with secrets
+untilwall_include_vars: secrets.yml

@@ -1,12 +1,12 @@
 ---
 - name: Include common file copy tasks
-  ansible.builtin.include_role:
-    name: common
-    tasks_from: filescopy.yml
+  ansible.builtin.import_tasks: ../common/tasks/filescopy.yml
   vars:
-    common_common_up_handler_name: "docker up {{ role_name | basename }}"
-    common_common_down_handler_name: "docker down {{ role_name | basename }}"
-    common_common_files_source_dir: "{{ role_path }}/files/"
-    common_folder_user: "{{ folder_user }}"
-    common_directory_mode: "{{ directory_mode }}"
-    common_file_mode: "{{ file_mode }}"
+    common_up_handler_name: "docker up homelab"
+    common_down_handler_name: "docker down homelab"
+    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/homelab/files/homelab"
+    common_folder_user: "{{ homelab_folder_user }}"
+    common_directory_mode: "{{ homelab_directory_mode }}"
+    common_file_mode: "{{ homelab_file_mode }}"
+    common_pwd: "{{ homelab_pwd }}"
+    common_path: "{{ homelab_path }}"

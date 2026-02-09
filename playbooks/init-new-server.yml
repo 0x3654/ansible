@@ -67,7 +67,7 @@
       become: true
       when: >
         ansible_facts['os_family'] == "Debian"
-        and ansible_facts['distribution_major_version'] is version('11', '>')
+        and ansible_facts['distribution_major_version'] | int >= 11
         and ansible_facts['distribution'] == 'Debian'
       ansible.builtin.lineinfile:
         path: /etc/sudoers
@@ -157,6 +157,12 @@
                 state: absent
                 update_cache: true
 
+    - name: Install gnupg for Docker repository
+      ansible.builtin.apt:
+        name: gnupg
+        state: present
+        update_cache: true
+
     - name: Add Docker repository
       when: install_docker_repo | default(false) | bool
       block:
@@ -197,6 +203,7 @@
               ansible.builtin.apt:
                 name: "{{ required_packages }}"
                 state: present
+                force: true
 
 # TODO FIX THIS TASK. add permission for media folders
     - name: Ensure host media folders exist

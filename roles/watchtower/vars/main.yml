@@ -1,3 +1,0 @@
----
-# Watchtower role variables
-# Secrets are loaded from vars/secrets.yml by deploy.yml

@@ -46,6 +46,16 @@
     - name: Import file copy tasks
       ansible.builtin.import_tasks: filescopy.yml
 
+    - name: Force handlers to run after file copy
+      ansible.builtin.meta: flush_handlers
+
+    - name: Restart nginx proxy to reload .env configuration
+      ansible.builtin.command:
+        cmd: "{{ common_compose_command | default('docker compose') }} restart nginx"
+        chdir: "{{ subnginx3xui_path }}"
+      register: subnginx3xui_restart_result
+      changed_when: subnginx3xui_restart_result.rc == 0
+
     - name: Read .env file
       ansible.builtin.slurp:
         src: "{{ subnginx3xui_nginx_proxy_sub }}/.env"
@@ -65,11 +75,14 @@
 
     - name: Get inbound_sub_id from vpn_servers role
       ansible.builtin.set_fact:
-        subnginx3xui_inbound_sub_id: "{{ hostvars[inventory_hostname]['inbound_sub_id'] }}"
+        subnginx3xui_inbound_sub_id: "{{ vpnserver_inbound_sub_id }}"
+        subnginx3xui_inbound_sub_id_ru: "{{ vpnserver_inbound_sub_id_ru }}"
 
     - name: Create all subs config file
       ansible.builtin.template:
         src: all_subs.yml.j2
         dest: "{{ playbook_dir }}/../configs/all_3x-ui_sub.yml"
         mode: "0644"
+      vars:
+        all_configs: "{{ subnginx3xui_config_contents }}"
       delegate_to: localhost

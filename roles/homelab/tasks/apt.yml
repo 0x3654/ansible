@@ -4,3 +4,5 @@
     name: common
     tasks_from: apt.yml
   tags: [apt, upgrade]
+  vars:
+    common_required_packages: "{{ homelab_required_packages }}"

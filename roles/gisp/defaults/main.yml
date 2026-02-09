@@ -1,0 +1,81 @@
+---
+# defaults file for gisp
+
+# Required system packages
+gisp_required_packages:
+  - docker-ce
+  - docker-compose-plugin
+
+# Docker repository installation control
+gisp_install_docker_repo: true
+gisp_update_repo: true
+gisp_force_repo_update: true
+
+# User and paths
+gisp_folder_user: "gisp"
+gisp_path: "/git/gisp"
+gisp_directory_mode: "0755"
+gisp_file_mode: "0600"
+
+# Service ports
+gisp_api_port: 8000
+gisp_openwebui_port: 3333
+gisp_semantic_port: 8010
+gisp_postgres_port: 5432
+
+# PostgreSQL settings
+gisp_pg_host: "postgres_registry"
+gisp_pg_user: "registry"
+gisp_pg_password: "registry"
+gisp_pg_db: "registry"
+gisp_pg_data: "/var/lib/postgresql/data/pgdata"
+gisp_pg_shm_size: "2g"
+gisp_pg_autoprewarm_interval: 120
+
+# API service
+gisp_reestr_min_limit: 1
+gisp_reestr_default_limit: 20
+gisp_reestr_max_limit: 200
+gisp_reestr_min_offset: 0
+gisp_reestr_default_offset: 0
+
+# Semantic service
+gisp_semantic_workers: 2
+gisp_semantic_cache_ttl_seconds: 604800
+gisp_semantic_force_seqscan: 0
+
+# Import settings
+gisp_files_dir: "/files"
+gisp_start_date: "2024-09-05"
+gisp_base_url: "https://minpromtorg.gov.ru/opendata/1000000012-ReestrProducts/data-{date}-structure-20210405.csv"
+gisp_log_dir: "/var/log/registry"
+gisp_max_csv_files: 7
+gisp_max_log_files: 7
+gisp_max_maintenance_log_files: 7
+gisp_auto_embed: 1
+gisp_starter_force: 0
+gisp_starter_max_wait: 180
+
+# Timezone
+gisp_timezone: "Europe/Moscow"
+
+# Registry settings
+gisp_node_name: "registry-node-1"
+
+# Cron schedules
+gisp_import_schedule: "5 0 * * *"
+gisp_maintenance_schedule: "0 5 * * *"
+
+# Embeddings worker
+gisp_embeddings_batch_size: 200
+gisp_embeddings_shard_index: 0
+gisp_embeddings_shard_count: 1
+
+# Worker flags
+gisp_force: 0
+gisp_dry_run: 0
+gisp_source_files: ""
+gisp_embed_ids: ""
+gisp_limit: ""
+gisp_extra_embed_args: ""
+gisp_semantic_url_override: ""

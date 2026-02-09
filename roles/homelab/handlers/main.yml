@@ -2,19 +2,21 @@
 - name: Docker down {{ role_name | basename }}
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
   args:
-    chdir: "{{ path }}"
+    chdir: "{{ homelab_path }}"
   register: homelab_compose_down_result
   changed_when: >-
     homelab_compose_down_result.stdout is search('Removing')
     or homelab_compose_down_result.stdout is search('Stopped')
-  ignore_errors: true
+  failed_when: false
+  listen: docker down homelab
 
 - name: Docker up {{ role_name | basename }}
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ path }}"
+    chdir: "{{ homelab_path }}"
   register: homelab_compose_up_result
   changed_when: >-
     homelab_compose_up_result.stdout is search('Creating')
     or homelab_compose_up_result.stdout is search('Recreating')
     or homelab_compose_up_result.stdout is search('Starting')
+  listen: docker up homelab

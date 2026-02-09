@@ -1,4 +1,4 @@
-.PHONY: add-sshkey deploy deploy-import-db deploy-check deploy-verbose restart deploy-amneziawg cleanup-all cleanup-3x-ui sub-cleanup fix-dns deploy-sub-nginx init-new-server diskspace-cleanup add-dns
+.PHONY: add-sshkey deploy deploy-import-db deploy-check deploy-verbose restart deploy-amneziawg cleanup-all cleanup-3x-ui sub-cleanup fix-dns deploy-sub-nginx init-new-server diskspace-cleanup add-dns certbot gisp
 
 ANSIBLE_ENV=ANSIBLE_DISPLAY_OK_HOSTS=False ANSIBLE_DISPLAY_SKIPPED_HOSTS=False
 
@@ -28,9 +28,20 @@ fix-dns:
 
 init-new-server:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/init-new-server.yml -k -e "target_hosts=$(or $(h),all)"
-	
+
 diskspace-cleanup:
 	ANSIBLE_STDOUT_CALLBACK=default ANSIBLE_DISPLAY_SKIPPED_HOSTS=False ansible-playbook -i inventory/inventory.yml playbooks/maint-diskspace.yml -e "target_hosts=$(or $(h),all)"
 
 add-dns:
 	ansible-playbook -i inventory/inventory.yml playbooks/add-dns.yml -e "target_hosts=$(or $(h),all)"
+
+certbot:
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/certbot.yml --limit $(or $(h),all)
+
+deploy-vps:
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/deploy-vps.yml --limit $(or $(h),all)
+manage:
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/manage.yml --limit $(or $(h),all)
+
+gisp:
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/deploy-gisp.yml --limit $(or $(h),all)

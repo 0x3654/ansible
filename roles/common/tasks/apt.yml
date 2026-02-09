@@ -13,7 +13,7 @@
     - name: Add Docker GPG key to keyrings
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
-        dest: /etc/apt/keyrings/docker.gpg
+        dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
       register: common_docker_key_result
 
@@ -21,7 +21,7 @@
       ansible.builtin.apt_repository:
         repo: >
           deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
-          signed-by=/etc/apt/keyrings/docker.gpg]
+          signed-by=/etc/apt/keyrings/docker.asc]
           https://download.docker.com/linux/{{ ansible_distribution | lower }}
           {{ ansible_distribution_release }} stable
         state: present
@@ -30,7 +30,7 @@
       changed_when: common_docker_key_result.changed or common_docker_repo_result.changed
 
 - name: APT update, upgrade, and install packages
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts['pkg_mgr'] == 'apt'
   block:
     - name: APT Dist upgrade
       ansible.builtin.apt:
@@ -38,7 +38,7 @@
 
     - name: APT Install required packages
       ansible.builtin.apt:
-        name: "{{ required_packages }}"
+        name: "{{ common_required_packages }}"
         state: present
 
 - name: Check docker compose availability

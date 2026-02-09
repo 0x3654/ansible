@@ -10,3 +10,9 @@
 [submodule "roles/homelab/files/homelab"]
 	path = roles/homelab/files/homelab
 	url = https://github.com/0x3654/homelab.git
+[submodule "roles/untilwall/files/untilwall"]
+	path = roles/untilwall/files/untilwall
+	url = https://github.com/0x3654/untilwall
+[submodule "roles/gisp/files/gisp"]
+	path = roles/gisp/files/gisp
+	url = https://github.com/0x3654/gisp

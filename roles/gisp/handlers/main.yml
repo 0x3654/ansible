@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT-0
+---
+# handlers file for gisp
+
+- name: Docker down gisp
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ gisp_path }}"
+  register: gisp_compose_down_result
+  changed_when: >-
+    gisp_compose_down_result.stdout is search('Removing')
+    or gisp_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down gisp
+
+- name: Docker up gisp
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ gisp_path }}"
+  register: gisp_compose_up_result
+  changed_when: >-
+    gisp_compose_up_result.stdout is search('Creating')
+    or gisp_compose_up_result.stdout is search('Recreating')
+    or gisp_compose_up_result.stdout is search('Starting')
+  listen: docker up gisp

@@ -1,0 +1,6 @@
+---
+- name: Test {{ role_name }} role
+  hosts: localhost
+  gather_facts: true
+  roles:
+    - role: {{ role_name }}

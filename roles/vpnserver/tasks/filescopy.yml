@@ -1,12 +1,27 @@
 ---
 - name: Include common file copy tasks
-  ansible.builtin.include_role:
-    name: common
-    tasks_from: filescopy.yml
+  ansible.builtin.import_tasks: ../common/tasks/filescopy.yml
   vars:
-    common_common_up_handler_name: "docker up {{ role_name | basename }}"
-    common_common_down_handler_name: "docker down {{ role_name | basename }}"
-    common_common_files_source_dir: "{{ role_path }}/files/"
-    common_folder_user: "{{ folder_user }}"
-    common_directory_mode: "{{ directory_mode }}"
-    common_file_mode: "{{ file_mode }}"
+    common_up_handler_name: "docker up vpnserver"
+    common_down_handler_name: "docker down vpnserver"
+    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/vpnserver/files/vpnserver"
+    common_folder_user: "{{ vpnserver_folder_user }}"
+    common_directory_mode: "{{ vpnserver_directory_mode }}"
+    common_file_mode: "{{ vpnserver_file_mode }}"
+    common_pwd: "{{ vpnserver_pwd }}"
+    common_path: "{{ vpnserver_path }}"
+    common_cert_path: "{{ vpnserver_cert_path }}"
+
+- name: Remove AmneziaWG directory and stop container on ARM64 systems
+  when: ansible_facts['architecture'] == 'aarch64'
+  block:
+    - name: Stop and remove awg container
+      community.docker.docker_container:
+        name: awg
+        state: absent
+      failed_when: false
+
+    - name: Remove AmneziaWG directory
+      ansible.builtin.file:
+        path: "{{ vpnserver_amneziawg_path }}"
+        state: absent

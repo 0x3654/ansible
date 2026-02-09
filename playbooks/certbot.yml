@@ -1,0 +1,50 @@
+---
+# Playbook to run certbot tasks for SSL certificates
+- name: Run certbot for SSL certificate management
+  hosts: vpnserver_role:subnginx3xui_role:untilwall_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include vars only for roles that use SSL certificates
+    - name: Include certbot role vars  # noqa: run-once
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/vpnserver/vars/main.yml"
+        - "{{ ansible_roles_path }}/vpnserver/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/subnginx3xui/vars/main.yml"
+        - "{{ ansible_roles_path }}/subnginx3xui/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/untilwall/vars/main.yml"
+        - "{{ ansible_roles_path }}/untilwall/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/secrets.yml"
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      tags: [always]
+
+    # Load host_vars if exists
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run vpnserver certbot tasks
+      ansible.builtin.include_role:
+        name: vpnserver
+        tasks_from: certbot.yml
+      when: inventory_hostname in groups['vpnserver_role'] | default([])
+      tags: [certbot, vpnserver]
+
+    - name: Run subnginx3xui certbot tasks
+      ansible.builtin.include_role:
+        name: subnginx3xui
+        tasks_from: certbot.yml
+      when: inventory_hostname in groups['subnginx3xui_role'] | default([])
+      tags: [certbot, subnginx3xui]
+
+    - name: Run untilwall certbot tasks
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: certbot.yml
+      when: inventory_hostname in groups['untilwall_role'] | default([])
+      tags: [certbot, untilwall]

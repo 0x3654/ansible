@@ -1,30 +1,50 @@
 - name: 3x-ui Extract values from config
   block:
-    - name: Read config file content
-      ansible.builtin.slurp:
+    - name: Check if config file exists
+      ansible.builtin.stat:
         path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-      register: vpnserver_config_content
+      register: vpnserver_config_file
       delegate_to: localhost
+      failed_when: false
 
-    - name: Parse YML config
-      ansible.builtin.set_fact:
-        vpnserver_config_yaml: "{{ vpnserver_config_content['content'] | b64decode | from_yaml }}"
+    - name: Read and parse config file
+      when: vpnserver_config_file.stat.exists | default(false)
+      block:
+        - name: Read config file content
+          ansible.builtin.slurp:
+            path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
+          register: vpnserver_config_content
+          delegate_to: localhost
 
-    - name: Extract values from YML
+        - name: Parse YML config
+          ansible.builtin.set_fact:
+            vpnserver_config_yaml: "{{ vpnserver_config_content['content'] | b64decode | from_yaml }}"
+
+        - name: Extract values from YML
+          ansible.builtin.set_fact:
+            vpnserver_web_port: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+            vpnserver_sub_port: "{{ vpnserver_config_yaml.subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+
+    - name: Set firewall rules
       ansible.builtin.set_fact:
-        vpnserver_web_port: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
-        vpnserver_sub_port: "{{ vpnserver_config_yaml.subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+        vpnserver_firewall_rules:
+          - "-A INPUT -p tcp -m tcp --dport {{ ssh_port | default(22) }} -j ACCEPT"
+          - "-A INPUT -p tcp -m tcp --dport {{ https_port | default(443) }} -j ACCEPT"
+          - "-A INPUT -p tcp -m tcp --dport {{ vpnserver_sub_port | default(31000) }} -j ACCEPT"
+
+    - name: Add AmneziaWG port for non-ARM64
+      ansible.builtin.set_fact:
+        vpnserver_firewall_rules: >-
+          {{ vpnserver_firewall_rules
+          + ['-A INPUT -p udp -m udp --dport '
+          + vpnserver_amneziawg_wg_port | default(51820) | string
+          + ' -j ACCEPT'] }}
+      when: ansible_facts['architecture'] != 'aarch64'
 
     - name: Call firewall role with dynamic rules
       ansible.builtin.include_role:
         name: common
         tasks_from: firewall.yml
       vars:
-        common_required_rules:
-          - "-A INPUT -p tcp -m tcp --dport {{ ssh_port | default(22) }} -j ACCEPT"
-          - "-A INPUT -p tcp -m tcp --dport {{ https_port | default(443) }} -j ACCEPT"
-          # - "-A INPUT -p tcp -m tcp --dport {{ http_port | default(80) }} -j ACCEPT"
-          # - "-A INPUT -p tcp -m tcp --dport {{ vpnserver_web_port }} -j ACCEPT"
-          - "-A INPUT -p tcp -m tcp --dport {{ vpnserver_sub_port }} -j ACCEPT"
-          - "-A INPUT -p udp -m udp --dport {{ amnezia_wg_port | default(51820) }} -j ACCEPT"
+        common_required_rules: "{{ vpnserver_firewall_rules }}"
       tags: [firewall]

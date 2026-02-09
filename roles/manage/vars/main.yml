@@ -1,0 +1,4 @@
+---
+# Manage role variables (combines beszel and watchtower)
+# All variables are defined in defaults/main.yml or secrets.yml
+# This file is intentionally empty for now

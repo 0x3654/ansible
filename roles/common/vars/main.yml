@@ -5,3 +5,5 @@ common_base_firewall_rules:
   - "-A INPUT -p tcp -m tcp --dport {{ https_port | default(443) }} -j ACCEPT"
   - "-A INPUT -i lo -j ACCEPT"
   - "-A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"
+common_required_rules: []
+common_prohibited_rules: []

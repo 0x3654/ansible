@@ -1,0 +1,32 @@
+---
+manage_required_packages:
+  - docker-ce
+  - docker-compose-plugin
+
+# Управление установкой Docker репозитория
+manage_install_docker_repo: true
+
+# Parameters for repository update control
+manage_update_repo: true
+manage_force_repo_update: false
+
+# user for folders permission
+manage_folder_user: "{{ ansible_user | d('root') }}"
+
+# Manage stack paths
+manage_pwd: "/server"
+manage_path: "{{ manage_pwd }}/manage"
+manage_directory_mode: "0755"
+manage_file_mode: "0644"
+
+# Compose command
+manage_compose_command: docker compose
+
+# Beszel config (for compose template)
+manage_beszel_port: "45876"
+manage_beszel_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKZ7FIybKNiZfAg21YS8iOBIjzvdwT4V15SAmFb/p27y"
+
+# Watchtower config (for compose template)
+manage_watchtower_tg_wt_bot_token: ""
+manage_watchtower_tg_wt_chat_id: ""
+manage_watchtower_timezone: "Asia/Tbilisi"

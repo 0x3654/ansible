@@ -1,0 +1,43 @@
+---
+# Playbook to deploy VPN server and subnginx3xui roles
+- name: Deploy VPS (vpnserver + subnginx3xui)
+  hosts: vpnserver_role:subnginx3xui_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include vars for roles that are deployed on VPS
+    - name: Include VPS role vars  # noqa: run-once
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/vpnserver/vars/main.yml"
+        - "{{ ansible_roles_path }}/vpnserver/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/subnginx3xui/vars/main.yml"
+        - "{{ ansible_roles_path }}/subnginx3xui/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/beszel/vars/main.yml"
+        - "{{ ansible_roles_path }}/beszel/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/watchtower/vars/main.yml"
+        - "{{ ansible_roles_path }}/watchtower/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/secrets.yml"
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      tags: [always]
+
+    # Load host_vars if exists
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run vpnserver role tasks
+      ansible.builtin.include_role:
+        name: vpnserver
+      when: inventory_hostname in groups['vpnserver_role'] | default([])
+      tags: [vpnserver]
+
+    - name: Run subnginx3xui role tasks
+      ansible.builtin.include_role:
+        name: subnginx3xui
+      when: inventory_hostname in groups['subnginx3xui_role'] | default([])
+      tags: [subnginx3xui]

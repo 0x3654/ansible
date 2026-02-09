@@ -1,0 +1,15 @@
+---
+- name: Set firewall rules for gisp
+  block:
+    - name: Define firewall rules
+      ansible.builtin.set_fact:
+        gisp_firewall_rules:
+          - "-A INPUT -p tcp --dport {{ gisp_openwebui_port }} -j ACCEPT"
+
+    - name: Call firewall role with dynamic rules
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: firewall.yml
+      vars:
+        common_required_rules: "{{ gisp_firewall_rules }}"
+      tags: [firewall]

@@ -1,0 +1,41 @@
+---
+# Send Telegram notification about certificate renewal
+- name: Send Telegram success notification
+  when:
+    - common_telegram_notify_enabled
+    - common_certbot_result.changed
+    - common_cert_days_until is defined
+  ansible.builtin.uri:
+    url: "https://api.telegram.org/bot{{ common_telegram_bot_token }}/sendMessage"
+    method: POST
+    body_format: json
+    body:
+      chat_id: "{{ common_telegram_chat_id }}"
+      text: "{{ common_telegram_host_name }} ✅ SSL renewed: {{ common_cert_domain }} - {{ common_cert_days_until }} days left"
+    status_code: 200
+  delegate_to: localhost
+  run_once: true
+  register: common_telegram_notify_result
+  failed_when: false
+  tags: [telegram, notify]
+
+# Send Telegram warning notification if certificate expires soon
+- name: Send Telegram warning notification (certificate expires soon)
+  when:
+    - common_telegram_notify_enabled
+    - common_cert_days_until is defined
+    - common_cert_days_until | int < 10
+    - not common_certbot_result.changed
+  ansible.builtin.uri:
+    url: "https://api.telegram.org/bot{{ common_telegram_bot_token }}/sendMessage"
+    method: POST
+    body_format: json
+    body:
+      chat_id: "{{ common_telegram_chat_id }}"
+      text: "{{ common_telegram_host_name }} ⚠️ SSL expires soon: {{ common_cert_domain }} - {{ common_cert_days_until }} days left"
+    status_code: 200
+  delegate_to: localhost
+  run_once: true
+  register: common_telegram_warning_result
+  failed_when: false
+  tags: [telegram, notify]

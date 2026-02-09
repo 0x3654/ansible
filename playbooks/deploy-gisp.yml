@@ -1,0 +1,28 @@
+---
+# Playbook to deploy gisp role
+- name: Deploy GISP registry service
+  hosts: gisp_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include vars for gisp role
+    - name: Include gisp role vars  # noqa: run-once
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/gisp/vars/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      tags: [always]
+
+    # Load host_vars if exists
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run gisp role tasks
+      ansible.builtin.include_role:
+        name: gisp
+      tags: [gisp]

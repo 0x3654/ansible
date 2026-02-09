@@ -17,6 +17,7 @@
 
 - name: Import AmneziaWG tasks
   ansible.builtin.import_tasks: amneziawg.yml
+  when: ansible_facts['architecture'] != 'aarch64'
   tags: [amneziawg]
 
 - name: Import firewall tasks

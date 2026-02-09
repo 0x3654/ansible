@@ -1,0 +1,11 @@
+# Secrets file
+vars/secrets.yml
+
+# Editor files
+.DS_Store
+*.swp
+*~
+
+# Ansible artifacts
+.retry
+*.tmp

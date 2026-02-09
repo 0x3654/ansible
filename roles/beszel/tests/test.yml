@@ -1,7 +1,0 @@
-# SPDX-License-Identifier: MIT-0
----
-- name: Test beszel role
-  hosts: localhost
-  remote_user: root
-  roles:
-    - beszel

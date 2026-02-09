@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: MIT-0
+---
+# handlers file for untilwall
+
+- name: Docker down untilwall
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ untilwall_path }}"
+  register: untilwall_compose_down_result
+  changed_when: >-
+    untilwall_compose_down_result.stdout is search('Removing')
+    or untilwall_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down untilwall
+
+- name: Docker up untilwall
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ untilwall_path }}"
+  register: untilwall_compose_up_result
+  changed_when: >-
+    untilwall_compose_up_result.stdout is search('Creating')
+    or untilwall_compose_up_result.stdout is search('Recreating')
+    or untilwall_compose_up_result.stdout is search('Starting')
+  listen: docker up untilwall
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

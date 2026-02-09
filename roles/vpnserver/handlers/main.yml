@@ -5,17 +5,18 @@
 - name: Restart docker amneziawg
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ amneziawg_path }}"
+    chdir: "{{ vpnserver_amneziawg_path }}"
   register: vpnserver_compose_result
   changed_when: >-
     vpnserver_compose_result.stdout is search('Creating')
     or vpnserver_compose_result.stdout is search('Recreating')
     or vpnserver_compose_result.stdout is search('Starting')
+  when: ansible_facts['architecture'] != 'aarch64'
 
 - name: Restart docker fail2ban
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ fail2ban_path }}"
+    chdir: "{{ vpnserver_fail2ban_path }}"
   register: vpnserver_compose_result
   changed_when: >-
     vpnserver_compose_result.stdout is search('Creating')
@@ -25,22 +26,24 @@
 - name: Docker down vpnserver
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
   args:
-    chdir: "{{ vpnserver }}"
+    chdir: "{{ vpnserver_path }}"
   register: vpnserver_compose_down_result
   changed_when: >-
     vpnserver_compose_down_result.stdout is search('Removing')
     or vpnserver_compose_down_result.stdout is search('Stopped')
-  ignore_errors: true
+  failed_when: false
+  listen: docker down vpnserver
 
 - name: Docker up vpnserver
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ vpnserver }}"
+    chdir: "{{ vpnserver_path }}"
   register: vpnserver_compose_up_result
   changed_when: >-
     vpnserver_compose_up_result.stdout is search('Creating')
     or vpnserver_compose_up_result.stdout is search('Recreating')
     or vpnserver_compose_up_result.stdout is search('Starting')
+  listen: docker up vpnserver
 
 - name: Stop docker 3x-ui
   community.docker.docker_container:

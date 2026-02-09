@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: MIT-0
+---
+# handlers file for {{ role_name }}
+
+- name: Docker down {{ role_name }}
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ {{ role_name }}_path }}"
+  register: {{ role_name }}_compose_down_result
+  changed_when: >-
+    {{ role_name }}_compose_down_result.stdout is search('Removing')
+    or {{ role_name }}_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down {{ role_name }}
+
+- name: Docker up {{ role_name }}
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ {{ role_name }}_path }}"
+  register: {{ role_name }}_compose_up_result
+  changed_when: >-
+    {{ role_name }}_compose_up_result.stdout is search('Creating')
+    or {{ role_name }}_compose_up_result.stdout is search('Recreating')
+    or {{ role_name }}_compose_up_result.stdout is search('Starting')
+  listen: docker up {{ role_name }}
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

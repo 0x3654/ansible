@@ -1,0 +1,3 @@
+---
+# Including the file with secrets
+{{ role_name }}_include_vars: secrets.yml

@@ -1,0 +1,8 @@
+---
+- name: APT Management
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: apt.yml
+  tags: [apt, upgrade]
+  vars:
+    common_required_packages: "{{ untilwall_required_packages }}"

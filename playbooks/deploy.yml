@@ -43,6 +43,7 @@
     - name: Include role if host is in corresponding group
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/../roles/{{ deploy_role_name }}"
+        tasks_from: main.yml
       vars:
         deploy_role_name: "{{ item.path | basename }}"
       when: inventory_hostname in groups[deploy_role_name + '_role'] | default([])

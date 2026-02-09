@@ -94,15 +94,27 @@
 
         - name: Generate Reality keys and SQL
           block:
+            - name: Set xray binary path based on architecture
+              ansible.builtin.set_fact:
+                vpnserver_xray_binary_path: >-
+                  {{ '/app/bin/xray-linux-arm64' if ansible_facts['architecture'] == 'aarch64'
+                  else '/app/bin/xray-linux-amd64' }}
+
             - name: Generate X25519 key pair via xray
-              ansible.builtin.shell: docker exec 3x-ui /app/bin/xray-linux-amd64 x25519
+              ansible.builtin.shell: docker exec 3x-ui {{ vpnserver_xray_binary_path }} x25519
               register: vpnserver_keygen_result
               changed_when: false
 
             - name: Parse Reality keys
               ansible.builtin.set_fact:
-                vpnserver_reality_private_key: "{{ vpnserver_keygen_result.stdout_lines[0] | regex_replace('^Private key: ', '') }}"
-                vpnserver_reality_public_key: "{{ vpnserver_keygen_result.stdout_lines[1] | regex_replace('^Public key: ', '') }}"
+                vpnserver_reality_private_key: >-
+                  {{ vpnserver_keygen_result.stdout_lines[0]
+                  | regex_replace('^PrivateKey: ', '')
+                  | regex_replace('^Private key: ', '') }}
+                vpnserver_reality_public_key: >-
+                  {{ vpnserver_keygen_result.stdout_lines[1]
+                  | regex_replace('^PublicKey: ', '')
+                  | regex_replace('^Public key: ', '') }}
 
             - name: Generate Short IDs
               ansible.builtin.shell: |
@@ -128,7 +140,7 @@
 
             - name: Clean Short IDs
               ansible.builtin.set_fact:
-                vpnserver_reality_short_ids: "{{ vpnserver_reality_short_ids | replace('\n', '') | replace('  ', ' ') }}"
+                vpnserver_reality_short_ids: "{{ vpnserver_reality_short_ids | replace('\n', '') | replace('  ', ' ') | trim }}"
 
             - name: Create import SQL file from template
               ansible.builtin.template:
@@ -205,7 +217,7 @@
           when: vpnserver_port_check.stdout == "" or vpnserver_warp_removed | default(false)
           ansible.builtin.shell: |
             set -o pipefail
-            wget -O - https://raw.githubusercontent.com/hamid-gh98/x-ui-scripts/main/install_warp_proxy.sh | bash -s -- -y
+            curl -sL https://raw.githubusercontent.com/hamid-gh98/x-ui-scripts/main/install_warp_proxy.sh | bash -s -- -y
           args:
             executable: /bin/bash
           register: vpnserver_warp_install_result

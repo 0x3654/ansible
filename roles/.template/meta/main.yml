@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: your_name
+  description: {{ role_name }} role description
+  company: your_company
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+  galaxy_tags:
+    - docker
+    - system
+
+dependencies: []

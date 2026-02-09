@@ -1,0 +1,23 @@
+---
+# Handlers for manage stack (beszel + watchtower)
+- name: Docker down manage
+  ansible.builtin.command: "{{ manage_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ manage_path }}"
+  register: manage_compose_down_result
+  changed_when: >-
+    manage_compose_down_result.stdout is search('Removing')
+    or manage_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down manage
+
+- name: Docker up manage
+  ansible.builtin.command: "{{ manage_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ manage_path }}"
+  register: manage_compose_up_result
+  changed_when: >-
+    manage_compose_up_result.stdout is search('Creating')
+    or manage_compose_up_result.stdout is search('Recreating')
+    or manage_compose_up_result.stdout is search('Starting')
+  listen: docker up manage

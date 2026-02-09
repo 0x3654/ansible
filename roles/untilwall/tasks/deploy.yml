@@ -1,0 +1,87 @@
+---
+- name: Deploy untilwall with testing and rollback
+  block:
+    - name: Pull latest image
+      ansible.builtin.command:
+        cmd: "docker pull 0x3654/untilwall:latest"
+      register: untilwall_pull_result
+      changed_when: "'Downloaded newer image' in untilwall_pull_result.stdout or 'Pull complete' in untilwall_pull_result.stdout"
+      notify: docker up untilwall
+      tags: [deploy]
+
+    - name: Wait for container to be ready
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 3000
+        delay: 5
+        timeout: 60
+      tags: [deploy]
+
+    - name: Health check
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:3000/api/health"
+        method: GET
+        status_code: [200, 204]
+      register: untilwall_health_check
+      retries: 5
+      delay: 5
+      until: untilwall_health_check.status in [200, 204]
+      tags: [deploy]
+
+    - name: Send success notification to Telegram
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: telegram-notify.yml
+      vars:
+        common_telegram_message: "✅ untilwall deployment SUCCESS on {{ inventory_hostname }}\nImage: 0x3654/untilwall:latest"
+      when:
+        - untilwall_telegram_bot_token | default('')
+        - untilwall_telegram_chat_id | default('')
+      tags: [deploy]
+
+  rescue:
+    - name: Rollback to stable image
+      ansible.builtin.command:
+        cmd: "docker pull 0x3654/untilwall:stable"
+      register: untilwall_rollback_pull
+      changed_when: "'Downloaded newer image' in untilwall_rollback_pull.stdout or 'Pull complete' in untilwall_rollback_pull.stdout"
+      notify: docker up untilwall
+      tags: [deploy]
+
+    - name: Wait for rollback to complete
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 3000
+        delay: 5
+        timeout: 60
+      tags: [deploy]
+
+    - name: Verify rollback health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:3000/api/health"
+        method: GET
+        status_code: [200, 204]
+      register: untilwall_rollback_health
+      retries: 5
+      delay: 5
+      until: untilwall_rollback_health.status in [200, 204]
+      tags: [deploy]
+
+    - name: Send failure notification to Telegram
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: telegram-notify.yml
+      vars:
+        common_telegram_message: >-
+          ❌ untilwall deployment FAILED on {{ inventory_hostname }}
+          Rolled back to :stable
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}
+      when:
+        - untilwall_telegram_bot_token | default('')
+        - untilwall_telegram_chat_id | default('')
+      tags: [deploy]
+
+    - name: Fail the playbook after rollback
+      ansible.builtin.fail:
+        msg: "Deployment failed and rolled back to stable"
+      tags: [deploy]

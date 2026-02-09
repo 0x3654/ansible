@@ -1,0 +1,47 @@
+---
+- name: Copy docker compose file from gisp submodule
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/gisp/compose.yaml"
+    dest: "{{ gisp_path }}/docker-compose.yaml"
+    mode: "0644"
+  tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp
+
+- name: Create .env from .env.example
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/gisp/.env.example"
+    dest: "{{ gisp_path }}/.env"
+    mode: "0600"
+  tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp
+
+- name: Ensure services/openwebui/data directory exists
+  ansible.builtin.file:
+    path: "{{ gisp_path }}/services/openwebui/data"
+    state: directory
+    mode: "0755"
+  tags: [filescopy]
+
+- name: Copy semantic synonyms file
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/gisp/services/semantic/synonyms.example.json"
+    dest: "{{ gisp_path }}/services/semantic/synonyms.json"
+    mode: "0644"
+  tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp
+
+- name: Copy webui database example
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/gisp/services/openwebui/webui.db.example"
+    dest: "{{ gisp_path }}/services/openwebui/data/webui.db"
+    mode: "0644"
+  tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp

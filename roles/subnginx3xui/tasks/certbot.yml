@@ -5,5 +5,10 @@
   vars:
     common_up_handler_name: "docker up 3xuiproxy"
     common_down_handler_name: "docker down 3xuiproxy"
-    common_domain_name: "{{ sub_all_url }}"
+    common_domain_name: "{{ subnginx3xui_sub_all_url }}"
+    common_cert_path: "{{ subnginx3xui_cert_path }}"
+    common_telegram_notify_enabled: "{{ telegram_notify_enabled | default(false) }}"
+    common_telegram_bot_token: "{{ subnginx3xui_telegram_bot_token }}"
+    common_telegram_chat_id: "{{ subnginx3xui_telegram_chat_id }}"
+    common_telegram_host_name: "{{ inventory_hostname }}"
   tags: [ssl]

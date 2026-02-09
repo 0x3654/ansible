@@ -1,0 +1,31 @@
+---
+# defaults file for {{ role_name }}
+
+# Required system packages
+{{ role_name }}_required_packages:
+  - docker-ce
+  - docker-compose-plugin
+  - curl
+
+# Docker repository installation control
+{{ role_name }}_install_docker_repo: true
+
+# Repository update parameters
+{{ role_name }}_update_repo: true
+{{ role_name }}_force_repo_update: true
+
+# User for folder permissions
+{{ role_name }}_folder_user: "{{ role_name }}"
+
+# Common paths
+{{ role_name }}_pwd: "/{{ role_name }}"
+{{ role_name }}_path: "{{ {{ role_name }}_pwd }}"
+{{ role_name }}_cert_path: "/server/certbot"
+
+# File permissions
+{{ role_name }}_directory_mode: "0755"
+{{ role_name }}_file_mode: "0600"
+
+# Domain configuration
+{{ role_name }}_domain_name: "{{ role_name }}.example.com"
+{{ role_name }}_domain_url: "https://{{ {{ role_name }}_domain_name }}"

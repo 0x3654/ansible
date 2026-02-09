@@ -1,0 +1,23 @@
+---
+- name: Copy docker compose file from role files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/untilwall/files/untilwall/compose.yaml"
+    dest: "{{ untilwall_path }}/docker-compose.yaml"
+    mode: "0644"
+  tags: [filescopy]
+
+- name: Copy .env.example to .env with variables
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ untilwall_path }}/.env"
+    mode: "0600"
+  tags: [filescopy]
+
+- name: Ensure data directory exists with correct permissions
+  ansible.builtin.file:
+    path: "{{ untilwall_path }}/data"
+    state: directory
+    owner: "1001"
+    group: "1001"
+    mode: "0755"
+  tags: [filescopy]

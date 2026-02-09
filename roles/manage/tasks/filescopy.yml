@@ -1,0 +1,12 @@
+---
+- name: Include common file copy tasks
+  ansible.builtin.import_tasks: ../common/tasks/filescopy.yml
+  vars:
+    common_up_handler_name: "docker up manage"
+    common_down_handler_name: "docker down manage"
+    common_files_source_dir: "{{ playbook_dir }}/../roles/manage/files/manage/"
+    common_folder_user: "{{ manage_folder_user }}"
+    common_directory_mode: "{{ manage_directory_mode }}"
+    common_file_mode: "{{ manage_file_mode }}"
+    common_pwd: "{{ manage_pwd }}"
+    common_path: "{{ manage_path }}"

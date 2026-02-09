@@ -1,46 +1,46 @@
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
-UPDATE users SET username='{{username}}', password='{{ password | password_hash("bcrypt", rounds=10, ident="2a") }}';
+UPDATE users SET username='{{vpnserver_username}}', password='{{ vpnserver_password | password_hash("bcrypt", rounds=10, ident="2a") }}';
 INSERT OR REPLACE INTO settings VALUES(2,'webListen','');
 INSERT OR REPLACE INTO settings VALUES(3,'webDomain','');
-INSERT OR REPLACE INTO settings VALUES(4,'webPort','{{ webPort }}');
+INSERT OR REPLACE INTO settings VALUES(4,'webPort','{{ vpnserver_web_port }}');
 INSERT OR REPLACE INTO settings VALUES(5,'webCertFile','/fullchain.pem');
 INSERT OR REPLACE INTO settings VALUES(6,'webKeyFile','/privkey.pem');
-INSERT OR REPLACE INTO settings VALUES(7,'webBasePath','/{{ webBasePath }}/');
-INSERT OR REPLACE INTO settings VALUES(13,'tgBotEnable','{{tgBotEnable}}');
-INSERT OR REPLACE INTO settings VALUES(14,'tgBotToken','{{tgBotToken}}');
-INSERT OR REPLACE INTO settings VALUES(15,'tgBotChatId','{{tgBotChatId}}');
+INSERT OR REPLACE INTO settings VALUES(7,'webBasePath','/{{ vpnserver_web_base_path }}/');
+INSERT OR REPLACE INTO settings VALUES(13,'tgBotEnable','{{vpnserver_tg_bot_enable}}');
+INSERT OR REPLACE INTO settings VALUES(14,'tgBotToken','{{vpnserver_tg_bot_token}}');
+INSERT OR REPLACE INTO settings VALUES(15,'tgBotChatId','{{vpnserver_tg_bot_chat_id}}');
 INSERT OR REPLACE INTO settings VALUES(16,'tgRunTime','@daily');
 INSERT OR REPLACE INTO settings VALUES(17,'tgBotBackup','false');
 INSERT OR REPLACE INTO settings VALUES(18,'tgBotLoginNotify','true');
 INSERT OR REPLACE INTO settings VALUES(20,'tgLang','en-US');
-INSERT OR REPLACE INTO settings VALUES(21,'timeLocation','{{timeLocation}}');
+INSERT OR REPLACE INTO settings VALUES(21,'timeLocation','');
 INSERT OR REPLACE INTO settings VALUES(22,'secretEnable','false');
 INSERT OR REPLACE INTO settings VALUES(23,'subEnable','true');
 INSERT OR REPLACE INTO settings VALUES(24,'subListen','');
-INSERT OR REPLACE INTO settings VALUES(25,'subPort','{{subPort}}');
-INSERT OR REPLACE INTO settings VALUES(26,'subPath','/{{subPath}}/');
+INSERT OR REPLACE INTO settings VALUES(25,'subPort','{{vpnserver_sub_port}}');
+INSERT OR REPLACE INTO settings VALUES(26,'subPath','/{{vpnserver_sub_path}}/');
 INSERT OR REPLACE INTO settings VALUES(27,'subDomain','');
-INSERT OR REPLACE INTO settings VALUES(37,'subTitle','{% if ruserv is defined and ruserv == "true" %}{{subTitleRU}}{% else %}{{subTitle}}{% endif %}');
+INSERT OR REPLACE INTO settings VALUES(37,'subTitle','{% if ruserv is defined and ruserv == "true" %}{{vpnserver_inbound_sub_id_ru}}{% else %}{{vpnserver_sub_title}}{% endif %}');
 INSERT OR REPLACE INTO settings VALUES(28,'subCertFile','/fullchain.pem');
 INSERT OR REPLACE INTO settings VALUES(29,'subKeyFile','/privkey.pem');
 INSERT OR REPLACE INTO settings VALUES(30,'subUpdates','1');
 INSERT OR REPLACE INTO settings VALUES(31,'subEncrypt','true');
 INSERT OR REPLACE INTO settings VALUES(32,'subShowInfo','true');
 INSERT OR REPLACE INTO settings VALUES(33,'subURI','');
-INSERT OR REPLACE INTO settings VALUES(34,'subJsonPath','{{ subJsonPath }}');
+INSERT OR REPLACE INTO settings VALUES(34,'subJsonPath','{{ vpnserver_sub_json_path }}');
 INSERT OR REPLACE INTO settings VALUES(35,'remarkModel',' e');
-INSERT OR REPLACE INTO inbounds (user_id, up, down, total, remark, enable, expiry_time, listen, port, protocol, settings, stream_settings, tag, sniffing) VALUES (1, 0, 0, 0, '', 1, 0, '', 443, 'vless', replace('{\n  "clients": [\n    {\n      "id": "{{ client_id }}",\n      "flow": "xtls-rprx-vision",\n      "email": "{{ city }}",\n      "limitIp": 0,\n      "totalGB": 0,\n      "expiryTime": 0,\n      "enable": true,\n      "tgId": "",\n      "subId": "{% if ruserv is defined and ruserv == 'true' %}{{inbound_sub_id_ru}}{% else %}{{inbound_sub_id}}{% endif %}",\n      "comment": "",\n      "reset": 0\n    }\n  ],\n  "decryption": "none",\n  "fallbacks": []\n}', '\n', char(10)), replace('{\n  "network": "tcp",\n  "security": "reality",\n  "externalProxy": [],\n  "realitySettings": {\n    "show": false,\n    "xver": 0,\n    "dest": "google.com:443",\n    "serverNames": [\n      "google.com",\n      "www.google.com"\n    ],\n    "privateKey": "{{ reality_private_key }}",
+INSERT OR REPLACE INTO inbounds (user_id, up, down, total, remark, enable, expiry_time, listen, port, protocol, settings, stream_settings, tag, sniffing, all_time, traffic_reset, last_traffic_reset_time) VALUES (1, 0, 0, 0, '', 1, 0, '', 443, 'vless', replace('{\n  "clients": [\n    {\n      "id": "{{ vpnserver_client_id }}",\n      "flow": "xtls-rprx-vision",\n      "email": "{{ city }}",\n      "limitIp": 0,\n      "totalGB": 0,\n      "expiryTime": 0,\n      "enable": true,\n      "tgId": "",\n      "subId": "{% if ruserv is defined and ruserv == 'true' %}{{vpnserver_inbound_sub_id_ru}}{% else %}{{vpnserver_inbound_sub_id}}{% endif %}",\n      "comment": "",\n      "reset": 0\n    }\n  ],\n  "decryption": "none",\n  "fallbacks": []\n}', '\n', char(10)), replace('{\n  "network": "tcp",\n  "security": "reality",\n  "externalProxy": [],\n  "realitySettings": {\n    "show": false,\n    "xver": 0,\n    "dest": "google.com:443",\n    "serverNames": [\n      "google.com",\n      "www.google.com"\n    ],\n    "privateKey": "{{ vpnserver_reality_private_key }}",
     "shortIds": [
-      {{ reality_short_ids }}
+      {{ vpnserver_reality_short_ids }}
     ],
     "settings": {
-      "publicKey": "{{ reality_public_key }}",
+      "publicKey": "{{ vpnserver_reality_public_key }}",
       "fingerprint": "chrome",
       "serverName": "",
       "spiderX": "/"
-    }\n  },\n  "tcpSettings": {\n    "acceptProxyProtocol": false,\n    "header": {\n      "type": "none"\n    }\n  }\n}', '\n', char(10)), 'inbound-443', replace('{\n  "enabled": true,\n  "destOverride": [\n    "http",\n    "tls",\n    "quic",\n    "fakedns"\n  ]\n}', '\n', char(10)));
-INSERT OR REPLACE INTO settings VALUES(36,'xrayTemplateConfig',replace('{\n  "log": {\n    "loglevel": "warning",\n    "error": "./error.log"\n  },\n  "api": {\n    "tag": "api",\n    "services": [\n      "HandlerService",\n      "LoggerService",\n      "StatsService"\n    ]\n  },\n  "inbounds": [\n    {\n      "tag": "api",\n      "listen": "127.0.0.1",\n      "port": 62789,\n      "protocol": "dokodemo-door",\n      "settings": {\n        "address": "127.0.0.1"\n      }\n    }\n  ],\n  "outbounds": [\n    {\n      "protocol": "freedom",\n      "settings": {}\n    },\n    {\n      "tag": "blocked",\n      "protocol": "blackhole",\n      "settings": {}\n    },\n    {\n      "tag": "IPv4",\n      "protocol": "freedom",\n      "settings": {\n        "domainStrategy": "UseIPv4"\n      }\n    },\n    {\n      "tag": "WARP",\n      "protocol": "socks",\n      "settings": {\n        "servers": [\n          {\n            "address": "127.0.0.1",\n            "port": 40000\n          }\n        ]\n      }\n    }\n  ],\n  "policy": {\n    "levels": {\n      "0": {\n        "statsUserDownlink": true,\n        "statsUserUplink": true\n      }\n    },\n    "system": {\n      "statsInboundDownlink": true,\n      "statsInboundUplink": true\n    }\n  },\n  "routing": {\n    "domainStrategy": "IPIfNonMatch",\n    "rules": [\n      {\n        "type": "field",\n        "inboundTag": [\n          "api"\n        ],\n        "outboundTag": "api"\n      },\n      {\n        "type": "field",\n        "outboundTag": "blocked",\n        "ip": [\n          "geoip:private"\n        ]\n      },\n      {\n        "type": "field",\n        "outboundTag": "blocked",\n        "protocol": [\n          "bittorrent"\n        ]\n      },\n      {\n        "type": "field",\n        "outboundTag": "IPv4",\n        "domain": [\n          "geosite:google"\n        ]\n      },\n      {\n        "type": "field",\n        "domain": [\n          "geosite:category-gov-ru",\n          "regexp:.*\\.ru$",\n        ],\n        "outboundTag": "WARP"\n      },\n      {\n        "type": "field",\n        "ip": [\n          "geoip:ru"\n        ],\n        "outboundTag": "WARP"\n      },\n      {\n        "type": "field",\n        "ip": [\n          "geoip:by"\n        ],\n        "outboundTag": "WARP"\n      }\n    ]\n  },\n  "stats": {}\n}','\n',char(10)));
+    }\n  },\n  "tcpSettings": {\n    "acceptProxyProtocol": false,\n    "header": {\n      "type": "none"\n    }\n  }\n}', '\n', char(10)), 'inbound-443', replace('{\n  "enabled": true,\n  "destOverride": [\n    "http",\n    "tls",\n    "quic",\n    "fakedns"\n  ]\n}', '\n', char(10)), 0, 'never', 0);
+INSERT OR REPLACE INTO settings VALUES(36,'xrayTemplateConfig',replace('{\n  "log": {\n    "loglevel": "warning",\n    "error": "./error.log"\n  },\n  "api": {\n    "tag": "api",\n    "services": [\n      "HandlerService",\n      "LoggerService",\n      "StatsService"\n    ]\n  },\n  "inbounds": [\n    {\n      "tag": "api",\n      "listen": "127.0.0.1",\n      "port": 62789,\n      "protocol": "dokodemo-door",\n      "settings": {\n        "address": "127.0.0.1"\n      }\n    }\n  ],\n  "outbounds": [\n    {\n      "protocol": "freedom",\n      "settings": {}\n    },\n    {\n      "tag": "blocked",\n      "protocol": "blackhole",\n      "settings": {}\n    },\n    {\n      "tag": "IPv4",\n      "protocol": "freedom",\n      "settings": {\n        "domainStrategy": "UseIPv4"\n      }\n    },\n    {\n      "tag": "WARP",\n      "protocol": "socks",\n      "settings": {\n        "servers": [\n          {\n            "address": "127.0.0.1",\n            "port": 40000\n          }\n        ]\n      }\n    }\n  ],\n  "policy": {\n    "levels": {\n      "0": {\n        "statsUserDownlink": true,\n        "statsUserUplink": true\n      }\n    },\n    "system": {\n      "statsInboundDownlink": true,\n      "statsInboundUplink": true\n    }\n  },\n  "routing": {\n    "domainStrategy": "IPIfNonMatch",\n    "rules": [\n      {\n        "type": "field",\n        "inboundTag": [\n          "api"\n        ],\n        "outboundTag": "api"\n      },\n      {\n        "type": "field",\n        "outboundTag": "blocked",\n        "ip": [\n          "geoip:private"\n        ]\n      },\n      {\n        "type": "field",\n        "outboundTag": "blocked",\n        "protocol": [\n          "bittorrent"\n        ]\n      },\n      {\n        "type": "field",\n        "outboundTag": "IPv4",\n        "domain": [\n          "geosite:google"\n        ]\n      },\n      {\n        "type": "field",\n        "domain": [\n          "geosite:category-gov-ru",\n          "regexp:.*\\.ru$"\n        ],\n        "outboundTag": "WARP"\n      },\n      {\n        "type": "field",\n        "ip": [\n          "geoip:ru"\n        ],\n        "outboundTag": "WARP"\n      },\n      {\n        "type": "field",\n        "ip": [\n          "geoip:by"\n        ],\n        "outboundTag": "WARP"\n      }\n    ]\n  },\n  "stats": {}\n}','\n',char(10)));
 DELETE FROM sqlite_sequence;
 INSERT INTO sqlite_sequence VALUES('users',1);
 INSERT INTO sqlite_sequence VALUES('settings',38);

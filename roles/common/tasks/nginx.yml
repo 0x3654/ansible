@@ -1,0 +1,31 @@
+---
+- name: Create nginx proxy configuration
+  ansible.builtin.template:
+    src: nginx-proxy.conf.j2
+    dest: /etc/nginx/sites-available/{{ common_nginx_site_name | default(common_nginx_server_name) }}
+    mode: "0644"
+    owner: root
+    group: root
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Enable nginx site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ common_nginx_site_name | default(common_nginx_server_name) }}"
+    dest: "/etc/nginx/sites-enabled/{{ common_nginx_site_name | default(common_nginx_server_name) }}"
+    state: link
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Test nginx configuration
+  ansible.builtin.command: nginx -t
+  register: common_nginx_test
+  changed_when: false
+  tags: [nginx]
+
+- name: Ensure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  tags: [nginx]

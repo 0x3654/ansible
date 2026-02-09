@@ -1,0 +1,16 @@
+---
+- name: Copy docker compose file from role files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/{{ role_name }}/files/{{ role_name }}/compose.yaml"
+    dest: "{{ {{ role_name }}_path }}/docker-compose.yaml"
+    mode: "0644"
+  tags: [filescopy]
+
+- name: Ensure data directory exists with correct permissions
+  ansible.builtin.file:
+    path: "{{ {{ role_name }}_path }}/data"
+    state: directory
+    owner: "{{ {{ role_name }}_folder_user }}"
+    group: "{{ {{ role_name }}_folder_user }}"
+    mode: "{{ {{ role_name }}_directory_mode }}"
+  tags: [filescopy]
