@@ -2,8 +2,8 @@
 - name: Copy docker compose file from gisp submodule
   ansible.builtin.copy:
     src: "{{ role_path }}/files/gisp/compose.yaml"
-    dest: "{{ gisp_path }}/docker-compose.yaml"
-    mode: "0644"
+    dest: "{{ path }}/docker-compose.yaml"
+    mode: "{{ file_mode }}"
   tags: [filescopy]
   notify:
     - docker down gisp
@@ -12,36 +12,47 @@
 - name: Create .env from .env.example
   ansible.builtin.template:
     src: "{{ role_path }}/files/gisp/.env.example"
-    dest: "{{ gisp_path }}/.env"
+    dest: "{{ path }}/.env"
     mode: "0600"
   tags: [filescopy]
   notify:
     - docker down gisp
     - docker up gisp
 
-- name: Ensure services/openwebui/data directory exists
+- name: Ensure scripts directory exists
   ansible.builtin.file:
-    path: "{{ gisp_path }}/services/openwebui/data"
+    path: "{{ path }}/scripts"
     state: directory
+    mode: "{{ directory_mode }}"
+  tags: [filescopy]
+
+- name: Copy send_telegram.sh helper
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/gisp/scripts/send_telegram.sh"
+    dest: "{{ path }}/scripts/send_telegram.sh"
     mode: "0755"
   tags: [filescopy]
 
-- name: Copy semantic synonyms file
+- name: Ensure services/openwebui/data directory exists
+  ansible.builtin.file:
+    path: "{{ path }}/services/openwebui/data"
+    state: directory
+    mode: "{{ directory_mode }}"
+  tags: [filescopy]
+
+# .example files = first-deploy only; delete on server to force re-init
+- name: Copy semantic synonyms from example (skips if already exists)
   ansible.builtin.copy:
     src: "{{ role_path }}/files/gisp/services/semantic/synonyms.example.json"
-    dest: "{{ gisp_path }}/services/semantic/synonyms.json"
-    mode: "0644"
+    dest: "{{ path }}/services/semantic/synonyms.json"
+    mode: "{{ file_mode }}"
+    force: false
   tags: [filescopy]
-  notify:
-    - docker down gisp
-    - docker up gisp
 
-- name: Copy webui database example
+- name: Copy webui database from example (skips if already exists)
   ansible.builtin.copy:
     src: "{{ role_path }}/files/gisp/services/openwebui/webui.db.example"
-    dest: "{{ gisp_path }}/services/openwebui/data/webui.db"
-    mode: "0644"
+    dest: "{{ path }}/services/openwebui/data/webui.db"
+    mode: "{{ file_mode }}"
+    force: false
   tags: [filescopy]
-  notify:
-    - docker down gisp
-    - docker up gisp
