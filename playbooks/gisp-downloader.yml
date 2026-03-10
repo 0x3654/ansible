@@ -8,6 +8,8 @@
       ansible.builtin.command:
         cmd: docker compose run --rm downloader
         chdir: "{{ gisp_project_src }}"
+      environment:
+        PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       register: downloader_result
 
     - name: Show downloader results
