@@ -1,0 +1,18 @@
+---
+# GISP Import - Import CSV files to PostgreSQL
+- name: GISP Import
+  hosts: gisp_role
+  gather_facts: false
+  tasks:
+    - name: Run import container
+      community.docker.docker_compose_v2:
+        project_src: "{{ gisp_project_src }}"
+        services:
+          - import
+        run: rm
+        state: present
+      register: import_result
+
+    - name: Show import results
+      ansible.builtin.debug:
+        var: import_result
