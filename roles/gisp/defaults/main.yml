@@ -2,80 +2,74 @@
 # defaults file for gisp
 
 # Required system packages
-gisp_required_packages:
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
 
 # Docker repository installation control
-gisp_install_docker_repo: true
-gisp_update_repo: true
-gisp_force_repo_update: true
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: true  # noqa: var-naming[no-role-prefix]
 
-# User and paths
-gisp_folder_user: "gisp"
-gisp_path: "/git/gisp"
-gisp_directory_mode: "0755"
-gisp_file_mode: "0600"
+# User and paths (universal DRY variables)
+folder_user: "{{ role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/git"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+
+# File permissions
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 
 # Service ports
-gisp_api_port: 8000
-gisp_openwebui_port: 3333
-gisp_semantic_port: 8010
-gisp_postgres_port: 5432
+api_port: 8000  # noqa: var-naming[no-role-prefix]
+openwebui_port: 3333  # noqa: var-naming[no-role-prefix]
+semantic_port: 8010  # noqa: var-naming[no-role-prefix]
+postgres_port: 5432  # noqa: var-naming[no-role-prefix]
 
 # PostgreSQL settings
-gisp_pg_host: "postgres_registry"
-gisp_pg_user: "registry"
-gisp_pg_password: "registry"
-gisp_pg_db: "registry"
-gisp_pg_data: "/var/lib/postgresql/data/pgdata"
-gisp_pg_shm_size: "2g"
-gisp_pg_autoprewarm_interval: 120
+pg_data: "/var/lib/postgresql/data/pgdata"  # noqa: var-naming[no-role-prefix]
+pg_shm_size: "2g"  # noqa: var-naming[no-role-prefix]
+pg_autoprewarm_interval: 120  # noqa: var-naming[no-role-prefix]
 
 # API service
-gisp_reestr_min_limit: 1
-gisp_reestr_default_limit: 20
-gisp_reestr_max_limit: 200
-gisp_reestr_min_offset: 0
-gisp_reestr_default_offset: 0
+reestr_min_limit: 1  # noqa: var-naming[no-role-prefix]
+reestr_default_limit: 20  # noqa: var-naming[no-role-prefix]
+reestr_max_limit: 200  # noqa: var-naming[no-role-prefix]
+reestr_min_offset: 0  # noqa: var-naming[no-role-prefix]
+reestr_default_offset: 0  # noqa: var-naming[no-role-prefix]
 
 # Semantic service
-gisp_semantic_workers: 2
-gisp_semantic_cache_ttl_seconds: 604800
-gisp_semantic_force_seqscan: 0
+semantic_workers: 2  # noqa: var-naming[no-role-prefix]
+semantic_cache_ttl_seconds: 604800  # noqa: var-naming[no-role-prefix]
+semantic_force_seqscan: 0  # noqa: var-naming[no-role-prefix]
 
 # Import settings
-gisp_files_dir: "/files"
-gisp_start_date: "2024-09-05"
-gisp_base_url: "https://minpromtorg.gov.ru/opendata/1000000012-ReestrProducts/data-{date}-structure-20210405.csv"
-gisp_log_dir: "/var/log/registry"
-gisp_max_csv_files: 7
-gisp_max_log_files: 7
-gisp_max_maintenance_log_files: 7
-gisp_auto_embed: 1
-gisp_starter_force: 0
-gisp_starter_max_wait: 180
+files_dir: "/files"  # noqa: var-naming[no-role-prefix]
+start_date: "2024-09-05"  # noqa: var-naming[no-role-prefix]
+base_url: "https://minpromtorg.gov.ru/opendata/1000000012-ReestrProducts/data-{date}-structure-20210405.csv"  # noqa: var-naming[no-role-prefix]
+log_dir: "/var/log/registry"  # noqa: var-naming[no-role-prefix]
+max_csv_files: 7  # noqa: var-naming[no-role-prefix]
+max_log_files: 7  # noqa: var-naming[no-role-prefix]
+auto_embed: 1  # noqa: var-naming[no-role-prefix]
+starter_force: 0  # noqa: var-naming[no-role-prefix]
+starter_max_wait: 180  # noqa: var-naming[no-role-prefix]
 
 # Timezone
-gisp_timezone: "Europe/Moscow"
+timezone: "Europe/Moscow"  # noqa: var-naming[no-role-prefix]
 
 # Registry settings
-gisp_node_name: "registry-node-1"
-
-# Cron schedules
-gisp_import_schedule: "5 0 * * *"
-gisp_maintenance_schedule: "0 5 * * *"
+node_name: "registry-node-1"  # noqa: var-naming[no-role-prefix]
 
 # Embeddings worker
-gisp_embeddings_batch_size: 200
-gisp_embeddings_shard_index: 0
-gisp_embeddings_shard_count: 1
+embeddings_batch_size: 200  # noqa: var-naming[no-role-prefix]
+embeddings_shard_index: 0  # noqa: var-naming[no-role-prefix]
+embeddings_shard_count: 1  # noqa: var-naming[no-role-prefix]
 
 # Worker flags
-gisp_force: 0
-gisp_dry_run: 0
-gisp_source_files: ""
-gisp_embed_ids: ""
-gisp_limit: ""
-gisp_extra_embed_args: ""
-gisp_semantic_url_override: ""
+force: 0  # noqa: var-naming[no-role-prefix]
+dry_run: 0  # noqa: var-naming[no-role-prefix]
+source_files: ""  # noqa: var-naming[no-role-prefix]
+embed_ids: ""  # noqa: var-naming[no-role-prefix]
+limit: ""  # noqa: var-naming[no-role-prefix]
+extra_embed_args: ""  # noqa: var-naming[no-role-prefix]
+semantic_url_override: ""  # noqa: var-naming[no-role-prefix]
