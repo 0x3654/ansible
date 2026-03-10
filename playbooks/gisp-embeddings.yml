@@ -29,7 +29,8 @@
         rm -f /tmp/gisp_embeddings_output.txt
       args:
         executable: /bin/bash
-      ignore_errors: true
+      changed_when: false
+      failed_when: false
       when: embeddings_result.rc != 0
 
     - name: Fail if embeddings container failed

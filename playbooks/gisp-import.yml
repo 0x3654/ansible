@@ -12,6 +12,7 @@
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       register: import_result
       failed_when: false
+      changed_when: import_result.rc == 0
 
     - name: Show import results
       ansible.builtin.debug:
@@ -36,7 +37,8 @@
         fi
       args:
         executable: /bin/bash
-      ignore_errors: true
+      changed_when: false
+      failed_when: false
 
     - name: Remove temp file
       ansible.builtin.file:
