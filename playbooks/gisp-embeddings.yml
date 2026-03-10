@@ -11,7 +11,28 @@
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       register: embeddings_result
+      failed_when: false
+      changed_when: false
 
     - name: Show embeddings results
       ansible.builtin.debug:
         var: embeddings_result
+
+    - name: Send Telegram notification on failure
+      ansible.builtin.shell: |
+        set -a
+        . "{{ gisp_project_src }}/.env"
+        set +a
+        . "{{ gisp_project_src }}/send_telegram.sh"
+        printf '%s\n%s' "{{ embeddings_result.stdout }}" "{{ embeddings_result.stderr }}" > /tmp/gisp_embeddings_output.txt
+        send_heartbeat "❌ <b>GISP Embeddings</b> завершился с ошибкой (код {{ embeddings_result.rc }})" "/tmp/gisp_embeddings_output.txt"
+        rm -f /tmp/gisp_embeddings_output.txt
+      args:
+        executable: /bin/bash
+      ignore_errors: true
+      when: embeddings_result.rc != 0
+
+    - name: Fail if embeddings container failed
+      ansible.builtin.fail:
+        msg: "Embeddings container exited with code {{ embeddings_result.rc }}"
+      when: embeddings_result.rc != 0
