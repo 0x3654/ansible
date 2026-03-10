@@ -29,7 +29,7 @@
         set -a
         . "{{ gisp_project_src }}/.env"
         set +a
-        . "{{ gisp_project_src }}/send_telegram.sh"
+        . "{{ gisp_project_src }}/scripts/send_telegram.sh"
         if [ "{{ import_result.rc }}" -eq 0 ]; then
           send_heartbeat "✅ <b>GISP Import</b> завершён успешно" "/tmp/gisp_import_output.txt"
         else
