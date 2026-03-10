@@ -5,12 +5,9 @@
   gather_facts: false
   tasks:
     - name: Run import container
-      community.docker.docker_compose_v2:
-        project_src: "{{ gisp_project_src }}"
-        services:
-          - import
-        run: rm
-        state: present
+      ansible.builtin.command:
+        cmd: docker compose run --rm import
+        chdir: "{{ gisp_project_src }}"
       register: import_result
 
     - name: Show import results

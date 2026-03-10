@@ -5,12 +5,9 @@
   gather_facts: false
   tasks:
     - name: Run downloader container
-      community.docker.docker_compose_v2:
-        project_src: "{{ gisp_project_src }}"
-        services:
-          - downloader
-        run: rm
-        state: present
+      ansible.builtin.command:
+        cmd: docker compose run --rm downloader
+        chdir: "{{ gisp_project_src }}"
       register: downloader_result
 
     - name: Show downloader results
