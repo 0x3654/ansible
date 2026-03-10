@@ -1,6 +1,6 @@
 [submodule "inventory"]
 	path = inventory
-	url = https://github.com/0x3654/ansible-inventory.git
+	url = git@github.com:0x3654/ansible-inventory.git
 [submodule "3x-ui-sub"]
 	path = roles/subnginx3xui/files/3x-ui-sub
 	url = https://github.com/0x3654/nginx-3x-ui-subscription-proxy.git

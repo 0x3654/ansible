@@ -67,6 +67,7 @@
                 - /root/.trae-server
                 - /root/.cursor-server
                 - /root/.zed_server
+                - /root/.local/share/zed
 
             - name: Find old logs
               ansible.builtin.find:
@@ -123,6 +124,45 @@
                 - name: Remove builder cache
                   ansible.builtin.command: docker builder prune -a -f
                   changed_when: false
+
+                - name: Get all container JSON log files
+                  ansible.builtin.find:
+                    paths: /var/lib/docker/containers
+                    patterns: '*-json.log'
+                    file_type: file
+                  register: docker_log_files
+                  changed_when: false
+
+                - name: Truncate large Docker log files (>10M)
+                  ansible.builtin.shell: |
+                    set -o pipefail
+                    size=$(du -b {{ item.path }} | awk '{print $1}')
+                    if [ "$size" -gt 10485760 ]; then
+                      truncate -s 0 {{ item.path }}
+                      echo "Truncated {{ item.path }} (was $size bytes)"
+                    fi
+                  loop: "{{ docker_log_files.files }}"
+                  changed_when: false
+                  args:
+                    executable: /bin/bash
+
+                - name: Find and truncate large monitoring logs in Docker volumes
+                  ansible.builtin.find:
+                    paths: /var/lib/docker/volumes
+                    patterns: '*.log'
+                    file_type: file
+                    size: 10m
+                  register: docker_volume_logs
+                  changed_when: false
+
+                - name: Truncate large Docker volume logs
+                  ansible.builtin.shell: |
+                    truncate -s 0 {{ item.path }}
+                  loop: "{{ docker_volume_logs.files }}"
+                  when: docker_volume_logs.files | length > 0
+                  changed_when: false
+                  args:
+                    executable: /bin/bash
 
             - name: Get current kernel version
               ansible.builtin.command: uname -r
