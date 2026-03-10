@@ -1,0 +1,17 @@
+---
+# GISP Embeddings - Recompute semantic embeddings
+- name: GISP Embeddings
+  hosts: gisp_role
+  gather_facts: false
+  tasks:
+    - name: Run embeddings-worker container
+      ansible.builtin.command:
+        cmd: docker compose --profile embeddings run --rm embeddings-worker
+        chdir: "{{ gisp_project_src }}"
+      environment:
+        PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+      register: embeddings_result
+
+    - name: Show embeddings results
+      ansible.builtin.debug:
+        var: embeddings_result

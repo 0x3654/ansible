@@ -11,7 +11,39 @@
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       register: import_result
+      failed_when: false
 
     - name: Show import results
       ansible.builtin.debug:
         var: import_result
+
+    - name: Write import output to temp file
+      ansible.builtin.copy:
+        content: "{{ import_result.stdout }}\n{{ import_result.stderr }}"
+        dest: /tmp/gisp_import_output.txt
+        mode: '0644'
+
+    - name: Send Telegram notification
+      ansible.builtin.shell: |
+        set -a
+        . "{{ gisp_project_src }}/.env"
+        set +a
+        . "{{ gisp_project_src }}/send_telegram.sh"
+        if [ "{{ import_result.rc }}" -eq 0 ]; then
+          send_heartbeat "✅ <b>GISP Import</b> завершён успешно" "/tmp/gisp_import_output.txt"
+        else
+          send_heartbeat "❌ <b>GISP Import</b> завершился с ошибкой (код {{ import_result.rc }})" "/tmp/gisp_import_output.txt"
+        fi
+      args:
+        executable: /bin/bash
+      ignore_errors: true
+
+    - name: Remove temp file
+      ansible.builtin.file:
+        path: /tmp/gisp_import_output.txt
+        state: absent
+
+    - name: Fail if import container failed
+      ansible.builtin.fail:
+        msg: "Import container exited with code {{ import_result.rc }}"
+      when: import_result.rc != 0
