@@ -1,0 +1,12 @@
+---
+- name: Configure nginx proxy for semaphore
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ semaphore_domain_name }}"
+    common_nginx_site_name: semaphore
+    common_nginx_backend_port: "{{ semaphore_port }}"
+    common_nginx_ssl_cert: "{{ semaphore_cert_path }}/live/{{ semaphore_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ semaphore_cert_path }}/live/{{ semaphore_domain_name }}/privkey.pem"
+  tags: [nginx]

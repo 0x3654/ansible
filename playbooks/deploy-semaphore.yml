@@ -1,0 +1,28 @@
+---
+- name: Deploy Semaphore
+  hosts: semaphore_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include semaphore role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/semaphore/vars/main.yml"
+        - "{{ ansible_roles_path }}/semaphore/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/secrets.yml"
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      tags: [always]
+
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run semaphore role tasks
+      ansible.builtin.include_role:
+        name: semaphore
+      tags: [semaphore]

@@ -1,0 +1,34 @@
+---
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
+  - docker-ce
+  - docker-compose-plugin
+  - certbot
+  - nginx
+
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: false  # noqa: var-naming[no-role-prefix]
+
+# User and paths (universal DRY variables for easy role copy)
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/server"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+
+# Variables for common role integration
+files_source_dir: "{{ role_path }}/files/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+deploy_path: "/server/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+
+# File permissions
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]
+
+# Semaphore config (see vars/secrets.yml for sensitive data)
+semaphore_domain_name: "semaphore.0x3654.com"  # noqa: var-naming[no-role-prefix]
+semaphore_port: "3210"  # noqa: var-naming[no-role-prefix]
+semaphore_web_root: "https://{{ semaphore_domain_name }}"  # noqa: var-naming[no-role-prefix]
+semaphore_admin: "admin"  # noqa: var-naming[no-role-prefix]
+semaphore_admin_name: "Admin"  # noqa: var-naming[no-role-prefix]
+semaphore_admin_email: "admin@localhost"  # noqa: var-naming[no-role-prefix]
+semaphore_cert_path: "{{ pwd }}/certbot"  # noqa: var-naming[no-role-prefix]
