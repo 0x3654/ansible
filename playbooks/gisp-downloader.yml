@@ -10,7 +10,6 @@
         chdir: "{{ gisp_project_src }}"
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        DOCKER_CONFIG: "/Users/m/.docker-ci"
       register: downloader_result
       failed_when: false
       changed_when: false
