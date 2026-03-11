@@ -54,6 +54,9 @@ auto_embed: 1  # noqa: var-naming[no-role-prefix]
 starter_force: 0  # noqa: var-naming[no-role-prefix]
 starter_max_wait: 180  # noqa: var-naming[no-role-prefix]
 
+# Downloader
+download_method: "direct"  # noqa: var-naming[no-role-prefix]
+
 # Timezone
 timezone: "Europe/Moscow"  # noqa: var-naming[no-role-prefix]
 

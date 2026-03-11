@@ -9,11 +9,18 @@
     - docker down gisp
     - docker up gisp
 
-- name: Create .env from .env.example
+- name: Check if .env exists
+  ansible.builtin.stat:
+    path: "{{ path }}/.env"
+  register: gisp_env_stat
+  tags: [filescopy]
+
+- name: Create .env from .env.example (first deploy only)
   ansible.builtin.template:
     src: "{{ role_path }}/files/gisp/.env.example"
     dest: "{{ path }}/.env"
     mode: "0600"
+  when: not gisp_env_stat.stat.exists
   tags: [filescopy]
   notify:
     - docker down gisp
