@@ -45,3 +45,6 @@ manage:
 
 gisp:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/deploy-gisp.yml --limit $(or $(h),all)
+
+semaphore:
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/deploy-semaphore.yml --limit $(or $(h),all)
