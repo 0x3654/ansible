@@ -48,6 +48,9 @@
     mode: "{{ file_mode }}"
     force: false
   tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp
 
 - name: Copy webui database from example (skips if already exists)
   ansible.builtin.copy:
@@ -56,3 +59,6 @@
     mode: "{{ file_mode }}"
     force: false
   tags: [filescopy]
+  notify:
+    - docker down gisp
+    - docker up gisp

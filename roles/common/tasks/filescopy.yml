@@ -40,8 +40,8 @@
       ansible.builtin.file:
         path: '{{ common_path }}/{{ directory.path }}'
         state: directory
-        owner: '{{ ansible_user | d("root") }}'
-        group: '{{ ansible_user | d("root") }}'
+        owner: '{{ common_folder_user_uid | default(0) }}'
+        group: '{{ common_folder_user_gid | default(0) }}'
         mode: "{{ common_directory_mode | default('0755') }}"
       with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       loop_control:
@@ -51,34 +51,57 @@
         - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'
 
-    - name: Copy files
+    - name: Copy files with standard ownership
+      vars:
+        path_parts: >-
+          {{ file.path.split('/')[0] + '/' + file.path.split('/')[1]
+             if '/' in file.path else file.path }}
+        is_special_path: >-
+          {{ common_special_ownership is defined and
+             (common_special_ownership | selectattr('path', 'search', path_parts)
+             | list | length > 0) }}
       when:
         - file.state == 'file'
         - not file.path.endswith('.DS_Store')
+        - not is_special_path
       ansible.builtin.template:
         src: '{{ file.src }}'
-        dest: >-
-          {{ common_path }}/{{ file.path }}
+        dest: '{{ common_path }}/{{ file.path | regex_replace("\.j2$", "") }}'
+        owner: "{{ common_folder_user_uid | default(ansible_user) | default('root') }}"
+        group: "{{ common_folder_user_gid | default(ansible_user) | default('root') }}"
         mode: "{{ file.mode | d(common_file_mode | default('0644')) }}"
-      with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       loop_control:
         loop_var: file
+      with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       notify:
         - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'
 
-    - name: Set files permissions
+    - name: Copy files with special ownership
+      vars:
+        path_parts: >-
+          {{ file.path.split('/')[0] + '/' + file.path.split('/')[1]
+             if '/' in file.path else file.path }}
+        special_owner: >-
+          {{ common_special_ownership | selectattr('path', 'search', path_parts)
+             | map(attribute='owner') | first }}
+        special_group: >-
+          {{ common_special_ownership | selectattr('path', 'search', path_parts)
+             | map(attribute='group') | first }}
       when:
         - file.state == 'file'
         - not file.path.endswith('.DS_Store')
-      ansible.builtin.file:
-        path: '{{ common_path }}/{{ file.path }}'
-        owner: '{{ ansible_user | d("root") }}'
-        group: '{{ ansible_user | d("root") }}'
+        - common_special_ownership is defined
+        - special_owner is defined
+      ansible.builtin.template:
+        src: '{{ file.src }}'
+        dest: '{{ common_path }}/{{ file.path | regex_replace("\.j2$", "") }}'
+        owner: "{{ special_owner }}"
+        group: "{{ special_group }}"
         mode: "{{ file.mode | d(common_file_mode | default('0644')) }}"
-      with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       loop_control:
         loop_var: file
+      with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       notify:
         - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'

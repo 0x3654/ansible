@@ -4,9 +4,38 @@
   changed_when: false
   run_once: true
 
-- name: Check which rules are missing
+- name: Extract ports from current iptables rules
   ansible.builtin.set_fact:
-    common_missing_rules: "{{ common_required_rules | difference(common_current_rules.stdout_lines) }}"
+    common_current_ports: >-
+      {{
+        common_current_rules.stdout_lines |
+        select('search', '--dport') |
+        map('regex_replace', '.*--dport\\s+([^\\s]+).*', '\\1') |
+        list
+      }}
+
+- name: Build port -> rule map from required rules
+  ansible.builtin.set_fact:
+    common_required_ports_map: >-
+      {% set result = {} %}
+      {% for rule in common_required_rules %}
+      {%   if '--dport' in rule %}
+      {%     set port = rule | regex_replace('.*--dport\\s+([^\\s]+).*', '\\1') %}
+      {%     set _ = result.update({port: rule}) %}
+      {%   endif %}
+      {% endfor %}
+      {{ result }}
+
+- name: Check which rules are missing (by port comparison)
+  ansible.builtin.set_fact:
+    common_missing_rules: >-
+      {% set missing = [] %}
+      {% for port, rule in common_required_ports_map.items() %}
+      {%   if port not in common_current_ports %}
+      {%     set _ = missing.append(rule) %}
+      {%   endif %}
+      {% endfor %}
+      {{ missing }}
     common_extra_rules: "{{ common_prohibited_rules | intersect(common_current_rules.stdout_lines) }}"
 
 - name: Add missing iptables rules

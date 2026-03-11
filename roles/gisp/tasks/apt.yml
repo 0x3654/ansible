@@ -5,4 +5,4 @@
     tasks_from: apt.yml
   tags: [apt, upgrade]
   vars:
-    common_required_packages: "{{ gisp_required_packages }}"
+    common_required_packages: "{{ required_packages }}"

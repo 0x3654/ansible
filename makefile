@@ -27,7 +27,7 @@ fix-dns:
 	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/fix-dns.yml -e "target_hosts=$(or $(h),all)"
 
 init-new-server:
-	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/init-new-server.yml -k -e "target_hosts=$(or $(h),all)"
+	$(ANSIBLE_ENV) ansible-playbook -i inventory/inventory.yml playbooks/init-new-server.yml -e "target_hosts=$(or $(h),all)"
 
 diskspace-cleanup:
 	ANSIBLE_STDOUT_CALLBACK=default ANSIBLE_DISPLAY_SKIPPED_HOSTS=False ansible-playbook -i inventory/inventory.yml playbooks/maint-diskspace.yml -e "target_hosts=$(or $(h),all)"
