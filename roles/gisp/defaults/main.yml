@@ -60,8 +60,6 @@ download_method: "direct"  # noqa: var-naming[no-role-prefix]
 # Timezone
 timezone: "Europe/Moscow"  # noqa: var-naming[no-role-prefix]
 
-# Registry settings
-node_name: "registry-node-1"  # noqa: var-naming[no-role-prefix]
 
 # Embeddings worker
 embeddings_batch_size: 200  # noqa: var-naming[no-role-prefix]
