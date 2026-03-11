@@ -14,9 +14,9 @@
       failed_when: false
       changed_when: false
 
-    - name: Show embeddings results
+    - name: Show embeddings output
       ansible.builtin.debug:
-        var: embeddings_result
+        msg: "{{ embeddings_result.stdout }}"
 
     - name: Send Telegram notification on failure
       ansible.builtin.shell: |
@@ -24,7 +24,7 @@
         . "{{ gisp_project_src }}/.env"
         set +a
         . "{{ gisp_project_src }}/scripts/send_telegram.sh"
-        printf '%s\n%s' "{{ embeddings_result.stdout }}" "{{ embeddings_result.stderr }}" > /tmp/gisp_embeddings_output.txt
+        printf '%s' "{{ embeddings_result.stdout }}" > /tmp/gisp_embeddings_output.txt
         send_heartbeat "❌ <b>GISP Embeddings</b> завершился с ошибкой (код {{ embeddings_result.rc }})" "/tmp/gisp_embeddings_output.txt"
         rm -f /tmp/gisp_embeddings_output.txt
       args:

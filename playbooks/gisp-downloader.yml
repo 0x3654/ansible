@@ -14,9 +14,9 @@
       failed_when: false
       changed_when: false
 
-    - name: Show downloader results
+    - name: Show downloader output
       ansible.builtin.debug:
-        var: downloader_result
+        msg: "{{ downloader_result.stdout }}"
 
     - name: Send Telegram notification on failure
       ansible.builtin.shell: |
@@ -24,7 +24,7 @@
         . "{{ gisp_project_src }}/.env"
         set +a
         . "{{ gisp_project_src }}/scripts/send_telegram.sh"
-        printf '%s\n%s' "{{ downloader_result.stdout }}" "{{ downloader_result.stderr }}" > /tmp/gisp_downloader_output.txt
+        printf '%s' "{{ downloader_result.stdout }}" > /tmp/gisp_downloader_output.txt
         send_heartbeat "❌ <b>GISP Downloader</b> завершился с ошибкой (код {{ downloader_result.rc }})" "/tmp/gisp_downloader_output.txt"
         rm -f /tmp/gisp_downloader_output.txt
       args:

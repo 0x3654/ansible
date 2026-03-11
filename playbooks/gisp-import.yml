@@ -14,13 +14,13 @@
       failed_when: false
       changed_when: import_result.rc == 0
 
-    - name: Show import results
+    - name: Show import output
       ansible.builtin.debug:
-        var: import_result
+        msg: "{{ import_result.stdout }}"
 
     - name: Write import output to temp file
       ansible.builtin.copy:
-        content: "{{ import_result.stdout }}\n{{ import_result.stderr }}"
+        content: "{{ import_result.stdout }}"
         dest: /tmp/gisp_import_output.txt
         mode: '0644'
 
