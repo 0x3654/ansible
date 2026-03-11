@@ -13,15 +13,6 @@
   failed_when: false
   listen: docker down gisp
 
-- name: Docker pull gisp
-  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} pull"
-  args:
-    chdir: "{{ path }}"
-  register: gisp_compose_pull_result
-  changed_when: gisp_compose_pull_result.stdout is search('Pull complete')
-  failed_when: false
-  listen: docker up gisp
-
 - name: Docker up gisp
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
