@@ -6,7 +6,7 @@
   tasks:
     - name: Run import container
       ansible.builtin.command:
-        cmd: docker compose run --rm import
+        cmd: docker compose run --rm --pull always import
         chdir: "{{ gisp_project_src }}"
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"

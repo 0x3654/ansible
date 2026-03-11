@@ -6,7 +6,7 @@
   tasks:
     - name: Run downloader container
       ansible.builtin.command:
-        cmd: docker compose run --rm downloader
+        cmd: docker compose run --rm --pull always downloader
         chdir: "{{ gisp_project_src }}"
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"

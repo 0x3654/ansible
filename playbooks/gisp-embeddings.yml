@@ -6,7 +6,7 @@
   tasks:
     - name: Run embeddings-worker container
       ansible.builtin.command:
-        cmd: docker compose --profile embeddings run --rm embeddings-worker
+        cmd: docker compose --profile embeddings run --rm --pull always embeddings-worker
         chdir: "{{ gisp_project_src }}"
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
