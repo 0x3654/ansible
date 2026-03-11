@@ -1,6 +1,6 @@
 ---
 - name: Cleanup When Low on Disk Space
-  hosts: "{{ target_hosts | default('all') }}"
+  hosts: "{{ target_hosts | default('all:!macbook') }}"
   become: true
   vars:
     disk_path: /
