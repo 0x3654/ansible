@@ -28,13 +28,13 @@
 - name: Check which rules are missing (by port comparison)
   ansible.builtin.set_fact:
     common_missing_rules: >-
-      {% set missing = [] %}
-      {% for port, rule in common_required_ports_map.items() %}
-      {%   if port not in common_current_ports %}
-      {%     set _ = missing.append(rule) %}
-      {%   endif %}
-      {% endfor %}
-      {{ missing }}
+      {{
+        common_required_ports_map |
+        dict2items |
+        rejectattr('key', 'in', common_current_ports) |
+        map(attribute='value') |
+        list
+      }}
     common_extra_rules: "{{ common_prohibited_rules | intersect(common_current_rules.stdout_lines) }}"
 
 - name: Add missing iptables rules
