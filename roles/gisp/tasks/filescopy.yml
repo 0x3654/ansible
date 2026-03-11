@@ -2,7 +2,7 @@
 - name: Copy docker compose file from gisp submodule
   ansible.builtin.copy:
     src: "{{ role_path }}/files/gisp/compose.yaml"
-    dest: "{{ path }}/docker-compose.yaml"
+    dest: "{{ path }}/compose.yaml"
     mode: "{{ file_mode }}"
   tags: [filescopy]
   notify:
