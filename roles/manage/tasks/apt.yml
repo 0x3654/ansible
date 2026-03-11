@@ -5,5 +5,5 @@
     tasks_from: apt.yml
   tags: [apt, upgrade]
   vars:
-    common_required_packages: "{{ manage_required_packages }}"
-    install_docker_repo: "{{ manage_install_docker_repo }}"  # noqa: var-naming[no-role-prefix]
+    common_required_packages: "{{ required_packages }}"
+    common_install_docker_repo: "{{ install_docker_repo }}"

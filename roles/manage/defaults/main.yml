@@ -1,32 +1,26 @@
 ---
-manage_required_packages:
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
 
-# Управление установкой Docker репозитория
-manage_install_docker_repo: true
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: false  # noqa: var-naming[no-role-prefix]
 
-# Parameters for repository update control
-manage_update_repo: true
-manage_force_repo_update: false
+# User and paths (universal DRY variables for easy role copy)
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/server"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
-# user for folders permission
-manage_folder_user: "{{ ansible_user | d('root') }}"
+# Variables for common role integration
+files_source_dir: "{{ role_path }}/files/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+deploy_path: "/server/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
-# Manage stack paths
-manage_pwd: "/server"
-manage_path: "{{ manage_pwd }}/manage"
-manage_directory_mode: "0755"
-manage_file_mode: "0644"
+# File permissions
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 
-# Compose command
-manage_compose_command: docker compose
-
-# Beszel config (for compose template)
-manage_beszel_port: "45876"
-manage_beszel_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKZ7FIybKNiZfAg21YS8iOBIjzvdwT4V15SAmFb/p27y"
-
-# Watchtower config (for compose template)
-manage_watchtower_tg_wt_bot_token: ""
-manage_watchtower_tg_wt_chat_id: ""
-manage_watchtower_timezone: "Asia/Tbilisi"
+# Beszel config (see vars/secrets.yml for sensitive data)
+beszel_port: "45876"  # noqa: var-naming[no-role-prefix]

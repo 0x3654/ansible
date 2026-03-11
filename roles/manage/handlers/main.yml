@@ -1,23 +1,24 @@
 ---
 # Handlers for manage stack (beszel + watchtower)
-- name: Docker down manage
-  ansible.builtin.command: "{{ manage_compose_command | default('docker compose') }} down"
+- name: docker down {{ ansible_role_name | basename }}  # noqa: name[casing]
+  ansible.builtin.command: "{{ compose_command | default('docker compose') }} down"
   args:
-    chdir: "{{ manage_path }}"
-  register: manage_compose_down_result
+    chdir: "{{ path }}"
+  register: compose_down_result  # noqa: var-naming[no-role-prefix]
   changed_when: >-
-    manage_compose_down_result.stdout is search('Removing')
-    or manage_compose_down_result.stdout is search('Stopped')
+    compose_down_result.stdout is search('Removing')
+    or compose_down_result.stdout is search('Stopped')
   failed_when: false
   listen: docker down manage
 
-- name: Docker up manage
-  ansible.builtin.command: "{{ manage_compose_command | default('docker compose') }} up -d"
+- name: docker up {{ ansible_role_name | basename }}  # noqa: name[casing]
+  ansible.builtin.command: >-
+    {{ compose_command | default('docker compose') }} up -d
   args:
-    chdir: "{{ manage_path }}"
-  register: manage_compose_up_result
+    chdir: "{{ path }}"
+  register: compose_up_result  # noqa: var-naming[no-role-prefix]
   changed_when: >-
-    manage_compose_up_result.stdout is search('Creating')
-    or manage_compose_up_result.stdout is search('Recreating')
-    or manage_compose_up_result.stdout is search('Starting')
+    compose_up_result.stdout is search('Creating')
+    or compose_up_result.stdout is search('Recreating')
+    or compose_up_result.stdout is search('Starting')
   listen: docker up manage

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: manage
+  author: "0x3654"
+  description: Management services (Beszel, Watchtower)
+  license: MIT
+  min_ansible_version: "2.9"
+
+collections:
+  - community.general

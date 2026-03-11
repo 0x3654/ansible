@@ -1,8 +1,28 @@
 services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: semaphore-tailscale
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      TS_AUTHKEY: "{{semaphore_tailscale_authkey}}"
+      TS_HOSTNAME: "semaphore"
+      TS_STATE_DIR: /var/lib/tailscale
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    ports:
+      - "127.0.0.1:{{semaphore_port}}:3000"
+
   semaphore:
     image: docker.io/semaphoreui/semaphore:latest
     container_name: semaphore
     restart: unless-stopped
+    network_mode: "service:tailscale"
+    depends_on:
+      - tailscale
     environment:
       SEMAPHORE_ADMIN: "{{semaphore_admin}}"
       SEMAPHORE_ADMIN_PASSWORD: "{{semaphore_admin_password}}"
@@ -14,5 +34,6 @@ services:
       SEMAPHORE_DB_PATH: /var/lib/semaphore
     volumes:
       - ./data:/var/lib/semaphore
-    ports:
-      - "127.0.0.1:{{semaphore_port}}:3000"
+
+volumes:
+  tailscale-state:
