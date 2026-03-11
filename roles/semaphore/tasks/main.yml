@@ -39,8 +39,8 @@
   ansible.builtin.file:
     path: "{{ path }}/data"
     state: directory
-    owner: "{{ folder_user }}"
-    group: "{{ folder_user }}"
+    owner: "{{ semaphore_container_uid }}"
+    group: "{{ semaphore_container_uid }}"
     mode: "{{ directory_mode }}"
   when: not semaphore_db_stat.stat.exists
   tags: [filescopy]
@@ -49,8 +49,8 @@
   ansible.builtin.copy:
     src: "{{ role_path }}/files/database.sqlite"
     dest: "{{ path }}/data/database.sqlite"
-    owner: "{{ folder_user }}"
-    group: "{{ folder_user }}"
+    owner: "{{ semaphore_container_uid }}"
+    group: "{{ semaphore_container_uid }}"
     mode: "0644"
   when: not semaphore_db_stat.stat.exists
   tags: [filescopy]

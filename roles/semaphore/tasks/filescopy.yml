@@ -1,8 +1,6 @@
 ---
 - name: Include common file copy tasks
-  ansible.builtin.include_role:
-    name: common
-    tasks_from: filescopy.yml
+  ansible.builtin.import_tasks: ../common/tasks/filescopy.yml
   vars:
     common_up_handler_name: "docker up {{ ansible_role_name | basename }}"
     common_down_handler_name: "docker down {{ ansible_role_name | basename }}"
