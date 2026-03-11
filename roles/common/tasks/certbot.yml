@@ -88,6 +88,12 @@
       (lookup('vars', 'common_cert_needs_renewal_' + common_cert_domain | regex_replace('[^a-zA-Z0-9]', '_')))
   tags: [ssl, certbot]
   block:
+    - name: Stop nginx before certbot
+      ansible.builtin.service:
+        name: nginx
+        state: stopped
+      failed_when: false
+
     - name: Temporarily open port 80 for certbot
       ansible.builtin.include_tasks: firewall.yml
       vars:
@@ -119,3 +125,10 @@
 
     - name: Send Telegram notification
       ansible.builtin.include_tasks: telegram-notify.yml
+
+  always:
+    - name: Start nginx after certbot
+      ansible.builtin.service:
+        name: nginx
+        state: started
+      failed_when: false
