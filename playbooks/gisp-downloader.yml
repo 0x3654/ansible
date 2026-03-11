@@ -16,7 +16,7 @@
 
     - name: Show downloader output
       ansible.builtin.debug:
-        msg: "{{ downloader_result.stdout }}"
+        msg: "stdout: {{ downloader_result.stdout }} | stderr: {{ downloader_result.stderr }}"
 
     - name: Send Telegram notification on failure
       ansible.builtin.shell: |
