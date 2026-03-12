@@ -7,7 +7,13 @@
   vars:
     semaphore_db_path: /var/lib/semaphore/database.sqlite
     semaphore_db_tmp: /tmp/semaphore_backup.sqlite
-    backup_dir: "{{ hostvars['mba']['semaphore_backup_local_dir'] }}/{{ ansible_host }}"
+    backup_dir: "{{ semaphore_backup_local_dir }}/{{ ansible_host }}"
+
+  pre_tasks:
+    - name: Load local host vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/mba.yml"
+      failed_when: false
+      tags: [always]
 
   tasks:
     - name: Create consistent SQLite backup
