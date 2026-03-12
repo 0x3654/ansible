@@ -12,6 +12,7 @@ services:
       TS_HOSTNAME: "vps-semaphore"
       TS_STATE_DIR: /var/lib/tailscale
       TS_USERSPACE: "false"
+      TS_ACCEPT_DNS: "true"
     volumes:
       - tailscale-state:/var/lib/tailscale
     ports:
@@ -35,7 +36,6 @@ services:
       SEMAPHORE_DB_PATH: /var/lib/semaphore
     volumes:
       - ./data:/var/lib/semaphore
-      - ./resolv.conf:/etc/resolv.conf:ro
 
 volumes:
   tailscale-state:

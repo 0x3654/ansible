@@ -1,3 +1,2 @@
 vars/secrets.yml
 files/database.sqlite
-files/semaphore/resolv.conf
