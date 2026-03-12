@@ -2,7 +2,6 @@
 - name: Backup Semaphore database to MBA
   hosts: semaphore_role
   gather_facts: true
-  connection: local
 
   vars:
     semaphore_db_path: /var/lib/semaphore/database.sqlite
@@ -22,6 +21,7 @@
         src=sqlite3.connect('{{ semaphore_db_path }}');
         dst=sqlite3.connect('{{ semaphore_db_tmp }}');
         src.backup(dst); dst.close(); src.close()"
+      delegate_to: localhost
       changed_when: true
 
     - name: Ensure backup directory exists on MBA
@@ -44,3 +44,4 @@
       ansible.builtin.file:
         path: "{{ semaphore_db_tmp }}"
         state: absent
+      delegate_to: localhost
