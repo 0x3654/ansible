@@ -1,33 +1,38 @@
 ---
-- name: Backup Semaphore database
+- name: Backup Semaphore database to MBA
   hosts: semaphore_role
-  gather_facts: false
+  gather_facts: true
+  connection: local
 
   vars:
-    semaphore_db_path: /server/semaphore/data/database.sqlite
-    local_backup_dir: "{{ lookup('env', 'HOME') }}/code/docker/semaphore/vps_backup/{{ inventory_hostname }}"
+    semaphore_db_path: /var/lib/semaphore/database.sqlite
+    semaphore_db_tmp: /tmp/semaphore_backup.sqlite
+    backup_dir: "{{ hostvars['mba']['semaphore_backup_local_dir'] }}/{{ ansible_host }}"
 
   tasks:
-    - name: Ensure local backup directory exists
+    - name: Create consistent SQLite backup
+      ansible.builtin.shell: >
+        python3 -c "import sqlite3;
+        src=sqlite3.connect('{{ semaphore_db_path }}');
+        dst=sqlite3.connect('{{ semaphore_db_tmp }}');
+        src.backup(dst); dst.close(); src.close()"
+      changed_when: true
+
+    - name: Ensure backup directory exists on MBA
       ansible.builtin.file:
-        path: "{{ local_backup_dir }}"
+        path: "{{ backup_dir }}"
         state: directory
         mode: "0755"
-      delegate_to: localhost
+      delegate_to: mba
 
-    - name: Fetch semaphore database
-      ansible.builtin.fetch:
-        src: "{{ semaphore_db_path }}"
-        dest: "{{ local_backup_dir }}/database.sqlite"
-        flat: true
-        fail_on_missing: true
-
-    - name: Create timestamped backup copy
+    - name: Copy backup to MBA
       ansible.builtin.copy:
-        src: "{{ local_backup_dir }}/database.sqlite"
-        dest: "{{ local_backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
+        src: "{{ semaphore_db_tmp }}"
+        dest: "{{ backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
         mode: "0644"
-      delegate_to: localhost
-      vars:
-        ansible_date_time:
-          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+      delegate_to: mba
+
+    - name: Remove temporary backup
+      ansible.builtin.file:
+        path: "{{ semaphore_db_tmp }}"
+        state: absent
