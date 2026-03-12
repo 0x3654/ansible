@@ -5,6 +5,12 @@ ansible.code-workspace
 # System files
 .DS_Store
 Thumbs.db
+*.swp
+*~
+
+# Ansible artifacts
+.retry
+*.tmp
 
 # Environment files
 *.pem
@@ -28,11 +34,8 @@ data_*/**
 # Но оставляем .gitkeep в этих папках
 !data_*/.gitkeep
 
-# Исключаем файлы с секретами
-*.vault
-vault_password_file
-*secrets.yml
+# Ansible artifacts
+roles/semaphore/files/database.sqlite
 
-# исключаем host_vars кроме example
-/host_vars/*
-!/host_vars/example.yml
+# Исключаем файлы с секретами (незашифрованные)
+.vault

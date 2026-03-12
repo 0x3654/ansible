@@ -1,4 +1,4 @@
-# media binds vars
+# homelab host vars (micro/nano)
 homelab_media_binds:
   - /mnt/torrent:/mnt/torrent
   - /mnt/torrent2:/mnt/torrent2
@@ -6,10 +6,17 @@ homelab_media_binds:
   - /mnt/torrent4:/mnt/torrent4
   - /mnt/backup:/mnt/backup
 
-
-# plex mediaserver vars
 plex_claim: "claim-xxx123"
 plex_uid: 998
 plex_gid: 998
 nvidia_gpu_passthrough: true
 tsdproxy_enable: true
+
+# gisp downloader SSH key (dedicated key for SSH tunnel to ru2)
+# generate: ssh-keygen -t ed25519 -f gisp_downloader_key
+# encode:   base64 -i gisp_downloader_key | tr -d '\n'
+gisp_downloader_ssh_key_b64: "base64-encoded-private-key"
+
+# mba host vars
+gisp_project_src: /path/to/gisp
+semaphore_backup_local_dir: /path/to/semaphore/vps_backup
