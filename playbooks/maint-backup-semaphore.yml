@@ -30,6 +30,7 @@
         state: directory
         mode: "0755"
       delegate_to: mba
+      become: false
 
     - name: Copy backup to MBA
       ansible.builtin.copy:
@@ -37,6 +38,7 @@
         dest: "{{ backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
         mode: "0644"
       delegate_to: mba
+      become: false
 
     - name: Remove temporary backup
       ansible.builtin.file:
