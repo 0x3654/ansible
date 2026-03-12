@@ -1,0 +1,33 @@
+---
+- name: Backup Semaphore database
+  hosts: semaphore_role
+  gather_facts: false
+
+  vars:
+    semaphore_db_path: /server/semaphore/data/database.sqlite
+    local_backup_dir: "{{ lookup('env', 'HOME') }}/code/docker/semaphore/vps_backup/{{ inventory_hostname }}"
+
+  tasks:
+    - name: Ensure local backup directory exists
+      ansible.builtin.file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Fetch semaphore database
+      ansible.builtin.fetch:
+        src: "{{ semaphore_db_path }}"
+        dest: "{{ local_backup_dir }}/database.sqlite"
+        flat: true
+        fail_on_missing: true
+
+    - name: Create timestamped backup copy
+      ansible.builtin.copy:
+        src: "{{ local_backup_dir }}/database.sqlite"
+        dest: "{{ local_backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
+        mode: "0644"
+      delegate_to: localhost
+      vars:
+        ansible_date_time:
+          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
