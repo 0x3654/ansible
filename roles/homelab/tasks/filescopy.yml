@@ -10,3 +10,7 @@
     common_file_mode: "{{ homelab_file_mode }}"
     common_pwd: "{{ homelab_pwd }}"
     common_path: "{{ homelab_path }}"
+    common_special_ownership:
+      - path: 'torrent/data_transmission-rss'
+        owner: '1000'
+        group: '1000'

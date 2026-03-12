@@ -11,6 +11,18 @@
     state: present
     shell: /sbin/nologin
 
+- name: Ensure media group exists
+  ansible.builtin.group:
+    name: media
+    state: present
+    system: true
+
+- name: Add homelab user to media group
+  ansible.builtin.user:
+    name: "{{ homelab_samba_user }}"
+    groups: media
+    append: true
+
 - name: Ensure samba user is created
   ansible.builtin.command: "/usr/bin/smbpasswd -a -s {{ homelab_samba_user }}"
   args:
@@ -27,6 +39,31 @@
     group: root
     mode: '0644'
   notify: Restart samba
+
+- name: Find all files with incorrect ownership in media folders (exclude .part files)
+  ansible.builtin.shell:
+    cmd: "find {{ item.split(':')[0] }} -mindepth 1 \\! \\( -user {{ homelab_samba_user }} -a -group media -a -perm 2775 \\) -a \\! -name '*.part' -print0 2>/dev/null"
+  register: homelab_bad_files_list
+  loop: "{{ homelab_media_binds }}"
+  when:
+    - homelab_media_binds is defined
+    - item.split(':')[0] not in [homelab_transmission_watch_dir]
+  changed_when: homelab_bad_files_list.stdout | length > 0
+  failed_when: false
+  tags: [skip_ansible_lint_shell_without_pipefail]
+
+- name: Fix ownership and permissions on each bad file
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ homelab_samba_user }}"
+    group: media
+    mode: '2775'
+    recurse: false
+  loop: "{{ q('flattened', homelab_bad_files_list.results | selectattr('stdout', 'defined') | map(attribute='stdout') | map('split', '\0') | map('select') | list) }}"
+  when:
+    - homelab_media_binds is defined
+    - homelab_bad_files_list.results is defined
+    - item | length > 0
 
 - name: Ensure samba is started and enabled
   ansible.builtin.service:

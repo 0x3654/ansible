@@ -20,3 +20,8 @@
     or homelab_compose_up_result.stdout is search('Recreating')
     or homelab_compose_up_result.stdout is search('Starting')
   listen: docker up homelab
+
+- name: Restart samba
+  ansible.builtin.service:
+    name: smbd
+    state: restarted

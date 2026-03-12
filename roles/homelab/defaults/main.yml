@@ -13,6 +13,7 @@ homelab_force_repo_update: false
 
 # user for folders permission
 homelab_folder_user: "{{ role_name | basename }}"
+homelab_samba_user: "{{ role_name | basename }}"
 
 # Common paths
 homelab_pwd: "/server/"
@@ -30,12 +31,11 @@ homelab_tsdproxy_enable: true
 
 # transmisiion
 homelab_transmission_port: "9091"
-homelab_transmission_download_dir: "/mnt/torrent/"
+homelab_transmission_download_dir: "/mnt/torrent/movie"
 homelab_transmission_incomplete_dir: "/tmp"
 homelab_transmission_watch_dir: "/mnt/torrent/new"
 # transmisiion-rss
-homelab_trans_rss_download_path: "/mnt/torrent"
-homelab_trans_rss_url: "https://datalostfilmfeed.byalex.dev/rssfeeds/aa111fef-aa5d-4f43-8a34-191634420162.xml"
+homelab_trans_rss_download_path: "/mnt/torrent/tv show"
 homelab_trans_rss_update_interval: "600"
 # torrserver
 homelab_torrserverport: "8090"

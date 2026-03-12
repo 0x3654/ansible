@@ -14,14 +14,11 @@
    printing = cups
    printcap name = cups
    cups options = raw
-   create mask = 0774
-   directory mask = 0774
+   create mask = 0775
+   directory mask = 2775
    read only = no
    guest ok = no
    browseable = yes
-   valid users = {{ homelab_samba_user }}
-   force user = {{ homelab_samba_user }}
-   force group = {{ homelab_samba_user }}
 
 #======================= Shares =======================
 
@@ -29,4 +26,11 @@
 {% set sharename = inventory_hostname + '_' + bind.split(':')[1].split('/')[-1] %}
 [{{ sharename }}]
    path = {{ bind.split(':')[0] }}/
+   read only = no
+   browseable = yes
+   guest ok = no
+   valid users = {{ homelab_samba_user }}
+   force group = media
+   force create mode = 0775
+   force directory mode = 2775
 {% endfor %}
