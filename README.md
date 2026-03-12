@@ -1,6 +1,6 @@
 # Ansible Infrastructure
 
-> Управление инфраструктурой: VPS-серверы, homelab, MacBook, GISP-стек.
+> Управление инфраструктурой: VPS-серверы, homelab
 > Docker Compose на всех хостах, деплой через Ansible, расписания через Semaphore CI.
 
 ---
@@ -23,7 +23,7 @@ cp roles/<role>/vars/secrets.yml.example roles/<role>/vars/secrets.yml
 ## Запуск
 
 ```bash
-make deploy            # полный деплой — динамически собирает роли по inventory-группам (см. ниже)
+make deploy            # полный деплой — динамически собирает роли по inventory-группам
 make deploy h={host}   # конкретные хосты
 make deploy-vps        # только VPS
 make gisp              # деплой GISP стека
@@ -53,13 +53,13 @@ make cleanup           # очистка
 ```yaml
 gisp_role:
   hosts:
-    micro:
+    homelab1:
 
 vpnserver_role:
   hosts:
-    ae:
-    ae2:
-    es:
+    vps1:
+    vps2:
+    vps3:
 ```
 
 Добавить хост в роль = добавить его в нужную `_role`-группу. Плейбук подхватит автоматически, без правки плейбука.
@@ -77,14 +77,14 @@ ansible/
 ├── roles/
 │   ├── .template/      # скаффолд для новых ролей
 │   ├── common/         # переиспользуемые задачи: apt, filescopy, firewall, certbot
-│   ├── gisp/           # поиск по реестру Минпромторга (micro, GPU)
-│   ├── homelab/        # медиасервер, smarthome, торренты (nano)
+│   ├── gisp/           # поиск по реестру Минпромторга
+│   ├── homelab/        # медиасервер, smarthome, торренты
 │   ├── macbook/        # DevOps-окружение на MBA
 │   ├── manage/         # обновления, обслуживание серверов
-│   ├── semaphore/      # Semaphore CI (ae2)
-│   ├── subnginx3xui/   # nginx-прокси для 3x-ui подписок (es)
-│   ├── untilwall/      # untilwall (us2)
-│   └── vpnserver/      # VPN: 3x-ui/Xray + AmnesiaWG (все VPS)
+│   ├── semaphore/      # Semaphore CI
+│   ├── subnginx3xui/   # nginx-прокси для 3x-ui подписок
+│   ├── untilwall/      # untilwall
+│   └── vpnserver/      # VPN: 3x-ui/Xray + AmnesiaWG
 ├── configs/            # конфиги 3x-ui, AWG клиентов
 ├── ansible.cfg
 ├── makefile
@@ -121,17 +121,14 @@ cd .. && git add inventory && git commit -m "update inventory submodule" && git 
 | `nginx.yml` | установка и настройка nginx |
 | `telegram-notify.yml` | уведомления в Telegram |
 
-### `roles/.template` — скаффолд
+### `roles/.template` — роль шаблон с типовыми универсальными задачами
 
 Шаблон для новых ролей с готовой структурой задач и DRY-переменными в `defaults/main.yml`
 (`folder_user`, `path`, `files_source_dir`, `deploy_path` выводятся из имени роли автоматически).
 
 ```bash
 cp -r roles/.template roles/<new_role>
-# заменить {{ role_name }} на имя роли
 ```
-
-Стандартные теги: `apt` · `filescopy` · `firewall`
 
 ---
 
@@ -158,6 +155,5 @@ cp roles/<role>/vars/secrets.yml.example roles/<role>/vars/secrets.yml
 ## Документация по ролям
 
 - [gisp](roles/gisp/README.md) — GISP стек: downloader → import → embeddings
-- [homelab](roles/homelab/README.md) — homelab на nano
+- [homelab](roles/homelab/README.md) — homelab
 - [vpnserver](roles/vpnserver/README.md) — VPN серверы
-- [macbook](roles/macbook/README.md) — DevOps-окружение на MacBook
