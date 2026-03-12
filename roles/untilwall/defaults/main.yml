@@ -1,7 +1,8 @@
 ---
 # defaults file for untilwall
 
-untilwall_required_packages:
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
   - curl
@@ -12,24 +13,20 @@ untilwall_required_packages:
   - python3-setuptools
   - nginx
 
-# Управление установкой Docker репозитория
-untilwall_install_docker_repo: true
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: true  # noqa: var-naming[no-role-prefix]
 
-# Parameters for repository update control
-untilwall_update_repo: true
-untilwall_force_repo_update: true
-
-# user for folders permission
-untilwall_folder_user: "{{ role_name | basename }}"
-
-# Common paths
-untilwall_pwd: "/untilwall"
-untilwall_path: "{{ untilwall_pwd }}"
+# User and paths
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/untilwall"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}"  # noqa: var-naming[no-role-prefix]
 untilwall_cert_path: "/server/certbot"
 
 # File permissions
-untilwall_directory_mode: "0755"
-untilwall_file_mode: "0600"
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0600"  # noqa: var-naming[no-role-prefix]
 
 # Domain name for untilwall
 untilwall_domain_name: "untilwall.0x3654.com"

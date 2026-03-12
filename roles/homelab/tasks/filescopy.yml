@@ -5,11 +5,11 @@
     common_up_handler_name: "docker up homelab"
     common_down_handler_name: "docker down homelab"
     common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/homelab/files/homelab"
-    common_folder_user: "{{ homelab_folder_user }}"
-    common_directory_mode: "{{ homelab_directory_mode }}"
-    common_file_mode: "{{ homelab_file_mode }}"
-    common_pwd: "{{ homelab_pwd }}"
-    common_path: "{{ homelab_path }}"
+    common_folder_user: "{{ folder_user }}"
+    common_directory_mode: "{{ directory_mode }}"
+    common_file_mode: "{{ file_mode }}"
+    common_pwd: "{{ pwd }}"
+    common_path: "{{ path }}"
     common_special_ownership:
       - path: 'torrent/data_transmission-rss'
         owner: '1000'

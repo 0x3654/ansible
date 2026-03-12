@@ -1,7 +1,8 @@
 ---
-# defaults file for vpn_servers
+# defaults file for vpnserver
 
-vpnserver_required_packages:
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
   - curl
@@ -14,25 +15,21 @@ vpnserver_required_packages:
   - fail2ban
   - whois
 
-# Управление установкой Docker репозитория
-vpnserver_install_docker_repo: true
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: true  # noqa: var-naming[no-role-prefix]
 
-# Parameters for repository update control
-vpnserver_update_repo: true
-vpnserver_force_repo_update: true
-
-# user for folders permission
-vpnserver_folder_user: "{{ role_name | basename }}"
-
-# Common paths
-vpnserver_pwd: "/server"
-vpnserver_path: "{{ vpnserver_pwd }}/vpnserver"
-vpnserver_xray_path: "{{ vpnserver_path }}/3x-ui"
+# User and paths
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/server"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/vpnserver"  # noqa: var-naming[no-role-prefix]
+vpnserver_xray_path: "{{ path }}/3x-ui"
 vpnserver_xray_db_path: "{{ vpnserver_xray_path }}/db"
-vpnserver_cert_path: "{{ vpnserver_pwd }}/certbot"
-vpnserver_amneziawg_path: "{{ vpnserver_path }}/amneziawg"
-vpnserver_fail2ban_path: "{{ vpnserver_path }}/fail2ban"
+vpnserver_cert_path: "{{ pwd }}/certbot"
+vpnserver_amneziawg_path: "{{ path }}/amneziawg"
+vpnserver_fail2ban_path: "{{ path }}/fail2ban"
 
 # File permissions
-vpnserver_directory_mode: "0755"
-vpnserver_file_mode: "0600"
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0600"  # noqa: var-naming[no-role-prefix]

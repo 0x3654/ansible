@@ -12,9 +12,9 @@ update_repo: true  # noqa: var-naming[no-role-prefix]
 force_repo_update: true  # noqa: var-naming[no-role-prefix]
 
 # User and paths (universal DRY variables)
-folder_user: "{{ role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 pwd: "/git"  # noqa: var-naming[no-role-prefix]
-path: "{{ pwd }}/{{ role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
 # File permissions
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]

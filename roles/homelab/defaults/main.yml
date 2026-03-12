@@ -1,27 +1,25 @@
 ---
-# defaults file for mediaserver
-homelab_required_packages:
+# defaults file for homelab
+
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
 
-# Управление установкой Docker репозитория
-homelab_install_docker_repo: true
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: false  # noqa: var-naming[no-role-prefix]
 
-# Parameters for repository update control
-homelab_update_repo: true
-homelab_force_repo_update: false
-
-# user for folders permission
-homelab_folder_user: "{{ role_name | basename }}"
-homelab_samba_user: "{{ role_name | basename }}"
-
-# Common paths
-homelab_pwd: "/server/"
-homelab_path: "{{ homelab_pwd }}/{{ role_name | basename }}"
+# User and paths
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+homelab_samba_user: "{{ ansible_role_name | basename }}"
+pwd: "/server"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
 # File permissions
-homelab_directory_mode: "0755"
-homelab_file_mode: "0644"
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 
 # tautulli
 homelab_tautulliport: "8181"

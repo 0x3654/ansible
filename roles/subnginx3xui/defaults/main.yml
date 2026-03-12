@@ -1,27 +1,24 @@
-# SPDX-License-Identifier: MIT-0
 ---
-# defaults file for sub_nginx_3xui
-subnginx3xui_required_packages:
+# defaults file for subnginx3xui
+
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
   - docker-ce
   - docker-compose-plugin
   - certbot
 
-# Управление установкой Docker репозитория
-subnginx3xui_install_docker_repo: true
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: true  # noqa: var-naming[no-role-prefix]
 
-# Parameters for repository update control
-subnginx3xui_update_repo: true
-subnginx3xui_force_repo_update: true
-
-# user for folders permission
-subnginx3xui_folder_user: "{{ role_name | basename }}"
-
-# Common paths
-subnginx3xui_pwd: "/server"
-subnginx3xui_path: "{{ subnginx3xui_pwd }}/3x-ui-sub"
-subnginx3xui_nginx_proxy_sub: "{{ subnginx3xui_path }}"
-subnginx3xui_cert_path: "{{ subnginx3xui_pwd }}/certbot"
+# User and paths
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/server"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/3x-ui-sub"  # noqa: var-naming[no-role-prefix]
+subnginx3xui_nginx_proxy_sub: "{{ path }}"
+subnginx3xui_cert_path: "{{ pwd }}/certbot"
 
 # File permissions
-subnginx3xui_directory_mode: "0755"
-subnginx3xui_file_mode: "0644"
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]

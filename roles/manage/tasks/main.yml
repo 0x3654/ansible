@@ -16,7 +16,7 @@
     create_home: false
     state: present
 
-- name: Import file copy tasks
+- name: Set directory ownership
   ansible.builtin.file:
     path: "{{ path }}"
     state: directory

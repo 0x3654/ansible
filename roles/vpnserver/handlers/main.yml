@@ -26,7 +26,7 @@
 - name: Docker down vpnserver
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
   args:
-    chdir: "{{ vpnserver_path }}"
+    chdir: "{{ path }}"
   register: vpnserver_compose_down_result
   changed_when: >-
     vpnserver_compose_down_result.stdout is search('Removing')
@@ -37,7 +37,7 @@
 - name: Docker up vpnserver
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ vpnserver_path }}"
+    chdir: "{{ path }}"
   register: vpnserver_compose_up_result
   changed_when: >-
     vpnserver_compose_up_result.stdout is search('Creating')

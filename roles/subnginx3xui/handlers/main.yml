@@ -2,7 +2,7 @@
 - name: Docker down 3xuiproxy
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
   args:
-    chdir: "{{ subnginx3xui_path }}"
+    chdir: "{{ path }}"
   register: subnginx3xui_compose_down_result
   changed_when: >-
     subnginx3xui_compose_down_result.stdout is search('Removing')
@@ -13,7 +13,7 @@
 - name: Docker up 3xuiproxy
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
   args:
-    chdir: "{{ subnginx3xui_path }}"
+    chdir: "{{ path }}"
   register: subnginx3xui_compose_up_result
   changed_when: >-
     subnginx3xui_compose_up_result.stdout is search('Creating')

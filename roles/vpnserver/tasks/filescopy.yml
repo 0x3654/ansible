@@ -5,11 +5,11 @@
     common_up_handler_name: "docker up vpnserver"
     common_down_handler_name: "docker down vpnserver"
     common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/vpnserver/files/vpnserver"
-    common_folder_user: "{{ vpnserver_folder_user }}"
-    common_directory_mode: "{{ vpnserver_directory_mode }}"
-    common_file_mode: "{{ vpnserver_file_mode }}"
-    common_pwd: "{{ vpnserver_pwd }}"
-    common_path: "{{ vpnserver_path }}"
+    common_folder_user: "{{ folder_user }}"
+    common_directory_mode: "{{ directory_mode }}"
+    common_file_mode: "{{ file_mode }}"
+    common_pwd: "{{ pwd }}"
+    common_path: "{{ path }}"
     common_cert_path: "{{ vpnserver_cert_path }}"
 
 - name: Remove AmneziaWG directory and stop container on ARM64 systems

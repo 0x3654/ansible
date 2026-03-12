@@ -52,7 +52,7 @@
     - name: Restart nginx proxy to reload .env configuration
       ansible.builtin.command:
         cmd: "{{ common_compose_command | default('docker compose') }} restart nginx"
-        chdir: "{{ subnginx3xui_path }}"
+        chdir: "{{ path }}"
       register: subnginx3xui_restart_result
       changed_when: subnginx3xui_restart_result.rc == 0
 
