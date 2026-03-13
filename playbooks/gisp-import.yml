@@ -78,10 +78,7 @@
         headers:
           Authorization: "Bearer {{ semaphore_api_token }}"
           Content-Type: "application/json"
-        body_format: json
-        body:
-          template_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id | int }}"
-          project_id: "{{ semaphore_project_id | int }}"
+        body: "{{ {'template_id': (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id | int} | to_json }}"
         status_code: 201
       delegate_to: localhost
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
