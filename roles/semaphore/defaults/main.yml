@@ -27,6 +27,7 @@ file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 # Semaphore config (see vars/secrets.yml for sensitive data)
 semaphore_domain_name: "semaphore.0x3654.com"  # noqa: var-naming[no-role-prefix]
 semaphore_port: "3210"  # noqa: var-naming[no-role-prefix]
+semaphore_container_port: "3000"  # internal port inside Docker container  # noqa: var-naming[no-role-prefix]
 semaphore_web_root: "https://{{ semaphore_domain_name }}"  # noqa: var-naming[no-role-prefix]
 semaphore_admin: "admin"  # noqa: var-naming[no-role-prefix]
 semaphore_admin_name: "Admin"  # noqa: var-naming[no-role-prefix]

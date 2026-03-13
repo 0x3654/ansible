@@ -6,11 +6,9 @@
 - name: GISP Import
   hosts: gisp_role
   gather_facts: false
-  vars_files:
-    - "{{ playbook_dir }}/../roles/semaphore/defaults/main.yml"
   vars:
     semaphore_next_template_name: "gisp-3-embeddings"
-    semaphore_url: "http://localhost:{{ semaphore_port }}"
+    semaphore_url: "http://localhost:3000"
     semaphore_project_id: 1
   tasks:
     - name: Run import container

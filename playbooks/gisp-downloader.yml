@@ -6,11 +6,9 @@
 - name: GISP Downloader
   hosts: gisp_role
   gather_facts: false
-  vars_files:
-    - "{{ playbook_dir }}/../roles/semaphore/defaults/main.yml"
   vars:
     semaphore_next_template_name: "gisp-2-import"
-    semaphore_url: "http://localhost:{{ semaphore_port }}"
+    semaphore_url: "http://localhost:3000"
     semaphore_project_id: 1
   tasks:
     - name: Run downloader container
