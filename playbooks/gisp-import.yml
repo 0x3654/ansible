@@ -79,6 +79,7 @@
         body_format: json
         body:
           template_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id }}"
+          project_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).project_id }}"
         status_code: 201
       delegate_to: localhost
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
