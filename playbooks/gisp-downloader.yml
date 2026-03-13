@@ -1,13 +1,13 @@
 ---
 # GISP Downloader - Download CSV files from minpromtorg.gov.ru
 # On success, triggers the next task in the pipeline via Semaphore API.
-# Requires in Semaphore template extra vars:
-#   semaphore_api_token: <api token from Semaphore Settings → API Tokens>
-#   semaphore_next_template_name: gisp-2-import   # prod
-#                              or: dev_2_gisp-import  # dev
+# Requires semaphore_api_token in Semaphore Variable Group.
+# semaphore_next_template_name defaults to gisp-2-import, override in extra vars if needed.
 - name: GISP Downloader
   hosts: gisp_role
   gather_facts: false
+  vars:
+    semaphore_next_template_name: "gisp-2-import"
   tasks:
     - name: Run downloader container
       ansible.builtin.command:

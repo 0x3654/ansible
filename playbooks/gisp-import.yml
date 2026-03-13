@@ -1,13 +1,13 @@
 ---
 # GISP Import - Import CSV files to PostgreSQL
 # On success, triggers the next task in the pipeline via Semaphore API.
-# Requires in Semaphore template extra vars:
-#   semaphore_api_token: <api token from Semaphore Settings → API Tokens>
-#   semaphore_next_template_name: gisp-3-embeddings   # prod
-#                              or: dev_3_gisp-embeddings  # dev
+# Requires semaphore_api_token in Semaphore Variable Group.
+# semaphore_next_template_name defaults to gisp-3-embeddings, override in extra vars if needed.
 - name: GISP Import
   hosts: gisp_role
   gather_facts: false
+  vars:
+    semaphore_next_template_name: "gisp-3-embeddings"
   tasks:
     - name: Run import container
       ansible.builtin.command:
