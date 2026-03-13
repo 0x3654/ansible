@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  author: 0x3654
+  author: "0x3654"
   description: GISP - Minpromtorg registry search system
-  company: 0x3654
+  company: "0x3654"
   license: MIT
   min_ansible_version: "2.9"
 

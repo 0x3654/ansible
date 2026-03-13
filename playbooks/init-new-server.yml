@@ -45,7 +45,8 @@
       ansible.builtin.raw: |
         set -e
         apt-get update
-        apt-get install -y build-essential wget libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libapt-pkg-dev git liblzma-dev libncurses5-dev libgdbm-dev libnss3-dev libffi-dev
+        apt-get install -y build-essential wget libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
+          libsqlite3-dev libapt-pkg-dev git liblzma-dev libncurses5-dev libgdbm-dev libnss3-dev libffi-dev
         cd /tmp
         wget -q https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz
         tar -xzf Python-3.11.9.tgz
@@ -105,6 +106,7 @@
       failed_when: false
 
     - name: Configure SSH only if needed
+      when: "'needs_change' in ssh_config_status.stdout"
       block:
         - name: Ensure root SSH login is enabled
           ansible.builtin.lineinfile:
@@ -130,7 +132,6 @@
           ansible.builtin.service:
             name: ssh
             state: restarted
-      when: "'needs_change' in ssh_config_status.stdout"
 
   handlers:
     - name: Restart sshd service

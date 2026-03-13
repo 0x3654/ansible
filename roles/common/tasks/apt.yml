@@ -2,14 +2,14 @@
 
 - name: Check if Docker is already installed
   ansible.builtin.command: which docker
-  register: docker_check
+  register: common_docker_check
   failed_when: false
   changed_when: false
 
 - name: Add Docker repository
   when:
     - install_docker_repo | default(false) | bool
-    - docker_check.rc != 0
+    - common_docker_check.rc != 0
   block:
     - name: Ensure /etc/apt/keyrings exists
       ansible.builtin.file:

@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  author: 0x3654
+  author: "0x3654"
   description: Semaphore Ansible UI role
   license: MIT
   min_ansible_version: "2.9"

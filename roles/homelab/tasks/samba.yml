@@ -42,7 +42,10 @@
 
 - name: Find all files with incorrect ownership in media folders (exclude .part files)
   ansible.builtin.shell:
-    cmd: "find {{ item.split(':')[0] }} -mindepth 1 \\! \\( -user {{ homelab_samba_user }} -a -group media -a -perm 2775 \\) -a \\! -name '*.part' -print0 2>/dev/null"
+    cmd: >-
+      find {{ item.split(':')[0] }} -mindepth 1
+      \! \( -user {{ homelab_samba_user }} -a -group media -a -perm 2775 \)
+      -a \! -name '*.part' -print0 2>/dev/null
   register: homelab_bad_files_list
   loop: "{{ homelab_media_binds }}"
   when:
@@ -59,7 +62,12 @@
     group: media
     mode: '2775'
     recurse: false
-  loop: "{{ q('flattened', homelab_bad_files_list.results | selectattr('stdout', 'defined') | map(attribute='stdout') | map('split', '\0') | map('select') | list) }}"
+  loop: >-
+    {{ q('flattened', homelab_bad_files_list.results
+    | selectattr('stdout', 'defined')
+    | map(attribute='stdout')
+    | map('split', '\0')
+    | map('select') | list) }}
   when:
     - homelab_media_binds is defined
     - homelab_bad_files_list.results is defined

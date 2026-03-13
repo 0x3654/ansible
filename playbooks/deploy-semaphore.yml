@@ -4,7 +4,7 @@
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:
-    - name: Include semaphore role vars
+    - name: Include semaphore role vars  # noqa: run-once[task]
       ansible.builtin.include_vars: "{{ item }}"
       loop:
         - "{{ ansible_roles_path }}/semaphore/vars/main.yml"
