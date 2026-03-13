@@ -7,7 +7,7 @@
   hosts: gisp_role
   gather_facts: false
   vars:
-    semaphore_next_template_name: "gisp-2-import"
+    semaphore_next_template_name: "{{ 'dev_2_gisp-import' if inventory_hostname == 'mba' else 'gisp-2-import' }}"
     semaphore_url: "http://localhost:3000"
     semaphore_project_id: 1
   tasks:

@@ -7,7 +7,7 @@
   hosts: gisp_role
   gather_facts: false
   vars:
-    semaphore_next_template_name: "gisp-3-embeddings"
+    semaphore_next_template_name: "{{ 'dev_3_gisp-embeddings' if inventory_hostname == 'mba' else 'gisp-3-embeddings' }}"
     semaphore_url: "http://localhost:3000"
     semaphore_project_id: 1
   tasks:
@@ -78,7 +78,10 @@
         headers:
           Authorization: "Bearer {{ semaphore_api_token }}"
           Content-Type: "application/json"
-        body: "{{ {'template_id': (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id | int} | to_json }}"
+        body: >-
+          {{ {'template_id': (semaphore_templates.json
+          | selectattr('name', 'equalto', semaphore_next_template_name)
+          | list | first).id | int} | to_json }}
         status_code: 201
       delegate_to: localhost
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
