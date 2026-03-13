@@ -1,5 +1,10 @@
 ---
 # GISP Downloader - Download CSV files from minpromtorg.gov.ru
+# On success, triggers the next task in the pipeline via Semaphore API.
+# Requires in Semaphore template extra vars:
+#   semaphore_api_token: <api token from Semaphore Settings → API Tokens>
+#   semaphore_next_template_name: gisp-2-import   # prod
+#                              or: dev_2_gisp-import  # dev
 - name: GISP Downloader
   hosts: gisp_role
   gather_facts: false
@@ -37,3 +42,31 @@
       ansible.builtin.fail:
         msg: "Downloader container exited with code {{ downloader_result.rc }}"
       when: downloader_result.rc != 0
+
+    # Chain: trigger next task by name. Requires semaphore_api_token and
+    # semaphore_next_template_name in Semaphore template extra vars.
+    # prod: semaphore_next_template_name: gisp-2-import
+    # dev:  semaphore_next_template_name: dev_2_gisp-import
+    - name: Get Semaphore templates
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/project/1/templates"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ semaphore_api_token }}"
+      delegate_to: localhost
+      register: semaphore_templates
+      when: semaphore_api_token is defined and semaphore_next_template_name is defined
+
+    - name: Trigger next task via Semaphore API
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/project/1/tasks"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ semaphore_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          template_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id }}"
+        status_code: 201
+      delegate_to: localhost
+      when: semaphore_api_token is defined and semaphore_next_template_name is defined

@@ -114,8 +114,9 @@ ansible-playbook playbooks/gisp-downloader.yml -i inventory/inventory.yml
 1. `docker compose run --rm downloader` в `{{ gisp_project_src }}`
 2. При ошибке — Telegram уведомление со stdout/stderr через `scripts/send_telegram.sh`
 3. Завершает с `fail` если контейнер вернул ненулевой код
+4. При успехе — триггерит `gisp-import` через Semaphore API (только prod)
 
-**Расписание Semaphore:** ежедневно в 19:00 МСК
+**Расписание Semaphore (prod):** ежедневно в 19:00 МСК
 
 ---
 
@@ -130,8 +131,9 @@ ansible-playbook playbooks/gisp-import.yml -i inventory/inventory.yml
 1. `docker compose run --rm import` в `{{ gisp_project_src }}`
 2. Telegram уведомление всегда (✅ успех / ❌ ошибка) с полным логом контейнера
 3. Завершает с `fail` если контейнер вернул ненулевой код
+4. При успехе — триггерит `gisp-embeddings` через Semaphore API (только prod)
 
-**Расписание Semaphore:** ежедневно в 00:00 МСК (после downloader в 19:00)
+**Расписание Semaphore (prod):** не используется, запускается цепочкой от downloader
 
 ---
 
@@ -148,25 +150,40 @@ ansible-playbook playbooks/gisp-embeddings.yml -i inventory/inventory.yml
 3. При ошибке — Telegram уведомление
 4. Завершает с `fail` если контейнер вернул ненулевой код
 
-**Расписание Semaphore:** ежедневно в 04:00 МСК (после import в 00:00)
+**Расписание Semaphore (prod):** не используется, запускается цепочкой от import
 
 ---
 
 ### Цепочка запуска (prod)
 ```
-19:00 downloader  →  00:00 import  →  04:00 embeddings-worker
+19:00 downloader  →  import  →  embeddings-worker
 ```
-CSV скачиваются вечером, импортируются ночью, эмбеддинги считаются под утро.
+downloader запускается по крону. По завершении каждый плейбук триггерит следующий
+через Semaphore API: ищет шаблон по имени (`GET /api/project/1/templates`),
+находит ID и отправляет задачу (`POST /api/project/1/tasks`).
+Каждый шаг стартует сразу после завершения предыдущего.
+
+**Настройка цепочки — extra vars в каждом шаблоне Semaphore:**
+
+| Шаблон | `semaphore_next_template_name` |
+|--------|-------------------------------|
+| `gisp-1-downloader` | `gisp-2-import` |
+| `gisp-2-import` | `gisp-3-embeddings` |
+| `dev_1_gisp-downloader` | `dev_2_gisp-import` |
+| `dev_2_gisp-import` | `dev_3_gisp-embeddings` |
+
+Плюс во всех шаблонах с цепочкой: `semaphore_api_token: <token>`
+(создать в Semaphore: Settings → API Tokens).
+
+`delegate_to: localhost` выполняется на Semaphore runner (ae2),
+`localhost:3000` — внутренний порт контейнера semaphoreui.
 
 ---
 
 ## Scheduling (Semaphore)
 
-Расписания управляются через Semaphore (`http://server:3210`).
-Каждый плейбук имеет два шаблона: `dev` и `prod`.
-
-| Плейбук | Расписание | Хосты |
-|---------|-----------|-------|
-| downloader | `0 19 * * *` | dev + prod |
-| import | `0 0 * * *` | dev + prod |
-| embeddings | `0 4 * * *` | dev + prod |
+| Плейбук | Prod | Dev |
+|---------|------|-----|
+| downloader | `0 19 * * *` (cron) | `0 19 * * *` (cron) |
+| import | цепочка от downloader | `0 0 * * *` (cron) |
+| embeddings | цепочка от import | `0 4 * * *` (cron) |
