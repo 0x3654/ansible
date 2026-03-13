@@ -6,8 +6,12 @@
 - name: GISP Downloader
   hosts: gisp_role
   gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../roles/semaphore/defaults/main.yml"
   vars:
     semaphore_next_template_name: "gisp-2-import"
+    semaphore_url: "http://localhost:{{ semaphore_port }}"
+    semaphore_project_id: 1
   tasks:
     - name: Run downloader container
       ansible.builtin.command:
@@ -49,7 +53,7 @@
     # dev:  semaphore_next_template_name: dev_2_gisp-import
     - name: Get Semaphore templates
       ansible.builtin.uri:
-        url: "http://localhost:3000/api/project/1/templates"
+        url: "{{ semaphore_url }}/api/project/{{ semaphore_project_id }}/templates"
         method: GET
         headers:
           Authorization: "Bearer {{ semaphore_api_token }}"
@@ -59,15 +63,15 @@
 
     - name: Trigger next task via Semaphore API
       ansible.builtin.uri:
-        url: "http://localhost:3000/api/project/1/tasks"
+        url: "{{ semaphore_url }}/api/project/{{ semaphore_project_id }}/tasks"
         method: POST
         headers:
           Authorization: "Bearer {{ semaphore_api_token }}"
           Content-Type: "application/json"
         body_format: json
         body:
-          template_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id }}"
-          project_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).project_id }}"
+          template_id: "{{ (semaphore_templates.json | selectattr('name', 'equalto', semaphore_next_template_name) | list | first).id | int }}"
+          project_id: "{{ semaphore_project_id | int }}"
         status_code: 201
       delegate_to: localhost
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
