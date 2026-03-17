@@ -1,0 +1,32 @@
+name: Deploy VPS
+
+env:
+  SEMAPHORE_URL: https://semaphore.0x3654.com
+  SEMAPHORE_PROJECT_ID: 1
+  SEMAPHORE_TEMPLATE_ID: 10
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'playbooks/deploy-vps.yml'
+      - 'roles/vpnserver/**'
+      - 'roles/subnginx3xui/**'
+      - 'host_vars/ae.yml'
+      - 'host_vars/ae2.yml'
+      - 'host_vars/es.yml'
+      - 'host_vars/tr.yml'
+      - 'host_vars/ru2.yml'
+      - 'host_vars/us2.yml'
+
+jobs:
+  trigger-semaphore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy-vps in Semaphore
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.SEMAPHORE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            ${{ env.SEMAPHORE_URL }}/api/project/${{ env.SEMAPHORE_PROJECT_ID }}/tasks \
+            -d "{\"template_id\": ${{ env.SEMAPHORE_TEMPLATE_ID }}}"
