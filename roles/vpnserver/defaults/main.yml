@@ -29,6 +29,8 @@ vpnserver_xray_db_path: "{{ vpnserver_xray_path }}/db"
 vpnserver_cert_path: "{{ pwd }}/certbot"
 vpnserver_amneziawg_path: "{{ path }}/amneziawg"
 vpnserver_fail2ban_path: "{{ path }}/fail2ban"
+vpnserver_mtproxy_path: "{{ path }}/mtproxy"
+vpnserver_mtproxy_port: "445"
 
 # File permissions
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]

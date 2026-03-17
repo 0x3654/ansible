@@ -20,6 +20,10 @@
   when: ansible_facts['architecture'] != 'aarch64'
   tags: [amneziawg]
 
+- name: Import MTProxy tasks
+  ansible.builtin.import_tasks: mtproxy.yml
+  tags: [mtproxy]
+
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]

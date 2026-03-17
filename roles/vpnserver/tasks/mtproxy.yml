@@ -1,0 +1,53 @@
+---
+- name: MTProxy setup
+  tags: [mtproxy]
+  block:
+    - name: MTProxy Create directory
+      ansible.builtin.file:
+        path: "{{ vpnserver_mtproxy_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: MTProxy Check if secret exists
+      ansible.builtin.stat:
+        path: "{{ vpnserver_mtproxy_path }}/secret"
+      register: vpnserver_mtproxy_secret_file
+
+    - name: MTProxy Generate secret
+      when: not vpnserver_mtproxy_secret_file.stat.exists
+      block:
+        - name: MTProxy Generate random hex secret
+          ansible.builtin.command:
+            cmd: openssl rand -hex 16
+          register: vpnserver_mtproxy_generated_secret
+          changed_when: true
+
+        - name: MTProxy Save secret to file
+          ansible.builtin.copy:
+            content: "{{ vpnserver_mtproxy_generated_secret.stdout }}"
+            dest: "{{ vpnserver_mtproxy_path }}/secret"
+            mode: '0600'
+
+    - name: MTProxy Read secret from file
+      ansible.builtin.slurp:
+        path: "{{ vpnserver_mtproxy_path }}/secret"
+      register: vpnserver_mtproxy_secret_content
+
+    - name: MTProxy Set secret fact
+      ansible.builtin.set_fact:
+        vpnserver_mtproxy_secret: "{{ vpnserver_mtproxy_secret_content.content | b64decode | trim }}"
+
+    - name: MTProxy Save proxy link to local configs
+      ansible.builtin.copy:
+        content: |
+          server: {{ domain_name }}
+          port: {{ vpnserver_mtproxy_port }}
+          secret: {{ vpnserver_mtproxy_secret }}
+          link: https://t.me/proxy?server={{ domain_name }}&port={{ vpnserver_mtproxy_port }}&secret={{ vpnserver_mtproxy_secret }}
+        dest: "{{ playbook_dir }}/../configs/mtproxy_{{ domain_name }}.txt"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: MTProxy Show proxy link
+      ansible.builtin.debug:
+        msg: "MTProxy {{ domain_name }}: https://t.me/proxy?server={{ domain_name }}&port={{ vpnserver_mtproxy_port }}&secret={{ vpnserver_mtproxy_secret }}"
