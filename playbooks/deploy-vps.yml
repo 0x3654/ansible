@@ -2,26 +2,16 @@
 # Playbook to deploy VPN server and subnginx3xui roles
 - name: Deploy VPS (vpnserver + subnginx3xui)
   hosts: vpnserver_role:subnginx3xui_role
+  vars_files:
+    - "{{ playbook_dir }}/../roles/vpnserver/vars/main.yml"
+    - "{{ playbook_dir }}/../roles/vpnserver/vars/secrets.yml"
+    - "{{ playbook_dir }}/../roles/subnginx3xui/vars/main.yml"
+    - "{{ playbook_dir }}/../roles/subnginx3xui/vars/secrets.yml"
+    - "{{ playbook_dir }}/../roles/common/vars/main.yml"
+    - "{{ playbook_dir }}/../roles/common/vars/secrets.yml"
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:
-    # Include vars for roles that are deployed on VPS
-    - name: Include VPS role vars  # noqa: run-once
-      ansible.builtin.include_vars: "{{ item }}"
-      loop:
-        - "{{ ansible_roles_path }}/vpnserver/vars/main.yml"
-        - "{{ ansible_roles_path }}/vpnserver/vars/secrets.yml"
-        - "{{ ansible_roles_path }}/subnginx3xui/vars/main.yml"
-        - "{{ ansible_roles_path }}/subnginx3xui/vars/secrets.yml"
-        - "{{ ansible_roles_path }}/beszel/vars/main.yml"
-        - "{{ ansible_roles_path }}/beszel/vars/secrets.yml"
-        - "{{ ansible_roles_path }}/watchtower/vars/main.yml"
-        - "{{ ansible_roles_path }}/watchtower/vars/secrets.yml"
-        - "{{ ansible_roles_path }}/common/vars/main.yml"
-        - "{{ ansible_roles_path }}/common/vars/secrets.yml"
-      failed_when: false
-      delegate_to: localhost
-      tags: [always]
 
     # Load host_vars if exists
     - name: Load host_vars
