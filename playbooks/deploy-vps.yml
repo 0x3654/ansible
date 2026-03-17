@@ -21,7 +21,6 @@
         - "{{ ansible_roles_path }}/common/vars/secrets.yml"
       failed_when: false
       delegate_to: localhost
-      run_once: true
       tags: [always]
 
     # Load host_vars if exists
