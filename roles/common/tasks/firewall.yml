@@ -67,6 +67,7 @@
         name: netfilter-persistent
         enabled: true
         state: started
+      ignore_errors: true
 
     - name: Save
       ansible.builtin.command: netfilter-persistent save
