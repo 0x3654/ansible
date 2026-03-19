@@ -30,7 +30,7 @@ homelab_tsdproxy_enable: true
 # transmisiion
 homelab_transmission_port: "9091"
 homelab_transmission_download_dir: "/mnt/torrent/movie"
-homelab_transmission_incomplete_dir: "/tmp"
+homelab_transmission_incomplete_dir: "/mnt/torrent/incomplete"
 homelab_transmission_watch_dir: "/mnt/torrent/new"
 # transmisiion-rss
 homelab_trans_rss_download_path: "/mnt/torrent/tv show"

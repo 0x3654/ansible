@@ -1,7 +1,7 @@
 ---
 # Playbook to run certbot tasks for SSL certificates
 - name: Run certbot for SSL certificate management
-  hosts: vpnserver_role:subnginx3xui_role:untilwall_role
+  hosts: vpnserver_role:subnginx3xui_role:untilwall_role:semaphore_role
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:
@@ -15,6 +15,8 @@
         - "{{ ansible_roles_path }}/subnginx3xui/vars/secrets.yml"
         - "{{ ansible_roles_path }}/untilwall/vars/main.yml"
         - "{{ ansible_roles_path }}/untilwall/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/semaphore/vars/main.yml"
+        - "{{ ansible_roles_path }}/semaphore/vars/secrets.yml"
         - "{{ ansible_roles_path }}/common/vars/main.yml"
         - "{{ ansible_roles_path }}/common/vars/secrets.yml"
       failed_when: false
@@ -48,3 +50,10 @@
         tasks_from: certbot.yml
       when: inventory_hostname in groups['untilwall_role'] | default([])
       tags: [certbot, untilwall]
+
+    - name: Run semaphore certbot tasks
+      ansible.builtin.include_role:
+        name: semaphore
+        tasks_from: certbot.yml
+      when: inventory_hostname in groups['semaphore_role'] | default([])
+      tags: [certbot, semaphore]
