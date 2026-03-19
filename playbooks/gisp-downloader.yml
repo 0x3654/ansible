@@ -57,6 +57,9 @@
           Authorization: "Bearer {{ semaphore_api_token }}"
       delegate_to: localhost
       register: semaphore_templates
+      retries: 3
+      delay: 30
+      until: semaphore_templates is succeeded
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
 
     - name: Trigger next task via Semaphore API
@@ -72,4 +75,8 @@
           | list | first).id | int} | to_json }}
         status_code: 201
       delegate_to: localhost
+      register: semaphore_trigger
+      retries: 3
+      delay: 30
+      until: semaphore_trigger is succeeded
       when: semaphore_api_token is defined and semaphore_next_template_name is defined
