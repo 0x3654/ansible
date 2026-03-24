@@ -9,4 +9,6 @@
     common_nginx_ssl_cert: "{{ untilwall_cert_path }}/live/{{ untilwall_domain_name }}/fullchain.pem"
     common_nginx_ssl_key: "{{ untilwall_cert_path }}/live/{{ untilwall_domain_name }}/privkey.pem"
     common_nginx_backend_port: 3000
+    common_nginx_denied_locations:
+      - /api/stats
   tags: [nginx]
