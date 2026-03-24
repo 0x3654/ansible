@@ -34,3 +34,6 @@ untilwall_domain_name: "untilwall.0x3654.com"
 # Application environment variables (public, not secrets)
 untilwall_domain_url: "https://untilwall.0x3654.com"
 untilwall_icloud_shortcut_url: "https://www.icloud.com/shortcuts/2e1536903783409c9445bb04dc381637"
+
+# Telegram notifications (disabled by default)
+common_telegram_notify_enabled: false
