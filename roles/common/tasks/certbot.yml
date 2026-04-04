@@ -125,6 +125,37 @@
         common_prohibited_rules:
           - "-A INPUT -p tcp --dport 80 -j ACCEPT"
 
+    - name: Get new certificate expiration date
+      ansible.builtin.shell: |
+        set -o pipefail
+        openssl x509 -in {{ common_cert_path }}/live/{{ common_cert_domain }}/fullchain.pem -noout -enddate | cut -d= -f2
+      args:
+        executable: /bin/bash
+      register: common_cert_expiration_new
+      changed_when: false
+      failed_when: false
+
+    - name: Convert new expiration date to timestamp
+      ansible.builtin.command: date -d "{{ common_cert_expiration_new.stdout }}" +%s
+      register: common_expiration_timestamp_new
+      changed_when: false
+      failed_when: false
+      when: common_cert_expiration_new.stdout is defined and common_cert_expiration_new.stdout != ''
+
+    - name: Get current timestamp after renewal
+      ansible.builtin.command: date +%s
+      register: common_current_timestamp_new
+      changed_when: false
+      when: common_expiration_timestamp_new.stdout is defined and common_expiration_timestamp_new.stdout != ''
+
+    - name: Update days until expiration after renewal
+      ansible.builtin.set_fact:
+        common_cert_days_until_renewed: >-
+          {{ (common_expiration_timestamp_new.stdout | int - common_current_timestamp_new.stdout | int) / 86400 | int }}
+      when:
+        - common_expiration_timestamp_new.stdout is defined
+        - common_current_timestamp_new.stdout is defined
+
     - name: Send Telegram notification
       ansible.builtin.include_tasks: telegram-notify.yml
 

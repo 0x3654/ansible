@@ -11,7 +11,7 @@
     body_format: json
     body:
       chat_id: "{{ common_telegram_chat_id }}"
-      text: "{{ common_telegram_host_name }} ✅ SSL renewed: {{ common_cert_domain }} - {{ common_cert_days_until }} days left"
+      text: "{{ common_telegram_host_name }} ✅ SSL renewed: {{ common_cert_domain }} - {{ common_cert_days_until_renewed | default(common_cert_days_until) }} days left"
     status_code: 200
   delegate_to: localhost
   run_once: true
