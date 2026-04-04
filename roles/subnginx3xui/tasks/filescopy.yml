@@ -2,8 +2,8 @@
 - name: Include common file copy tasks
   ansible.builtin.import_tasks: ../common/tasks/filescopy.yml
   vars:
-    common_up_handler_name: "docker up subnginx3xui"
-    common_down_handler_name: "docker down subnginx3xui"
+    common_up_handler_name: "docker up 3xuiproxy"
+    common_down_handler_name: "docker down 3xuiproxy"
     common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/subnginx3xui/files/"
     common_folder_user: "{{ folder_user }}"
     common_directory_mode: "{{ directory_mode }}"
