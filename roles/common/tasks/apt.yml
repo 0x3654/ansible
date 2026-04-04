@@ -46,6 +46,8 @@
         upgrade: dist
         update_cache: true
         cache_valid_time: 3600
+      async: 300
+      poll: 10
 
     - name: APT Install required packages
       ansible.builtin.apt:
