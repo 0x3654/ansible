@@ -8,7 +8,7 @@
     subnginx3xui_compose_down_result.stdout is search('Removing')
     or subnginx3xui_compose_down_result.stdout is search('Stopped')
   failed_when: false
-  listen: docker down subnginx3xui
+  listen: docker down 3xuiproxy
 
 - name: Docker up 3xuiproxy
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
@@ -19,4 +19,4 @@
     subnginx3xui_compose_up_result.stdout is search('Creating')
     or subnginx3xui_compose_up_result.stdout is search('Recreating')
     or subnginx3xui_compose_up_result.stdout is search('Starting')
-  listen: docker up subnginx3xui
+  listen: docker up 3xuiproxy
