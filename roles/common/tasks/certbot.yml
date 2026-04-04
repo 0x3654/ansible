@@ -93,6 +93,8 @@
         name: nginx
         state: stopped
       failed_when: false
+      async: 10
+      poll: 2
 
     - name: Temporarily open port 80 for certbot
       ansible.builtin.include_tasks: firewall.yml
@@ -132,3 +134,5 @@
         name: nginx
         state: started
       failed_when: false
+      async: 10
+      poll: 2
