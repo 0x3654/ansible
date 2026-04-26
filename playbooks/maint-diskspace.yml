@@ -171,8 +171,7 @@
 
             - name: List installed kernels
               ansible.builtin.shell: |
-                set -o pipefail
-                dpkg -l | grep linux-image | awk '{print $2}'
+                dpkg -l | grep linux-image | awk '{print $2}' || true
               register: installed_kernels
               when: ansible_facts.pkg_mgr == 'apt'
               changed_when: false
