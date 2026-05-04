@@ -7,7 +7,7 @@
   hosts: gisp_role
   gather_facts: false
   vars:
-    semaphore_next_template_name: "{{ 'dev_3_gisp-embeddings' if inventory_hostname == 'mba' else 'gisp-3-embeddings' }}"
+    semaphore_next_template_name: "{{ 'dev_3_gisp-embeddings' if inventory_hostname == 'mbp' else 'gisp-3-embeddings' }}"
     semaphore_url: "http://localhost:3000"
     semaphore_project_id: 1
   tasks:
