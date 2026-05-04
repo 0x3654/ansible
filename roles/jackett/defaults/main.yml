@@ -23,3 +23,10 @@ deploy_path: "/server/{{ ansible_role_name | basename }}"  # noqa: var-naming[no
 # File permissions
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0644"  # noqa: var-naming[no-role-prefix]
+
+# Jackett config
+jackett_port: "9117"  # noqa: var-naming[no-role-prefix]
+jackett_puid: "1000"  # noqa: var-naming[no-role-prefix]
+jackett_pgid: "1000"  # noqa: var-naming[no-role-prefix]
+jackett_timezone: "Europe/Moscow"  # noqa: var-naming[no-role-prefix]
+jackett_cert_path: "{{ pwd }}/certbot"  # noqa: var-naming[no-role-prefix]

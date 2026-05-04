@@ -1,0 +1,20 @@
+---
+- name: Deploy Jackett torrent indexer
+  hosts: jackett_role
+  vars_files:
+    - "{{ playbook_dir }}/../roles/jackett/vars/main.yml"
+    - "{{ playbook_dir }}/../roles/jackett/vars/secrets.yml"
+    - "{{ playbook_dir }}/../roles/common/vars/main.yml"
+    - "{{ playbook_dir }}/../roles/common/vars/secrets.yml"
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run jackett role tasks
+      ansible.builtin.include_role:
+        name: jackett
+      tags: [jackett]

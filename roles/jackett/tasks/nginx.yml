@@ -1,0 +1,12 @@
+---
+- name: Configure nginx proxy for jackett
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ jackett_domain_name }}"
+    common_nginx_site_name: jackett
+    common_nginx_backend_port: "{{ jackett_port }}"
+    common_nginx_ssl_cert: "{{ jackett_cert_path }}/live/{{ jackett_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ jackett_cert_path }}/live/{{ jackett_domain_name }}/privkey.pem"
+  tags: [nginx]

@@ -1,0 +1,13 @@
+services:
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    restart: unless-stopped
+    environment:
+      PUID: "{{jackett_puid}}"
+      PGID: "{{jackett_pgid}}"
+      TZ: "{{jackett_timezone}}"
+    volumes:
+      - ./config:/config
+    ports:
+      - "127.0.0.1:{{jackett_port}}:9117"
