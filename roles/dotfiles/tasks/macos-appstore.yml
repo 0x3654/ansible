@@ -1,0 +1,10 @@
+---
+- name: Install App Store apps
+  community.general.mas:
+    id: "{{ item.id }}"
+    state: present
+  loop: "{{ macbook_appstore_apps }}"
+  when: macbook_appstore_apps | length > 0
+  failed_when: false
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"

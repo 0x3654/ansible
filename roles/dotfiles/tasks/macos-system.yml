@@ -1,0 +1,22 @@
+---
+- name: Set macOS system defaults
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+  loop: "{{ macbook_system_defaults }}"
+  failed_when: false
+  notify:
+    - killall Finder
+    - killall Dock
+    - killall SystemUIServer
+
+- name: Set screenshot save location
+  community.general.osx_defaults:
+    domain: com.apple.screencapture
+    key: location
+    type: string
+    value: "{{ ansible_env.HOME }}/Downloads"
+  notify:
+    - killall SystemUIServer

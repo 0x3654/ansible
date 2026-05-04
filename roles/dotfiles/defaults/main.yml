@@ -1,0 +1,184 @@
+---
+# Platform level — auto-detected from inventory groups
+# macbook → full macOS setup + configs
+# homelab → bash + homelab aliases
+# vps     → bash only
+
+dotfiles_level: >-
+  {%- if 'macbook' in group_names -%}macbook
+  {%- elif 'homelab' in group_names -%}homelab
+  {%- else -%}vps
+  {%- endif -%}
+
+# ── macOS settings ────────────────────────────────────────────────────────────
+
+macbook_username: m
+
+# Public key of the control machine — added to new Mac's authorized_keys
+macbook_authorized_keys: ""
+
+macbook_homebrew_formulae:
+  - ansible
+  - ansible-lint
+  - bash                  # 5.x — /bin/bash on macOS is 3.2, bash-completion@2 needs 4.1+
+  - bash-completion@2
+  - bat
+  - docker
+  - docker-completion
+  - duf
+  - eza
+  - fd
+  - ffmpeg
+  - fileicon
+  - fzf
+  - gh
+  - git
+  - git-filter-repo
+  - gnupg
+  - gpgme
+  - go
+  - gping
+  - grc
+  - helm
+  - htop
+  - imagemagick
+  - jq
+  - kubernetes-cli
+  - mactop
+  - mas
+  - mcfly
+  - mtr
+  - ncdu
+  - node
+  - python@3.13
+  - ripgrep
+  - sevenzip
+  - socat
+  - hashicorp/tap/terraform
+  - tree
+  - uv
+  - watch
+  - wget
+  - yt-dlp
+  - yazi
+  - zoxide
+
+macbook_homebrew_casks:
+  - anydesk
+  - appcleaner
+  - chatgpt
+#  - cloudflare-warp  # installer hangs via CLI, install manually
+  - cursor
+  - datagrip
+  - docker
+  - element
+  - finetune
+  - font-symbols-only-nerd-font  # required for eza --icons=always
+  - ghostty
+  - keepingyouawake
+  - keka
+  - monitorcontrol
+  - nightfall
+#  - obsidian
+  - qlcolorcode
+#  - rectangle
+  - plex
+  - tailscale
+  - transmission
+  - vlc
+  - zoom
+
+macbook_appstore_apps:
+
+  # --- мессенджеры ---
+  - { id: 747648890,  name: "Telegram" }
+  - { id: 946399090,  name: "Telegram Lite" }
+  - { id: 310633997,  name: "WhatsApp" }
+  - { id: 6471879502, name: "Swiftgram" }
+  - { id: 333903271,  name: "X" }
+
+  # --- медиа ---
+  - { id: 1500797510, name: "Plexamp" }
+  - { id: 1251572132, name: "Fresco" }
+  - { id: 1351639930, name: "Gifski" }
+
+  # --- медиаконтент ---
+  - { id: 1638586503, name: "PXPlay" }
+  - { id: 1662428698, name: "nasctl" }
+
+  # --- vpn ---
+  - { id: 6596777532, name: "Hiddify" }
+  - { id: 6450534064, name: "Streisand" }
+
+  # --- menu bar ---
+  - { id: 1452453066, name: "Hidden Bar" }
+  - { id: 1604176982, name: "One Thing" }
+  - { id: 1611378436, name: "Pure Paste" }
+  - { id: 6448461551, name: "Command X" }
+  - { id: 1565826179, name: "Caramba Switcher" }
+  - { id: 1493408723, name: "Display My IP" }
+  - { id: 1532271726, name: "Ping" }
+  - { id: 1453273600, name: "Data Jar" }
+
+  # --- утилиты ---
+  - { id: 1369524274, name: "QR Capture" }
+  - { id: 1440147259, name: "AdGuard Mini" }
+  - { id: 1438243180, name: "Dark Reader for Safari" }
+  - { id: 6502557491, name: "SmartTag" }
+  - { id: 1359104615, name: "NIIMBOT" }
+  - { id: 1532713768, name: "Ultimate Software" }
+  - { id: 6461690583, name: "Jot by espresso" }
+  - { id: 507014023,  name: "AfterShip" }
+
+  # --- железо ---
+  - { id: 425264550,  name: "Blackmagic Disk Speed Test" }
+  - { id: 1598693570, name: "DualSenseM" }
+
+  # --- работа ---
+  - { id: 1295203466, name: "Windows App" }
+  - { id: 1518820980, name: "Multi Screen Recorder" }
+
+  # --- apple офис ---
+  - { id: 409183694,  name: "Keynote" }
+  - { id: 409201541,  name: "Pages" }
+  - { id: 409203825,  name: "Numbers" }
+
+  # --- dev ---
+  - { id: 1582439659, name: "Harbour" }
+  - { id: 1037126344, name: "Apple Configurator" }
+  - { id: 899247664,  name: "TestFlight" }
+
+  # --- шрифты / иконки ---
+  - { id: 992115977,  name: "Image2Icon" }
+  - { id: 1173222289, name: "iFont" }
+
+  # - { id: 497799835, name: "Xcode" }  # большой, ставить отдельно
+
+macbook_system_defaults:
+  # Finder
+  - { domain: com.apple.finder, key: ShowHiddenFiles, type: bool, value: true }
+  - { domain: com.apple.finder, key: FXDefaultSearchScope, type: string, value: SCcf }
+  - { domain: com.apple.finder, key: FXEnableExtensionChangeWarning, type: bool, value: false }
+  - { domain: com.apple.finder, key: _FXShowPosixPathInTitle, type: bool, value: true }
+  - { domain: com.apple.finder, key: FXPreferredViewStyle, type: string, value: clmv }
+  - { domain: NSGlobalDomain, key: AppleShowAllExtensions, type: bool, value: true }
+  # Dock
+  - { domain: com.apple.dock, key: autohide, type: bool, value: true }
+  - { domain: com.apple.dock, key: tilesize, type: int, value: 40 }
+  - { domain: com.apple.dock, key: minimize-to-application, type: bool, value: true }
+  - { domain: com.apple.dock, key: show-recents, type: bool, value: false }
+  # Keyboard
+  - { domain: NSGlobalDomain, key: KeyRepeat, type: int, value: 1 }
+  - { domain: NSGlobalDomain, key: InitialKeyRepeat, type: int, value: 15 }
+  - { domain: NSGlobalDomain, key: ApplePressAndHoldEnabled, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: NSAutomaticSpellingCorrectionEnabled, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: NSAutomaticCapitalizationEnabled, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: NSAutomaticDashSubstitutionEnabled, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: NSAutomaticPeriodSubstitutionEnabled, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: NSAutomaticQuoteSubstitutionEnabled, type: bool, value: false }
+  # Screenshots
+  - { domain: com.apple.screencapture, key: type, type: string, value: png }
+  - { domain: com.apple.screencapture, key: disable-shadow, type: bool, value: true }
+  # General
+  - { domain: NSGlobalDomain, key: NSDocumentSaveNewDocumentsToCloud, type: bool, value: false }
+  - { domain: NSGlobalDomain, key: AppleInterfaceStyle, type: string, value: Dark }

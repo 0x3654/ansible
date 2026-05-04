@@ -1,0 +1,22 @@
+---
+# Initial setup for a new macOS machine.
+#
+# Bootstrap (one-time manual on new Mac):
+#   1. System Settings → General → Sharing → Remote Login → вкл
+#   2. From old Mac: ssh-copy-id -i ~/.ssh/id_rsa.pub m@<ip>
+#
+# Run from old Mac:
+#   ansible-playbook playbooks/setup-macbook.yml -l mbp -i inventory/inventory.yml --vault-password-file .vault
+#
+# Tags: bootstrap, homebrew, appstore, ssh, system, configs, dotfiles
+#
+# After completion:
+#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=mbp
+
+- name: Setup macOS machine
+  hosts: "{{ target | default('macbook') }}"
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/../roles/dotfiles/vars/secrets.yml"
+  roles:
+    - dotfiles

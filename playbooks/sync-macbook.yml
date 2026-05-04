@@ -1,0 +1,55 @@
+---
+# Syncs ~/code from old Mac to new Mac over rsync.
+#
+# Run from old Mac:
+#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=mba dest_host=mbp"
+#
+# Dry-run first:
+#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=mba dest_host=mbp dry_run=true"
+
+- name: Sync ~/code from old Mac to new Mac
+  hosts: "{{ dest_host | default('mbp') }}"
+  gather_facts: true
+  vars:
+    source_host: "{{ src_host | default('mba') }}"
+    _dry_run: "{{ dry_run | default(false) | bool }}"
+
+  tasks:
+    - name: Create directories
+      file:
+        path: "{{ ansible_env.HOME }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - code
+        - Library/Fonts
+
+    - name: Sync ~/code from {{ source_host }}
+      synchronize:
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/"
+        dest: "{{ ansible_env.HOME }}/code/"
+        mode: push
+        rsync_opts: &rsync_opts
+          - "--archive"
+          - "--compress"
+          - "--human-readable"
+          - "--progress"
+          - "--exclude=.DS_Store"
+          - "--exclude=node_modules/"
+          - "--exclude=__pycache__/"
+          - "--exclude=.venv/"
+          - "--exclude=venv/"
+          - "--exclude=*.pyc"
+        checksum: true
+        delete: false
+      delegate_to: localhost
+
+    - name: Sync ~/Library/Fonts from {{ source_host }}
+      synchronize:
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Fonts/"
+        dest: "{{ ansible_env.HOME }}/Library/Fonts/"
+        mode: push
+        rsync_opts: *rsync_opts
+        checksum: true
+        delete: false
+      delegate_to: localhost

@@ -1,0 +1,42 @@
+---
+- name: Check Xcode Command Line Tools
+  stat:
+    path: /Library/Developer/CommandLineTools/usr/bin/git
+  register: xcode_clt
+
+- name: Install Xcode Command Line Tools
+  command: xcode-select --install
+  when: not xcode_clt.stat.exists
+  failed_when: false
+  changed_when: true
+
+- name: Check Rosetta 2
+  stat:
+    path: /Library/Apple/usr/share/rosetta
+  register: rosetta
+
+- name: Install Rosetta 2
+  command: softwareupdate --install-rosetta --agree-to-license
+  when: not rosetta.stat.exists
+  become: true
+  failed_when: false
+  changed_when: true
+
+- name: Check Homebrew
+  stat:
+    path: /opt/homebrew/bin/brew
+  register: homebrew_bin
+
+- name: Install Homebrew
+  shell: >
+    NONINTERACTIVE=1 /bin/bash -c
+    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  when: not homebrew_bin.stat.exists
+  changed_when: true
+
+- name: Add Homebrew to PATH
+  lineinfile:
+    path: "{{ ansible_env.HOME }}/.zprofile"
+    line: 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+    create: true
+  when: not homebrew_bin.stat.exists

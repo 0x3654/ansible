@@ -1,0 +1,15 @@
+---
+- import_tasks: macos-bootstrap.yml
+  tags: [bootstrap]
+
+- import_tasks: macos-homebrew.yml
+  tags: [homebrew]
+
+- import_tasks: macos-appstore.yml
+  tags: [appstore]
+
+- import_tasks: macos-ssh.yml
+  tags: [ssh]
+
+- import_tasks: macos-system.yml
+  tags: [system]

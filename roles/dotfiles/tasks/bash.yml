@@ -1,0 +1,21 @@
+---
+- name: Deploy .bashrc
+  copy:
+    src: "{{ role_path }}/files/dotfiles/bash/.bashrc"
+    dest: "{{ ansible_env.HOME }}/.bashrc"
+    mode: "0644"
+
+- name: Deploy .bash_profile
+  copy:
+    src: "{{ role_path }}/files/dotfiles/bash/.bash_profile"
+    dest: "{{ ansible_env.HOME }}/.bash_profile"
+    mode: "0644"
+
+- name: Deploy .bash_aliases (homelab)
+  copy:
+    src: "{{ role_path }}/files/dotfiles/linux/homelab/.bash_aliases"
+    dest: "{{ ansible_env.HOME }}/.bash_aliases"
+    mode: "0644"
+  when:
+    - dotfiles_level == 'homelab'
+    - lookup('fileglob', role_path + '/files/dotfiles/linux/homelab/.bash_aliases') | length > 0

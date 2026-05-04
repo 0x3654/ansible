@@ -1,0 +1,204 @@
+---
+- name: Install BetterOSD on macOS Tahoe+
+  when: ansible_distribution_version is version('26.0', '>=')
+  block:
+    - name: Download BetterOSD dmg
+      get_url:
+        url: https://github.com/0x3654/better-osd/releases/download/v3.3.0/BetterOSD-arm64.dmg
+        dest: /tmp/BetterOSD.dmg
+        mode: "0644"
+    - name: Mount BetterOSD dmg
+      command: hdiutil attach /tmp/BetterOSD.dmg -nobrowse -quiet
+    - name: Copy BetterOSD to Applications
+      copy:
+        src: /Volumes/BetterOSD/BetterOSD.app
+        dest: /Applications/BetterOSD.app
+        remote_src: true
+      failed_when: false
+    - name: Unmount and remove BetterOSD dmg
+      command: hdiutil detach /Volumes/BetterOSD -quiet
+      failed_when: false
+    - file:
+        path: /tmp/BetterOSD.dmg
+        state: absent
+
+- name: Install Tiny Wi-Fi Analyzer
+  block:
+    - name: Download Tiny Wi-Fi Analyzer dmg
+      get_url:
+        url: https://github.com/nolze/tiny-wifi-analyzer/releases/download/v0.9.0/Tiny_Wi-Fi_Analyzer.dmg
+        dest: /tmp/TinyWiFiAnalyzer.dmg
+        mode: "0644"
+    - name: Mount Tiny Wi-Fi Analyzer dmg
+      command: hdiutil attach /tmp/TinyWiFiAnalyzer.dmg -nobrowse -quiet
+      failed_when: false
+    - name: Copy Tiny Wi-Fi Analyzer to Applications
+      copy:
+        src: "/Volumes/Tiny Wi-Fi Analyzer/Tiny Wi-Fi Analyzer.app"
+        dest: "/Applications/Tiny Wi-Fi Analyzer.app"
+        remote_src: true
+      failed_when: false
+    - name: Unmount and remove Tiny Wi-Fi Analyzer dmg
+      command: hdiutil detach "/Volumes/Tiny Wi-Fi Analyzer" -quiet
+      failed_when: false
+    - file:
+        path: /tmp/TinyWiFiAnalyzer.dmg
+        state: absent
+
+- name: Create config directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ ansible_env.HOME }}/.config/ghostty"
+    - "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User"
+
+- name: Deploy Ghostty config
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/ghostty/config"
+    dest: "{{ ansible_env.HOME }}/.config/ghostty/config"
+    mode: "0644"
+
+- name: Deploy Ghostty icons
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_env.HOME }}/.config/ghostty/"
+    mode: "0644"
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/ghostty/*.icns"
+
+- name: Deploy Cursor settings
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/cursor/settings.json"
+    dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/settings.json"
+    mode: "0644"
+
+- name: Deploy Cursor keybindings
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/cursor/keybindings.json"
+    dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/keybindings.json"
+    mode: "0644"
+
+- name: Deploy SSH client config
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/ssh/config"
+    dest: "{{ ansible_env.HOME }}/.ssh/config"
+    mode: "0600"
+
+- name: Deploy /etc/hosts
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/hosts"
+    dest: /etc/hosts
+    mode: "0644"
+  become: true
+
+- name: Create ~/Applications directory
+  file:
+    path: "{{ ansible_env.HOME }}/Applications"
+    state: directory
+    mode: "0755"
+
+- name: Deploy language-handler executable
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/language-handler/language-handler"
+    dest: "{{ ansible_env.HOME }}/Applications/language-handler"
+    mode: "0755"
+
+- name: Create language-handler config directory
+  file:
+    path: "{{ ansible_env.HOME }}/Library/Application Support/language-handler"
+    state: directory
+    mode: "0755"
+
+- name: Deploy language-handler config and LaunchAgent
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - src: "{{ role_path }}/files/dotfiles/macos/apps/language-handler/config.json"
+      dest: "{{ ansible_env.HOME }}/Library/Application Support/language-handler/config.json"
+    - src: "{{ role_path }}/files/dotfiles/macos/apps/language-handler/com.user.language-handler.plist"
+      dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.user.language-handler.plist"
+  register: launchagent_files
+
+- name: Load language-handler LaunchAgent
+  command: launchctl load -w {{ ansible_env.HOME }}/Library/LaunchAgents/com.user.language-handler.plist
+  when: launchagent_files.changed
+  failed_when: false
+
+- name: Copy webapps icons to remote
+  copy:
+    src: "{{ item }}"
+    dest: "/tmp/{{ item | basename }}"
+    mode: "0644"
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/webapps-icons/*.icns"
+
+- name: Apply custom icons to ~/Applications
+  command: >
+    /opt/homebrew/bin/fileicon set
+    {{ ansible_env.HOME }}/Applications/{{ item | basename | regex_replace('\.icns$', '') }}.app
+    /tmp/{{ item | basename }}
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/webapps-icons/*.icns"
+  failed_when: false
+  changed_when: false
+
+
+- name: Copy workmenu icons to remote
+  copy:
+    src: "{{ item }}"
+    dest: "/tmp/{{ item | basename }}"
+    mode: "0644"
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/workmenu-icons/*.icns"
+
+- name: Apply custom icons to work menu apps (iCloud Drive)
+  command: >
+    /opt/homebrew/bin/fileicon set
+    "{{ ansible_env.HOME }}/Library/Mobile Documents/com~apple~CloudDocs/work menu/{{ item | basename | regex_replace('\.icns$', '') }}.app"
+    /tmp/{{ item | basename }}
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/workmenu-icons/*.icns"
+  failed_when: false
+  changed_when: false
+
+- name: Remove icon temp files
+  file:
+    path: "/tmp/{{ item | basename }}"
+    state: absent
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/apps/webapps-icons/*.icns"
+    - "{{ role_path }}/files/dotfiles/macos/apps/workmenu-icons/*.icns"
+
+- name: Copy Fluor plist to remote
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/fluor/com.pyrolyse.Fluor.plist"
+    dest: /tmp/com.pyrolyse.Fluor.plist
+    mode: "0644"
+
+- name: Import Fluor preferences
+  command: defaults import com.pyrolyse.Fluor /tmp/com.pyrolyse.Fluor.plist
+  changed_when: true
+
+- name: Remove Fluor plist temp file
+  file:
+    path: /tmp/com.pyrolyse.Fluor.plist
+    state: absent
+
+- name: Copy Zoom preferences to remote
+  copy:
+    src: "{{ role_path }}/files/dotfiles/macos/apps/zoom/us.zoom.xos.plist"
+    dest: /tmp/us.zoom.xos.plist
+    mode: "0644"
+
+- name: Import Zoom preferences
+  command: defaults import us.zoom.xos /tmp/us.zoom.xos.plist
+  changed_when: true
+
+- name: Remove Zoom plist temp file
+  file:
+    path: /tmp/us.zoom.xos.plist
+    state: absent

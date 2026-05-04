@@ -1,0 +1,61 @@
+---
+- name: Kill any stuck brew processes
+  shell: pkill -f 'brew' 2>/dev/null || true
+  changed_when: false
+  failed_when: false
+
+- name: Remove incomplete brew download locks
+  shell: find ~/Library/Caches/Homebrew/downloads -name "*.incomplete" -delete 2>/dev/null || true
+  changed_when: false
+
+- name: Add Homebrew taps
+  community.general.homebrew_tap:
+    name: hashicorp/tap
+    state: present
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
+
+- name: Update Homebrew
+  community.general.homebrew:
+    update_homebrew: true
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
+
+- name: Install Homebrew formulae
+  community.general.homebrew:
+    name: "{{ macbook_homebrew_formulae }}"
+    state: present
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
+
+- name: Install Homebrew casks
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+    install_options: "adopt"
+  loop: "{{ macbook_homebrew_casks }}"
+  failed_when: false
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
+
+- name: Remove quarantine from all installed apps
+  shell: |
+    find /Applications ~/Applications \
+      -maxdepth 1 -name "*.app" \
+      -exec xattr -d com.apple.quarantine {} \; 2>/dev/null
+    true
+  changed_when: false
+  failed_when: false
+
+- name: Add Homebrew bash to /etc/shells
+  lineinfile:
+    path: /etc/shells
+    line: /opt/homebrew/bin/bash
+    state: present
+  become: true
+
+- name: Set Homebrew bash as default shell
+  user:
+    name: "{{ macbook_username }}"
+    shell: /opt/homebrew/bin/bash
+  become: true

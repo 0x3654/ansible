@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: dotfiles
+  author: m
+  description: Cross-platform dotfiles (bash, configs) for macOS, homelab, VPS
+  license: MIT
+  min_ansible_version: "2.14"

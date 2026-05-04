@@ -1,0 +1,15 @@
+---
+- import_tasks: bash.yml
+  tags: [dotfiles, bash]
+
+- import_tasks: macos-setup.yml
+  tags: [bootstrap, homebrew, appstore, ssh, system]
+  when: dotfiles_level == 'macbook'
+
+- import_tasks: macos.yml
+  tags: [dotfiles, configs, macos]
+  when: dotfiles_level == 'macbook'
+
+- import_tasks: linux.yml
+  tags: [dotfiles, linux]
+  when: dotfiles_level in ['homelab', 'vps']

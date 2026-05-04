@@ -16,3 +16,6 @@
 [submodule "roles/gisp/files/gisp"]
 	path = roles/gisp/files/gisp
 	url = https://github.com/0x3654/gisp
+[submodule "roles/dotfiles/files/dotfiles"]
+	path = roles/dotfiles/files/dotfiles
+	url = https://github.com/0x3654/dotfiles

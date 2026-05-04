@@ -1,0 +1,12 @@
+---
+- name: killall Finder
+  command: killall Finder
+  failed_when: false
+
+- name: killall Dock
+  command: killall Dock
+  failed_when: false
+
+- name: killall SystemUIServer
+  command: killall SystemUIServer
+  failed_when: false

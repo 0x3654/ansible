@@ -1,0 +1,68 @@
+---
+# Distributes new Mac's SSH public keys to all servers.
+#
+# Run from old Mac after setup-macbook.yml generates keys on new Mac:
+#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=mbp
+#
+# Keys distributed:
+#   id_ed25519  → ae, ae2, tr, ru2, nano, us2 (authorized_keys for root)
+#   micro       → micro (authorized_keys for root)
+#   es_0x3654   → es (authorized_keys for root)
+#
+# NOTE: us2 (AWS) — if mba_aws.pem is still needed, copy it manually from old Mac.
+#       After this playbook runs, id_ed25519 will also work for us2.
+
+- name: Fetch public keys from new Mac
+  hosts: "{{ source_host | default('mbp') }}"
+  gather_facts: true
+  tasks:
+    - name: Read public keys
+      slurp:
+        src: "{{ item }}"
+      loop:
+        - "{{ ansible_env.HOME }}/.ssh/id_ed25519.pub"
+        - "{{ ansible_env.HOME }}/.ssh/micro.pub"
+        - "{{ ansible_env.HOME }}/.ssh/es_0x3654.pub"
+      register: pubkey_slurps
+
+    - name: Store keys as host facts
+      set_fact:
+        new_main_pubkey: "{{ pubkey_slurps.results[0].content | b64decode | trim }}"
+        new_micro_pubkey: "{{ pubkey_slurps.results[1].content | b64decode | trim }}"
+        new_es_pubkey: "{{ pubkey_slurps.results[2].content | b64decode | trim }}"
+
+- name: Add main key to VPS and homelab (except micro and es)
+  hosts: ae:ae2:tr:ru2:us2:nano
+  gather_facts: false
+  vars:
+    src: "{{ source_host | default('mbp') }}"
+  tasks:
+    - name: Authorize main public key
+      authorized_key:
+        user: root
+        key: "{{ hostvars[src].new_main_pubkey }}"
+        state: present
+
+- name: Add micro key to micro
+  hosts: micro
+  gather_facts: false
+  vars:
+    src: "{{ source_host | default('mbp') }}"
+  tasks:
+    - name: Authorize micro public key
+      authorized_key:
+        user: root
+        key: "{{ hostvars[src].new_micro_pubkey }}"
+        state: present
+
+- name: Add es key to es
+  hosts: es
+  gather_facts: false
+  vars:
+    src: "{{ source_host | default('mbp') }}"
+  tasks:
+    - name: Authorize es public key
+      authorized_key:
+        user: root
+        key: "{{ hostvars[src].new_es_pubkey }}"
+        state: present

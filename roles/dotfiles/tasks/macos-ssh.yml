@@ -1,0 +1,63 @@
+---
+- name: Enable Remote Login (SSH server)
+  command: systemsetup -setremotelogin on
+  become: true
+  changed_when: false
+  failed_when: false
+
+- name: Create .ssh directory
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: "0700"
+
+- name: Generate main SSH keypair (id_ed25519)
+  command: >
+    ssh-keygen -t ed25519
+    -f {{ ansible_env.HOME }}/.ssh/id_ed25519
+    -C "{{ ansible_hostname }}@0x3654"
+    -N ""
+  args:
+    creates: "{{ ansible_env.HOME }}/.ssh/id_ed25519"
+
+- name: Generate micro SSH keypair
+  command: >
+    ssh-keygen -t ed25519
+    -f {{ ansible_env.HOME }}/.ssh/micro
+    -C "micro@0x3654"
+    -N ""
+  args:
+    creates: "{{ ansible_env.HOME }}/.ssh/micro"
+
+- name: Generate es SSH keypair
+  command: >
+    ssh-keygen -t ed25519
+    -f {{ ansible_env.HOME }}/.ssh/es_0x3654
+    -C "es@0x3654"
+    -N ""
+  args:
+    creates: "{{ ansible_env.HOME }}/.ssh/es_0x3654"
+
+- name: Read generated public keys
+  slurp:
+    src: "{{ item }}"
+  loop:
+    - "{{ ansible_env.HOME }}/.ssh/id_ed25519.pub"
+    - "{{ ansible_env.HOME }}/.ssh/micro.pub"
+    - "{{ ansible_env.HOME }}/.ssh/es_0x3654.pub"
+  register: pubkeys
+
+- name: Display public keys for distribution
+  debug:
+    msg:
+      - "id_ed25519: {{ pubkeys.results[0].content | b64decode | trim }}"
+      - "micro:      {{ pubkeys.results[1].content | b64decode | trim }}"
+      - "es_0x3654:  {{ pubkeys.results[2].content | b64decode | trim }}"
+      - "Run: ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host={{ ansible_hostname }}"
+
+- name: Add old Mac authorized key
+  authorized_key:
+    user: "{{ macbook_username }}"
+    state: present
+    key: "{{ macbook_authorized_keys }}"
+  when: macbook_authorized_keys | default('') | length > 0
