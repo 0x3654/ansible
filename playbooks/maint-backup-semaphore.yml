@@ -1,5 +1,5 @@
 ---
-- name: Backup Semaphore database to MBA
+- name: Backup Semaphore database to MBP
   hosts: semaphore_role
   gather_facts: true
 
@@ -10,7 +10,7 @@
 
   pre_tasks:
     - name: Load local host vars
-      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/mba.yml"
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/mbp.yml"
       failed_when: false
       tags: [always]
 
@@ -24,7 +24,7 @@
       delegate_to: localhost
       changed_when: true
 
-    - name: Ensure backup directory exists on MBA
+    - name: Ensure backup directory exists on MBP
       ansible.builtin.file:
         path: "{{ backup_dir }}"
         state: directory
@@ -32,7 +32,7 @@
       delegate_to: mba
       become: false
 
-    - name: Copy backup to MBA
+    - name: Copy backup to MBP
       ansible.builtin.copy:
         src: "{{ semaphore_db_tmp }}"
         dest: "{{ backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
