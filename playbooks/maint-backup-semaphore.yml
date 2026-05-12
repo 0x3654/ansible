@@ -29,7 +29,7 @@
         path: "{{ backup_dir }}"
         state: directory
         mode: "0755"
-      delegate_to: mba
+      delegate_to: mbp
       become: false
 
     - name: Copy backup to MBP
@@ -37,7 +37,7 @@
         src: "{{ semaphore_db_tmp }}"
         dest: "{{ backup_dir }}/database_{{ ansible_date_time.date }}.sqlite"
         mode: "0644"
-      delegate_to: mba
+      delegate_to: mbp
       become: false
 
     - name: Remove temporary backup
