@@ -1,0 +1,82 @@
+---
+# One-shot Watchtower run, designed to be triggered from Semaphore on a schedule.
+# Runs `watchtower --run-once` on the target host (default: ru2) and sends the
+# resulting summary to Telegram from the Ansible controller (Semaphore on ae2),
+# so notifications work even from hosts where api.telegram.org is blocked.
+
+- name: Watchtower one-shot update
+  hosts: "{{ wt_hosts | default('ru2') }}"
+  gather_facts: false
+
+  vars:
+    wt_image: "docker.io/nickfedor/watchtower:latest"
+    tg_bot_token: "{{ manage_watchtower_tg_wt_bot_token }}"
+    tg_chat_id: "{{ manage_watchtower_tg_wt_chat_id }}"
+
+  pre_tasks:
+    - name: Load manage role secrets
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../roles/manage/vars/secrets.yml"
+      tags: [always]
+
+  tasks:
+    - name: Pull watchtower image
+      community.docker.docker_image:
+        name: "{{ wt_image }}"
+        source: pull
+        force_source: true
+
+    - name: Run watchtower --run-once
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --rm
+          - --network=host
+          - -v
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - -v
+          - /etc/timezone:/etc/timezone:ro
+          - -v
+          - /etc/localtime:/etc/localtime:ro
+          - -e
+          - WATCHTOWER_CLEANUP=true
+          - -e
+          - WATCHTOWER_INCLUDE_STOPPED=true
+          - -e
+          - WATCHTOWER_INCLUDE_RESTARTING=true
+          - -e
+          - WATCHTOWER_REVIVE_STOPPED=false
+          - "{{ wt_image }}"
+          - --run-once
+      register: wt_result
+      changed_when: "'updated=0' not in (wt_result.stderr ~ wt_result.stdout)"
+
+    - name: Parse watchtower output
+      ansible.builtin.set_fact:
+        wt_log: "{{ wt_result.stderr ~ '\n' ~ wt_result.stdout }}"
+        wt_updated: "{{ (wt_result.stderr ~ '\n' ~ wt_result.stdout) | regex_findall('Found new image .*container=([^ ]+)') }}"
+        wt_summary: "{{ (wt_result.stderr ~ '\n' ~ wt_result.stdout) | regex_search('Update session completed\" (.*)', '\\1') | default(['completed']) | first }}"
+
+    - name: Build Telegram message
+      ansible.builtin.set_fact:
+        tg_text: |-
+          🛡 {{ inventory_hostname }} watchtower
+          {{ wt_summary }}
+          {% if wt_updated | length > 0 %}
+          Updated: {{ wt_updated | unique | join(', ') }}
+          {% else %}
+          Nothing updated.
+          {% endif %}
+
+    - name: Send Telegram notification from controller
+      ansible.builtin.uri:
+        url: "https://api.telegram.org/bot{{ tg_bot_token }}/sendMessage"
+        method: POST
+        body_format: json
+        body:
+          chat_id: "{{ tg_chat_id }}"
+          text: "{{ tg_text }}"
+        status_code: 200
+      delegate_to: localhost
+      failed_when: false
+      tags: [telegram, notify]
