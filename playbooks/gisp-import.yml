@@ -23,11 +23,16 @@
 
     - name: Show import output
       ansible.builtin.debug:
-        msg: "{{ import_result.stdout }}"
+        msg:
+          - "path: {{ gisp_project_src }}"
+          - "rc: {{ import_result.rc | default('<no rc — command did not run>') }}"
+          - "msg: {{ import_result.msg | default('') }}"
+          - "stderr: {{ import_result.stderr | default('') }}"
+          - "stdout: {{ import_result.stdout | default('') }}"
 
     - name: Write import output to temp file
       ansible.builtin.copy:
-        content: "{{ import_result.stdout }}"
+        content: "path: {{ gisp_project_src }}\nstdout:\n{{ import_result.stdout }}\n--- stderr ---\n{{ import_result.stderr | default('') }}\n"
         dest: /tmp/gisp_import_output.txt
         mode: '0644'
 
@@ -37,10 +42,10 @@
         . "{{ gisp_project_src }}/.env"
         set +a
         . "{{ gisp_project_src }}/scripts/send_telegram.sh"
-        if [ "{{ import_result.rc }}" -eq 0 ]; then
+        if [ "{{ import_result.rc | default(1) }}" -eq 0 ]; then
           send_heartbeat "✅ <b>GISP Import</b> завершён успешно" "/tmp/gisp_import_output.txt"
         else
-          send_heartbeat "❌ <b>GISP Import</b> завершился с ошибкой (код {{ import_result.rc }})" "/tmp/gisp_import_output.txt"
+          send_heartbeat "❌ <b>GISP Import</b> ошибка (код {{ import_result.rc | default('?') }}) path={{ gisp_project_src }}" "/tmp/gisp_import_output.txt"
         fi
       args:
         executable: /bin/bash
@@ -54,8 +59,11 @@
 
     - name: Fail if import container failed
       ansible.builtin.fail:
-        msg: "Import container exited with code {{ import_result.rc }}"
-      when: import_result.rc != 0
+        msg: >-
+          Import failed (rc={{ import_result.rc | default('undefined') }}, path={{ gisp_project_src }}).
+          {{ import_result.msg | default('') }}
+          stderr: {{ import_result.stderr | default('') }}
+      when: (import_result.rc | default(1)) != 0
 
     # Chain: trigger next task by name. Requires semaphore_api_token and
     # semaphore_next_template_name in Semaphore template extra vars.

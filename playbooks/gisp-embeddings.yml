@@ -16,7 +16,12 @@
 
     - name: Show embeddings output
       ansible.builtin.debug:
-        msg: "{{ embeddings_result.stdout }}"
+        msg:
+          - "path: {{ gisp_project_src }}"
+          - "rc: {{ embeddings_result.rc | default('<no rc — command did not run>') }}"
+          - "msg: {{ embeddings_result.msg | default('') }}"
+          - "stderr: {{ embeddings_result.stderr | default('') }}"
+          - "stdout: {{ embeddings_result.stdout | default('') }}"
 
     - name: Send Telegram notification on failure
       ansible.builtin.shell: |
@@ -24,8 +29,8 @@
         . "{{ gisp_project_src }}/.env"
         set +a
         . "{{ gisp_project_src }}/scripts/send_telegram.sh"
-        printf '%s' "{{ embeddings_result.stdout }}" > /tmp/gisp_embeddings_output.txt
-        send_heartbeat "❌ <b>GISP Embeddings</b> завершился с ошибкой (код {{ embeddings_result.rc }})" "/tmp/gisp_embeddings_output.txt"
+        printf 'path: %s\nstdout:\n%s\n--- stderr ---\n%s\n' "{{ gisp_project_src }}" "{{ embeddings_result.stdout }}" "{{ embeddings_result.stderr }}" > /tmp/gisp_embeddings_output.txt
+        send_heartbeat "❌ <b>GISP Embeddings</b> ошибка (код {{ embeddings_result.rc | default('?') }}) path={{ gisp_project_src }}" "/tmp/gisp_embeddings_output.txt"
         rm -f /tmp/gisp_embeddings_output.txt
       args:
         executable: /bin/bash
@@ -35,5 +40,8 @@
 
     - name: Fail if embeddings container failed
       ansible.builtin.fail:
-        msg: "Embeddings container exited with code {{ embeddings_result.rc }}"
-      when: embeddings_result.rc != 0
+        msg: >-
+          Embeddings failed (rc={{ embeddings_result.rc | default('undefined') }}, path={{ gisp_project_src }}).
+          {{ embeddings_result.msg | default('') }}
+          stderr: {{ embeddings_result.stderr | default('') }}
+      when: (embeddings_result.rc | default(1)) != 0
