@@ -1,0 +1,62 @@
+---
+# Обратный синк: изменения, сделанные на citrus (neo), возвращаются на moro (про).
+#
+# Копируются ТОЛЬКО файлы, которых на moro нет или которые на citrus новее (mtime).
+# Никогда не удаляет и не перезаписывает более новые файлы moro (--update).
+#
+# ОГРАНИЧЕНИЕ: конфликт «правили в обоих местах» не детектируется —
+# побеждает файл с более свежей датой. Удалённое на citrus на moro не исчезает.
+#
+# Запускать С MORO (контроллер принимает файлы; mode: pull с citrus):
+#   ansible-playbook playbooks/sync-macbook-back.yml
+# Явно: -e "src_host=citrus" (донор)
+#
+# Excludes общие со снимком: playbooks/vars/sync-excludes.yml
+
+- name: Pull newer files from citrus back to moro
+  hosts: "{{ src_host | default('citrus') }}"
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/vars/sync-excludes.yml"
+
+  tasks:
+    - name: Create local directories on controller (moro)
+      file:
+        path: "{{ lookup('env', 'HOME') }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      loop:
+        - code
+        - Library/Fonts
+        - .claude/projects
+
+    - name: Pull newer ~/code files from {{ inventory_hostname }}
+      synchronize:
+        src: "/Users/{{ ansible_user | default('m') }}/code/"
+        dest: "{{ lookup('env', 'HOME') }}/code/"
+        mode: pull
+        rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--itemize-changes'] }}"
+        checksum: false
+        delete: false
+      delegate_to: localhost
+
+    - name: Pull newer ~/Library/Fonts from {{ inventory_hostname }}
+      synchronize:
+        src: "/Users/{{ ansible_user | default('m') }}/Library/Fonts/"
+        dest: "{{ lookup('env', 'HOME') }}/Library/Fonts/"
+        mode: pull
+        rsync_opts: "{{ sync_rsync_common + ['--update'] }}"
+        checksum: false
+        delete: false
+      delegate_to: localhost
+
+    - name: Pull newer ~/.claude/projects from {{ inventory_hostname }} (диалоги с citrus)
+      synchronize:
+        src: "/Users/{{ ansible_user | default('m') }}/.claude/projects/"
+        dest: "{{ lookup('env', 'HOME') }}/.claude/projects/"
+        mode: pull
+        rsync_opts: "{{ sync_rsync_common + ['--update', '--itemize-changes'] }}"
+        checksum: false
+        delete: false
+      delegate_to: localhost

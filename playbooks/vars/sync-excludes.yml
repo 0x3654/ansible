@@ -1,0 +1,24 @@
+---
+# Общие rsync-опции для sync-macbook.yml (снимок moro→citrus)
+# и sync-macbook-back.yml (возврат нового с citrus→moro).
+#
+# Что не ездит между машинами (26Г из 73Г _Work):
+#   *.1CD / *.dt       — файловые базы 1С (16Г), платформы на citrus нет
+#   postgres/data      — живой postgres gisp (8Г), rsync живой БД = битая копия
+#   starter/build      — билд-артефакты (2Г)
+
+sync_rsync_common:
+  - "--archive"
+  - "--human-readable"
+  - "--exclude=.DS_Store"
+  - "--exclude=node_modules/"
+  - "--exclude=__pycache__/"
+  - "--exclude=.venv/"
+  - "--exclude=venv/"
+  - "--exclude=*.pyc"
+
+sync_code_excludes:
+  - "--exclude=*.1CD"
+  - "--exclude=*.dt"
+  - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
+  - "--exclude=_Work/opti-com/gisp/services/starter/build/"

@@ -59,6 +59,7 @@
         - code
         - Library/Fonts
         - .claude/projects
+        - .config/ghostty
 
     - name: Snapshot ~/code from {{ source_host }}
       synchronize:
@@ -66,6 +67,16 @@
         dest: "{{ ansible_env.HOME }}/code/"
         mode: push
         rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
+        checksum: true
+        delete: false
+      delegate_to: localhost
+
+    - name: Sync ~/.config/ghostty from {{ source_host }}
+      synchronize:
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/"
+        dest: "{{ ansible_env.HOME }}/.config/ghostty/"
+        mode: push
+        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
       delegate_to: localhost
