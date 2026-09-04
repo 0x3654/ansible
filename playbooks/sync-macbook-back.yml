@@ -23,9 +23,9 @@
     - "{{ playbook_dir }}/vars/sync-excludes.yml"
 
   tasks:
-    - name: Create local directories on {{ dest_host }}
+    - name: Create directories on {{ dest_host }} (приёмник)
       file:
-        path: "{{ lookup('env', 'HOME') }}/{{ item }}"
+        path: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/{{ item }}"
         state: directory
         mode: "0755"
       delegate_to: "{{ dest_host }}"
@@ -37,7 +37,7 @@
     - name: Pull newer ~/code files from {{ inventory_hostname }}
       synchronize:
         src: "/Users/{{ ansible_user | default('m') }}/code/"
-        dest: "{{ lookup('env', 'HOME') }}/code/"
+        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/code/"
         mode: pull
         rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--itemize-changes'] }}"
         checksum: false
@@ -47,7 +47,7 @@
     - name: Pull newer ~/Library/Fonts from {{ inventory_hostname }}
       synchronize:
         src: "/Users/{{ ansible_user | default('m') }}/Library/Fonts/"
-        dest: "{{ lookup('env', 'HOME') }}/Library/Fonts/"
+        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/Library/Fonts/"
         mode: pull
         rsync_opts: "{{ sync_rsync_common + ['--update'] }}"
         checksum: false
@@ -57,7 +57,7 @@
     - name: Pull newer ~/.claude/projects from {{ inventory_hostname }} (диалоги с citrus)
       synchronize:
         src: "/Users/{{ ansible_user | default('m') }}/.claude/projects/"
-        dest: "{{ lookup('env', 'HOME') }}/.claude/projects/"
+        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/.claude/projects/"
         mode: pull
         rsync_opts: "{{ sync_rsync_common + ['--update', '--itemize-changes'] }}"
         checksum: false
