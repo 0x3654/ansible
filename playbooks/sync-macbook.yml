@@ -1,20 +1,55 @@
 ---
-# Syncs ~/code from old Mac to new Mac over rsync.
+# Односторонний снимок ~/code (+ ~/Library/Fonts, ~/.claude/projects) с эталона (moro).
 #
-# Run from old Mac:
-#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=mba dest_host=mbp"
+# Run from moro:
+#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=moro dest_host=citrus"
 #
-# Dry-run first:
-#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=mba dest_host=mbp dry_run=true"
+# Свежий снимок-зеркало — сносит устаревший ~/code на dest (правки на dest теряются!):
+#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=moro dest_host=citrus sync_wipe=true"
+#
+# Dry-run:
+#   ansible-playbook playbooks/sync-macbook.yml -e "src_host=moro dest_host=citrus dry_run=true"
+#
+# Не ездит между машинами (sync_code_excludes): файловые базы 1С (*.1CD/*.dt),
+# живой postgres gisp, билд-артефакты starter — ~26Г из 73Г _Work.
+# ~/.claude/projects (история диалогов Claude Code) — additive, без delete:
+# сессии, начатые на citrus, при снимке не пропадают.
+# Это НЕ двусторонняя синхронизация — двусторонняя с коллизиями отдельный план (Syncthing).
 
-- name: Sync ~/code from old Mac to new Mac
-  hosts: "{{ dest_host | default('mbp') }}"
+- name: Snapshot ~/code from source Mac to dest Mac
+  hosts: "{{ dest_host | default('citrus') }}"
   gather_facts: true
   vars:
-    source_host: "{{ src_host | default('mba') }}"
+    source_host: "{{ src_host | default('moro') }}"
     _dry_run: "{{ dry_run | default(false) | bool }}"
+    _wipe: "{{ sync_wipe | default(false) | bool }}"
+
+    _rsync_common:
+      - "--archive"
+      - "--human-readable"
+      - "--exclude=.DS_Store"
+      - "--exclude=node_modules/"
+      - "--exclude=__pycache__/"
+      - "--exclude=.venv/"
+      - "--exclude=venv/"
+      - "--exclude=*.pyc"
+
+    # Тяжёлое, что не нужно на другой машине (16Г базы 1С + 8Г живой postgres + 2Г build)
+    sync_code_excludes:
+      - "--exclude=*.1CD"
+      - "--exclude=*.dt"
+      - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
+      - "--exclude=_Work/opti-com/gisp/services/starter/build/"
 
   tasks:
+    - name: Wipe stale ~/code on dest (sync_wipe=true)
+      file:
+        path: "{{ ansible_env.HOME }}/code"
+        state: absent
+      when:
+        - _wipe
+        - not _dry_run
+
     - name: Create directories
       file:
         path: "{{ ansible_env.HOME }}/{{ item }}"
@@ -23,23 +58,14 @@
       loop:
         - code
         - Library/Fonts
+        - .claude/projects
 
-    - name: Sync ~/code from {{ source_host }}
+    - name: Snapshot ~/code from {{ source_host }}
       synchronize:
         src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/"
         dest: "{{ ansible_env.HOME }}/code/"
         mode: push
-        rsync_opts: &rsync_opts
-          - "--archive"
-          - "--compress"
-          - "--human-readable"
-          - "--progress"
-          - "--exclude=.DS_Store"
-          - "--exclude=node_modules/"
-          - "--exclude=__pycache__/"
-          - "--exclude=.venv/"
-          - "--exclude=venv/"
-          - "--exclude=*.pyc"
+        rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
       delegate_to: localhost
@@ -49,7 +75,17 @@
         src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Fonts/"
         dest: "{{ ansible_env.HOME }}/Library/Fonts/"
         mode: push
-        rsync_opts: *rsync_opts
+        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+        checksum: true
+        delete: false
+      delegate_to: localhost
+
+    - name: Snapshot ~/.claude/projects from {{ source_host }} (additive)
+      synchronize:
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/projects/"
+        dest: "{{ ansible_env.HOME }}/.claude/projects/"
+        mode: push
+        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
       delegate_to: localhost
