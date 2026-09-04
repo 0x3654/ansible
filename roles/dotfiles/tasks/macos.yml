@@ -73,12 +73,54 @@
     src: "{{ role_path }}/files/dotfiles/macos/apps/cursor/settings.json"
     dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/settings.json"
     mode: "0644"
+  tags: cursor
 
 - name: Deploy Cursor keybindings
   copy:
     src: "{{ role_path }}/files/dotfiles/macos/apps/cursor/keybindings.json"
     dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/keybindings.json"
     mode: "0644"
+  tags: cursor
+
+- name: Cursor | Check CLI
+  stat:
+    path: /Applications/Cursor.app/Contents/Resources/app/bin/cursor
+  register: cursor_cli
+  tags: cursor
+
+- name: Cursor | CLI not found
+  debug:
+    msg: "Cursor.app не найден — установка расширений пропущена (сначала homebrew cask cursor)"
+  when: not cursor_cli.stat.exists
+  tags: cursor
+
+- name: Cursor | List installed extensions
+  command: /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions
+  register: cursor_ext_list
+  changed_when: false
+  when: cursor_cli.stat.exists
+  # CLI подхватывает IPC-сокет запущенного окна (в т.ч. Remote-SSH scope) — глушим
+  environment:
+    VSCODE_IPC_HOOK_CLI: ""
+  tags: cursor
+
+- name: Cursor | Install missing extensions
+  command: >
+    /Applications/Cursor.app/Contents/Resources/app/bin/cursor
+    --install-extension {{ item }}
+  register: cursor_ext_install
+  changed_when: >-
+    'successfully installed' in (cursor_ext_install.stdout ~ cursor_ext_install.stderr) | lower
+  loop: "{{ macbook_cursor_extensions }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - cursor_cli.stat.exists
+    - item not in cursor_ext_list.stdout_lines
+    - item not in macbook_cursor_extensions_skip
+  environment:
+    VSCODE_IPC_HOOK_CLI: ""
+  tags: cursor
 
 - name: Deploy SSH client config
   copy:

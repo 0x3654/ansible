@@ -1,0 +1,5 @@
+---
+# mbn (neo) — мобильный MacBook: без Parallels (приложение удалено, ресурсы не те)
+
+macbook_cursor_extensions_skip:
+  - parallelsdesktop.parallels-desktop

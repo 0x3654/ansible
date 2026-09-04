@@ -18,5 +18,10 @@
   gather_facts: true
   vars_files:
     - "{{ playbook_dir }}/../roles/dotfiles/vars/secrets.yml"
+  pre_tasks:
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
   roles:
     - dotfiles

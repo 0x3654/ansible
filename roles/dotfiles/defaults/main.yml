@@ -182,3 +182,55 @@ macbook_system_defaults:
   # General
   - { domain: NSGlobalDomain, key: NSDocumentSaveNewDocumentsToCloud, type: bool, value: false }
   - { domain: NSGlobalDomain, key: AppleInterfaceStyle, type: string, value: Dark }
+
+# ── Cursor extensions ─────────────────────────────────────────────────────────
+# Эталон — mbp. Обновить список:
+#   /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions
+# (в терминале вне Remote-SSH окна курсора, иначе покажет scope окна)
+
+# Исключения из эталонного списка для конкретных машин (см. host_vars/)
+macbook_cursor_extensions_skip: []
+
+macbook_cursor_extensions:
+  - 1c-syntax.language-1c-bsl
+  - anthropic.claude-code
+  - anysphere.cursorpyright
+  - anysphere.remote-containers
+  - anysphere.remote-ssh
+  - bierner.markdown-mermaid
+  - bretcameron.vscode-code-to-html
+  - dhoeric.ansible-vault
+  - dineug.vuerd-vscode
+  - dotjoshjohnson.xml
+  - esbenp.prettier-vscode
+  - exiasr.hadolint
+  - fabiospampinato.vscode-highlight
+  - fabiospampinato.vscode-todo-plus
+  - github.vscode-github-actions
+  - github.vscode-pull-request-github
+  - highagency.pencildev
+  - huibizhang.codesnap-plus
+  - ikbengeenrobot.ansible-variable-lookup
+  - irongeek.vscode-env
+  - kisstkondoros.vscode-gutter-preview
+  - mechatroner.rainbow-csv
+  - monokai.theme-monokai-pro-vscode
+  - mousavian.ssh-config-syntax-highlighter
+  - ms-azuretools.vscode-containers
+  - ms-azuretools.vscode-docker
+  - ms-kubernetes-tools.vscode-kubernetes-tools
+  - ms-python.debugpy
+  - ms-python.python
+  - ms-python.vscode-python-envs
+  - ms-vscode.makefile-tools
+  - mushan.vscode-paste-image
+  - naumovs.color-highlight
+  - parallelsdesktop.parallels-desktop
+  - pomdtr.excalidraw-editor
+  - redhat.ansible
+  - redhat.vscode-xml
+  - redhat.vscode-yaml
+  - shardulm94.trailing-spaces
+  - wayou.vscode-todo-highlight
+  - yy0931.vscode-sqlite3-editor
+  - yzhang.markdown-all-in-one
