@@ -1,6 +1,6 @@
 ---
 # Односторонний снимок с эталона (moro) на citrus:
-# ~/code + ~/Library/Fonts + ~/.config/ghostty + ~/.claude/projects.
+# ~/code + ~/Library/Fonts + /Applications (разница) + ~/.config/ghostty + ~/.claude/projects.
 #
 # Перед снимком собирает живые настройки приложений (cursor, ghostty) c moro
 # в файлы роли dotfiles — они внутри ~/code и едут дальше rsync'ом.
@@ -22,6 +22,10 @@
 # ~/.claude/projects (история диалогов Claude Code) — additive, без delete:
 # сессии, начатые на citrus, при снимке не пропадают.
 # Обратное направление (новее-по-mtime с citrus) — sync-macbook-back.yml.
+#
+# Выполнение: из Semaphore (контейнер на moro) или из терминала moro — без разницы:
+# все операции с файлами moro делегируются на {{ source_host }} явно, localhost
+# (внутри контейнера семафора) для этого не годится.
 
 - name: Snapshot ~/code from source Mac to dest Mac
   hosts: "{{ dest_host | default('citrus') }}"
@@ -30,6 +34,9 @@
     source_host: "{{ src_host | default('moro') }}"
     _dry_run: "{{ dry_run | default(false) | bool }}"
     _wipe: "{{ sync_wipe | default(false) | bool }}"
+
+    # Эталонный репо dotfiles на moro (для collect; из Semaphore playbook_dir — клон в контейнере)
+    sync_dotfiles_dir: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/ansible"
 
     _rsync_common:
       - "--archive"
@@ -47,6 +54,35 @@
       - "--exclude=*.dt"
       - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
       - "--exclude=_Work/opti-com/gisp/services/starter/build/"
+
+    # Разница приложений moro→citrus зафиксирована 2026-09-04 (всего 50 шт, ~7.9Г).
+    # Эти имена .app на citrus не едут: тяжёлые/игровые (8G RAM), редкие махины,
+    # снесённые вручную (cask остался — см. host_vars/citrus.yml), бенчмарк. ~5.7Г экономии.
+    # Всё остальное из разницы копируется задачами ниже — целиком и только то,
+    # чего на citrus нет. Существующие приложения не трогаем вовсе: у citrus свои
+    # версии, пофайльное смешивание бандлов недопустимо (никаких --ignore-existing).
+    sync_apps_exclude:
+      - AnyDesk                      # снесён вручную, cask стоит
+      - AppCleaner                   # снесён вручную, cask стоит
+      - Blackmagic Disk Speed Test   # бенчмарк, в MAS skip
+      - Xcode                        # 4Г+, «большой, ставить отдельно» (см. role defaults)
+      - Parallels Desktop
+      - Parallels Toolbox
+      - Steam
+      - Heroic
+      - GameHub
+      - OBS
+      - Ollama
+      - DBeaver
+      - iMazing
+      - vibe
+      - Nebula for Mac
+      - Keynote Creator Studio
+      - Pages Creator Studio
+      - Numbers Creator Studio
+      - Sigil
+      - balenaEtcher
+      - Airmine Pollen
 
   tasks:
     - name: Wipe stale ~/code on dest (sync_wipe=true)
@@ -69,38 +105,39 @@
         - .config/ghostty
 
     - name: Collect live settings from {{ source_host }} into role files
-      # Контроллер = moro (эталон). Роль-файлы внутри ~/code — уедут снимком ниже.
+      # Пишем в эталонный репо на moro (delegate → source_host), НЕ в playbook_dir:
+      # из Semaphore playbook_dir — throwaway-клон в контейнере, изменения пропали бы.
       block:
         - name: Collect Cursor settings
           copy:
             remote_src: true
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/settings.json"
-            dest: "{{ playbook_dir }}/../roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
+            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
             mode: "0644"
 
         - name: Collect Cursor keybindings
           copy:
             remote_src: true
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/keybindings.json"
-            dest: "{{ playbook_dir }}/../roles/dotfiles/files/dotfiles/macos/apps/cursor/keybindings.json"
+            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/keybindings.json"
             mode: "0644"
 
         - name: Collect Ghostty config
           copy:
             remote_src: true
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/config"
-            dest: "{{ playbook_dir }}/../roles/dotfiles/files/dotfiles/macos/apps/ghostty/config"
+            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/config"
             mode: "0644"
 
         - name: Collect Ghostty icons
           copy:
             remote_src: true
             src: "{{ item }}"
-            dest: "{{ playbook_dir }}/../roles/dotfiles/files/dotfiles/macos/apps/ghostty/{{ item | basename }}"
+            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/{{ item | basename }}"
             mode: "0644"
           with_fileglob:
             - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/*.icns"
-      delegate_to: localhost
+      delegate_to: "{{ source_host }}"
       tags: collect
 
     - name: Snapshot ~/code from {{ source_host }}
@@ -111,7 +148,7 @@
         rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
-      delegate_to: localhost
+      delegate_to: "{{ source_host }}"
 
     - name: Sync ~/.config/ghostty from {{ source_host }}
       synchronize:
@@ -121,7 +158,7 @@
         rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
-      delegate_to: localhost
+      delegate_to: "{{ source_host }}"
 
     - name: Sync ~/Library/Fonts from {{ source_host }}
       synchronize:
@@ -131,7 +168,82 @@
         rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
-      delegate_to: localhost
+      delegate_to: "{{ source_host }}"
+
+    - name: Apps on {{ source_host }} (эталон)
+      ansible.builtin.command: "ls {{ item }}"
+      loop:
+        - /Applications
+        - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications"
+      register: _src_apps
+      delegate_to: "{{ source_host }}"
+      changed_when: false
+      failed_when: false
+      tags: apps
+
+    - name: Apps on dest (citrus)
+      ansible.builtin.command: "ls {{ item }}"
+      loop:
+        - /Applications
+        - "{{ ansible_env.HOME }}/Applications"
+      register: _dst_apps
+      changed_when: false
+      failed_when: false
+      tags: apps
+
+    - name: Union of apps on citrus (/Applications + ~/Applications)
+      # Только целые .app, отсутствующие на citrus (в любом из её каталогов —
+      # Xcode на citrus живёт в ~/Applications, не в /Applications).
+      # В существующие бандлы не лезем.
+      ansible.builtin.set_fact:
+        _dst_all_apps: >-
+          {{ (_dst_apps.results | map(attribute='stdout_lines') | flatten)
+             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list }}
+      tags: apps
+
+    - name: App difference (есть на moro, нет на citrus, минус sync_apps_exclude)
+      ansible.builtin.set_fact:
+        _apps_new_root: >-
+          {{ _src_apps.results[0].stdout_lines
+             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
+             | difference(sync_apps_exclude)
+             | difference(_dst_all_apps) }}
+        _apps_new_home: >-
+          {{ _src_apps.results[1].stdout_lines
+             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
+             | difference(sync_apps_exclude)
+             | difference(_dst_all_apps) }}
+      tags: apps
+
+    - name: Sync app difference from {{ source_host }} → /Applications
+      # Целые бандлы: src без хвостового слеша, dest — каталог без пробелов в пути
+      # (openrsync не квотит remote-аргументы: 'server receiver mode requires two
+      # argument'). MAS-приложения приедут без receipt — App Store их не обновит
+      # (роль их не переустанавливает: host_vars/citrus.yml → macbook_appstore_apps_skip).
+      synchronize:
+        src: "/Applications/{{ item }}.app"
+        dest: "/Applications/"
+        mode: push
+        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+        delete: false
+      loop: "{{ _apps_new_root }}"
+      loop_control:
+        label: "{{ item }}"
+      delegate_to: "{{ source_host }}"
+      tags: apps
+
+    - name: Sync app difference from {{ source_host }} → ~/Applications
+      synchronize:
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications/{{ item }}.app"
+        dest: "{{ ansible_env.HOME }}/Applications/"
+        mode: push
+        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+        delete: false
+      loop: "{{ _apps_new_home }}"
+      loop_control:
+        label: "{{ item }}"
+      delegate_to: "{{ source_host }}"
+      tags: apps
 
     - name: Snapshot ~/.claude/projects from {{ source_host }} (additive)
       synchronize:
@@ -141,4 +253,4 @@
         rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
-      delegate_to: localhost
+      delegate_to: "{{ source_host }}"
