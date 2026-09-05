@@ -88,6 +88,9 @@ macbook_homebrew_casks:
   - vlc
   - zoom
 
+# Исключения из cask-списка для конкретных машин (см. host_vars/)
+macbook_homebrew_casks_skip: []
+
 macbook_appstore_apps:
 
   # --- мессенджеры ---
@@ -154,6 +157,9 @@ macbook_appstore_apps:
 
   # - { id: 497799835, name: "Xcode" }  # большой, ставить отдельно
 
+# Исключения из MAS-списка по name для конкретных машин (см. host_vars/)
+macbook_appstore_apps_skip: []
+
 macbook_system_defaults:
   # Finder
   - { domain: com.apple.finder, key: ShowHiddenFiles, type: bool, value: true }
@@ -184,7 +190,7 @@ macbook_system_defaults:
   - { domain: NSGlobalDomain, key: AppleInterfaceStyle, type: string, value: Dark }
 
 # ── Cursor extensions ─────────────────────────────────────────────────────────
-# Эталон — mbp. Обновить список:
+# Эталон — moro. Обновить список:
 #   /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions
 # (в терминале вне Remote-SSH окна курсора, иначе покажет scope окна)
 

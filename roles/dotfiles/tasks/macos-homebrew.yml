@@ -33,7 +33,7 @@
     name: "{{ item }}"
     state: present
     install_options: "adopt"
-  loop: "{{ macbook_homebrew_casks }}"
+  loop: "{{ macbook_homebrew_casks | difference(macbook_homebrew_casks_skip | default([])) }}"
   failed_when: false
   environment:
     PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"

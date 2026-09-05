@@ -1,5 +1,33 @@
 ---
-# mbn (neo) — мобильный MacBook: без Parallels (приложение удалено, ресурсы не те)
+# citrus (neo) — мобильный MacBook (A18 Pro / 8G): без Parallels (приложение удалено, ресурсы не те)
+#
+# Разница приложений moro→citrus зафиксирована 2026-09-04 (50 шт, см. sync-macbook.yml):
+# тяжёлое не едет вообще, остальную разницу привозит sync-macbook.yml rsync'ом,
+# поэтому здесь рольные MAS/casks тоже в skip — роль их не переустанавливает.
+
+# Cask стоит, но .app удалён вручную — не возвращать
+macbook_homebrew_casks_skip:
+  - anydesk
+  - appcleaner
+
+# Ролевые MAS из разницы: Blackmagic не нужен, остальные привозит синк (без receipt MAS —
+# обновлений не будет, при желании вернуть — убрать из skip и пусть ставит роль)
+macbook_appstore_apps_skip:
+  - Blackmagic Disk Speed Test
+  - Caramba Switcher
+  - Command X
+  - Data Jar
+  - DualSenseM
+  - Fresco
+  - Gifski
+  - Image2Icon
+  - NIIMBOT
+  - One Thing
+  - PXPlay
+  - Pure Paste
+  - SmartTag
+  - Telegram Lite
+  - iFont
 
 macbook_cursor_extensions_skip:
   - parallelsdesktop.parallels-desktop
