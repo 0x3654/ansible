@@ -1,0 +1,76 @@
+---
+
+- name: Create Time Machine data directory
+  ansible.builtin.file:
+    path: "{{ timemachine_data_dir }}"
+    state: directory
+    owner: "{{ timemachine_user }}"
+    group: "{{ timemachine_group }}"
+    mode: "0770"
+  tags: [share]
+
+- name: Add Time Machine share to smb.conf
+  ansible.builtin.blockinfile:
+    path: "{{ timemachine_smb_conf }}"
+    marker: "# {mark} ANSIBLE MANAGED - timemachine role"
+    backup: true
+    block: |
+      [{{ timemachine_share_name }}]
+         path = {{ timemachine_data_dir }}
+         valid users = {{ timemachine_user }}
+         read only = no
+         browseable = yes
+         vfs objects = fruit streams_xattr
+         fruit:time machine = yes
+         fruit:time machine max size = {{ timemachine_max_size }}
+         fruit:metadata = stream
+         spotlight = no
+  notify: reload samba
+  tags: [share]
+
+- name: Validate smb.conf with testparm
+  ansible.builtin.command:
+    argv: [testparm, -s]
+  register: timemachine_testparm
+  failed_when: timemachine_testparm.rc != 0
+  changed_when: false
+  tags: [share]
+
+# smbd регистрирует _adisk._tcp только при старте (рестартить нельзя — рвёт
+# сессии), поэтому объявляем Time Machine диск статикой; avahi подхватывает
+# файл без reload
+- name: Hide backups directory from parent share listing
+  ansible.builtin.blockinfile:
+    path: "{{ timemachine_smb_conf }}"
+    insertafter: '\[{{ timemachine_hide_in_share }}\]'
+    marker: "# {mark} ANSIBLE MANAGED - timemachine role (hide backups dir)"
+    content: "         hide unreadable = yes"
+    backup: true
+  when: timemachine_hide_in_share | default('') | length > 0
+  notify: reload samba
+  tags: [share]
+
+# smbd регистрирует _smb._tcp только при старте (рестартить нельзя — рвёт
+# сессии), а _adisk вообще никогда; объявляем обе записи статикой. Без
+# _smb._tcp macOS не показывает TM-диск в выборщике
+- name: Advertise Time Machine disk via avahi
+  ansible.builtin.copy:
+    dest: /etc/avahi/services/timemachine.service
+    mode: "0644"
+    content: |
+      <?xml version="1.0" standalone='no'?>
+      <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+      <service-group>
+        <name replace-wildcards="yes">{{ timemachine_avahi_name }}</name>
+        <service>
+          <type>_smb._tcp</type>
+          <port>445</port>
+        </service>
+        <service>
+          <type>_adisk._tcp</type>
+          <port>445</port>
+          <txt-record>sys=waMa=0,adVF=0x100</txt-record>
+          <txt-record>dk0=adVN={{ timemachine_share_name }},adVF=0x82</txt-record>
+        </service>
+      </service-group>
+  tags: [share]

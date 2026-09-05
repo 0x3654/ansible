@@ -1,0 +1,20 @@
+---
+# defaults file for timemachine
+
+# System user for the Time Machine share
+timemachine_user: timemachine
+timemachine_group: timemachine
+timemachine_uid: "1100"
+timemachine_gid: "1100"
+
+# SMB share (fruit/streams_xattr profile, advertises via host avahi)
+timemachine_share_name: TimeMachine
+timemachine_data_dir: /mnt/torrent/disk2/timemachine
+timemachine_max_size: 8T
+timemachine_smb_conf: /etc/samba/smb.conf
+
+# Имя устройства в Bonjour (_adisk._tcp)
+timemachine_avahi_name: "{{ inventory_hostname }}"
+
+# Шара, в корне которой лежит каталог бэкапов (чтобы спрятать его из листинга)
+timemachine_hide_in_share: micro_torrent2

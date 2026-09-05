@@ -1,0 +1,9 @@
+---
+
+- name: Import Time Machine user tasks
+  ansible.builtin.import_tasks: user.yml
+  tags: [user]
+
+- name: Import Time Machine share tasks
+  ansible.builtin.import_tasks: share.yml
+  tags: [share]

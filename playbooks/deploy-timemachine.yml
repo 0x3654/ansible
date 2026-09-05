@@ -1,0 +1,22 @@
+---
+# Playbook to deploy timemachine role (Time Machine share in host samba)
+- name: Deploy Time Machine share
+  hosts: timemachine_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include secrets for timemachine role
+    - name: Include timemachine role secrets
+      ansible.builtin.include_vars: "{{ ansible_roles_path }}/timemachine/vars/secrets.yml"
+      tags: [always]
+
+    # Load host_vars if exists
+    - name: Load host_vars
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run timemachine role tasks
+      ansible.builtin.include_role:
+        name: timemachine
+      tags: [timemachine]

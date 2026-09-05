@@ -1,0 +1,35 @@
+---
+
+- name: Create timemachine group
+  ansible.builtin.group:
+    name: "{{ timemachine_group }}"
+    gid: "{{ timemachine_gid }}"
+    system: true
+  tags: [user]
+
+- name: Create timemachine system user
+  ansible.builtin.user:
+    name: "{{ timemachine_user }}"
+    uid: "{{ timemachine_uid }}"
+    group: "{{ timemachine_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+  tags: [user]
+
+- name: List samba passdb users
+  ansible.builtin.command: pdbedit -L
+  register: timemachine_pdb_list
+  changed_when: false
+  tags: [user]
+
+# Пароль применяется при первом развёртывании; для смены удалить юзера из
+# passdb на хосте (pdbedit -x timemachine) и перезапустить плейбук
+- name: Add timemachine user to samba passdb (first deploy only)
+  ansible.builtin.shell: |
+    printf '%s\n%s\n' '{{ timemachine_smb_password }}' '{{ timemachine_smb_password }}' | smbpasswd -s -a {{ timemachine_user }}
+  when:
+    - timemachine_smb_password | default('') | length > 0
+    - not (timemachine_pdb_list.stdout is search(timemachine_user ~ ':'))
+  no_log: true
+  tags: [user]
