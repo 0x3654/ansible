@@ -17,6 +17,6 @@ tsdproxy_enable: true
 # encode:   base64 -i gisp_downloader_key | tr -d '\n'
 gisp_downloader_ssh_key_b64: "base64-encoded-private-key"
 
-# mba host vars
+# macbook host vars (moro)
 gisp_project_src: /path/to/gisp
 semaphore_backup_local_dir: /path/to/semaphore/vps_backup

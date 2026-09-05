@@ -6,12 +6,12 @@
 #   2. From old Mac: ssh-copy-id -i ~/.ssh/id_rsa.pub m@<ip>
 #
 # Run from old Mac:
-#   ansible-playbook playbooks/setup-macbook.yml -l mbp -i inventory/inventory.yml --vault-password-file .vault
+#   ansible-playbook playbooks/setup-macbook.yml -l moro -i inventory/inventory.yml --vault-password-file .vault
 #
 # Tags: bootstrap, homebrew, appstore, ssh, system, configs, dotfiles
 #
 # After completion:
-#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=mbp
+#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=moro
 
 - name: Setup macOS machine
   hosts: "{{ target | default('macbook') }}"

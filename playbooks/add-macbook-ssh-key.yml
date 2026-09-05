@@ -2,7 +2,7 @@
 # Distributes new Mac's SSH public keys to all servers.
 #
 # Run from old Mac after setup-macbook.yml generates keys on new Mac:
-#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=mbp
+#   ansible-playbook playbooks/add-macbook-ssh-key.yml -e source_host=moro
 #
 # Keys distributed:
 #   id_ed25519  → ae, ae2, tr, ru2, nano, us2 (authorized_keys for root)
@@ -13,7 +13,7 @@
 #       After this playbook runs, id_ed25519 will also work for us2.
 
 - name: Fetch public keys from new Mac
-  hosts: "{{ source_host | default('mbp') }}"
+  hosts: "{{ source_host | default('moro') }}"
   gather_facts: true
   tasks:
     - name: Read public keys
@@ -35,7 +35,7 @@
   hosts: ae:ae2:tr:ru2:us2:nano
   gather_facts: false
   vars:
-    src: "{{ source_host | default('mbp') }}"
+    src: "{{ source_host | default('moro') }}"
   tasks:
     - name: Authorize main public key
       authorized_key:
@@ -47,7 +47,7 @@
   hosts: micro
   gather_facts: false
   vars:
-    src: "{{ source_host | default('mbp') }}"
+    src: "{{ source_host | default('moro') }}"
   tasks:
     - name: Authorize micro public key
       authorized_key:
@@ -59,7 +59,7 @@
   hosts: es
   gather_facts: false
   vars:
-    src: "{{ source_host | default('mbp') }}"
+    src: "{{ source_host | default('moro') }}"
   tasks:
     - name: Authorize es public key
       authorized_key:
