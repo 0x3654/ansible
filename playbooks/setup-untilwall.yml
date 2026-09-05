@@ -1,0 +1,73 @@
+---
+# One-time provisioning of untilwall on a fresh host (full role).
+# For routine redeploys triggered by the untilwall repo, use deploy-untilwall.yml.
+#
+# Stages mirror roles/untilwall/tasks/main.yml, but the stack is brought up
+# explicitly after filescopy so the deploy health-check has a running container
+# on first run (the role's "docker up untilwall" handler only flushes at play end).
+- name: Provision untilwall (full role) on a fresh host
+  hosts: untilwall_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include untilwall role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/untilwall/vars/main.yml"
+        - "{{ ansible_roles_path }}/untilwall/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/untilwall/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Install packages and docker repo
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: apt.yml
+
+    - name: Obtain TLS certificate
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: certbot.yml
+
+    - name: Configure system nginx site
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: nginx.yml
+
+    - name: Reload nginx now so the 443 vhost is active before the container starts
+      ansible.builtin.meta: flush_handlers
+
+    - name: Copy compose, .env and data dir
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: filescopy.yml
+
+    - name: Bring up untilwall stack (first run, before health-check)
+      ansible.builtin.command:
+        cmd: "{{ common_compose_command | default('docker compose') }} up -d"
+        chdir: "{{ path }}"
+      register: untilwall_first_up
+      changed_when: >-
+        untilwall_first_up.stdout is search('Creating')
+        or untilwall_first_up.stdout is search('Recreating')
+        or untilwall_first_up.stdout is search('Starting')
+        or untilwall_first_up.stderr is search('Creating')
+        or untilwall_first_up.stderr is search('Started')
+
+    - name: Configure firewall
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: firewall.yml
+
+    - name: Run deploy (pull + health-check + rollback)
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: deploy.yml

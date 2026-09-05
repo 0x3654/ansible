@@ -35,8 +35,8 @@
       vars:
         common_telegram_message: "✅ untilwall deployment SUCCESS on {{ inventory_hostname }}\nImage: 0x3654/untilwall:latest"
       when:
-        - untilwall_telegram_bot_token | default('')
-        - untilwall_telegram_chat_id | default('')
+        - untilwall_telegram_bot_token | default('') | length > 0
+        - untilwall_telegram_chat_id | default('') | length > 0
       tags: [deploy]
 
   rescue:
@@ -77,8 +77,8 @@
           Rolled back to :stable
           Error: {{ ansible_failed_result.msg | default('Unknown error') }}
       when:
-        - untilwall_telegram_bot_token | default('')
-        - untilwall_telegram_chat_id | default('')
+        - untilwall_telegram_bot_token | default('') | length > 0
+        - untilwall_telegram_chat_id | default('') | length > 0
       tags: [deploy]
 
     - name: Fail the playbook after rollback

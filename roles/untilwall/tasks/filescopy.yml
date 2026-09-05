@@ -1,4 +1,11 @@
 ---
+- name: Ensure base directory exists
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    mode: "{{ directory_mode }}"
+  tags: [filescopy]
+
 - name: Copy docker compose file from role files
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/untilwall/files/untilwall/compose.yaml"
