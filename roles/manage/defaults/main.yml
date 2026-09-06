@@ -22,5 +22,9 @@ deploy_path: "/server/{{ ansible_role_name | basename }}"  # noqa: var-naming[no
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 
+# Deploy only these compose services (empty = whole project down/up).
+# Used with a per-host files_source_dir to deploy a single service, e.g. beszel on micro.
+manage_compose_services: []  # noqa: var-naming[no-role-prefix]
+
 # Beszel config (see vars/secrets.yml for sensitive data)
 beszel_port: "45876"  # noqa: var-naming[no-role-prefix]

@@ -1,12 +1,22 @@
 ---
+# Resolve role-context values eagerly: once inside the included common role,
+# role_path / ansible_role_name point at roles/common, so files_source_dir
+# would silently match nothing and handler names would notify handlers
+# that nothing listens to (core 2.21 lazy include vars).
+- name: Resolve file copy parameters in role context
+  ansible.builtin.set_fact:
+    manage_resolved_files_source_dir: "{{ files_source_dir }}"
+    manage_resolved_up_handler: "docker up {{ ansible_role_name | basename }}"
+    manage_resolved_down_handler: "docker down {{ ansible_role_name | basename }}"
+
 - name: Include common file copy tasks
   ansible.builtin.include_role:
     name: common
     tasks_from: filescopy.yml
   vars:
-    common_up_handler_name: "docker up {{ ansible_role_name | basename }}"
-    common_down_handler_name: "docker down {{ ansible_role_name | basename }}"
-    common_files_source_dir: "{{ files_source_dir }}"
+    common_up_handler_name: "{{ manage_resolved_up_handler }}"
+    common_down_handler_name: "{{ manage_resolved_down_handler }}"
+    common_files_source_dir: "{{ manage_resolved_files_source_dir }}"
     common_folder_user: "{{ folder_user }}"
     common_directory_mode: "{{ directory_mode }}"
     common_file_mode: "{{ file_mode }}"

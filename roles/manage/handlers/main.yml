@@ -1,24 +1,29 @@
 ---
 # Handlers for manage stack (beszel + watchtower)
+# manage_compose_services (optional, per host): deploy only listed services,
+# pulling fresh images, without bouncing the whole project
 - name: docker down {{ ansible_role_name | basename }}  # noqa: name[casing]
   ansible.builtin.command: "{{ compose_command | default('docker compose') }} down"
   args:
     chdir: "{{ path }}"
   register: compose_down_result  # noqa: var-naming[no-role-prefix]
   changed_when: >-
-    compose_down_result.stdout is search('Removing')
-    or compose_down_result.stdout is search('Stopped')
+    compose_down_result.stdout is search('Remov')
+    or compose_down_result.stdout is search('Stopp')
   failed_when: false
   listen: docker down manage
+  when: (manage_compose_services | default([])) | length == 0
 
 - name: docker up {{ ansible_role_name | basename }}  # noqa: name[casing]
   ansible.builtin.command: >-
     {{ compose_command | default('docker compose') }} up -d
+    {{ '--pull always' if (manage_compose_services | default([]) | length > 0) else '' }}
+    {{ manage_compose_services | default([]) | join(' ') }}
   args:
     chdir: "{{ path }}"
   register: compose_up_result  # noqa: var-naming[no-role-prefix]
   changed_when: >-
-    compose_up_result.stdout is search('Creating')
-    or compose_up_result.stdout is search('Recreating')
-    or compose_up_result.stdout is search('Starting')
+    compose_up_result.stdout is search('Creat')
+    or compose_up_result.stdout is search('Recreat')
+    or compose_up_result.stdout is search('Start')
   listen: docker up manage
