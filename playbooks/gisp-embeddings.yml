@@ -6,6 +6,16 @@
   hosts: gisp_role
   gather_facts: false
   tasks:
+    - name: Ensure pg-loopback sidecar (compose profile gpu)
+      ansible.builtin.command:
+        cmd: docker compose --profile gpu up -d pg-loopback
+        chdir: "{{ gisp_project_src }}"
+      environment:
+        PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        GISP_GPU_PG_PORT: "{{ gisp_gpu_pg_port | default('5432') }}"
+      changed_when: false
+      when: gisp_gpu | default(false) | bool
+
     - name: Run embeddings natively on GPU (gisp_gpu)
       ansible.builtin.command:
         cmd: bash src/gpu/run_native_embeddings.sh
