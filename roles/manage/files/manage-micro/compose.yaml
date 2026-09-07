@@ -62,7 +62,7 @@ services:
       - portainer:/data
     labels:
       tsdproxy.enable: "true"
-      tsdproxy.name: micro_portainer
+      tsdproxy.name: micro-portainer
       tsdproxy.container_port: 9443
       tsdproxy.scheme: "https"
       tsdproxy.tlsvalidate: "false"
