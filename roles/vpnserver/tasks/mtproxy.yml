@@ -1,5 +1,6 @@
 ---
 - name: MTProxy setup
+  when: vpnserver_mtproxy_enabled
   tags: [mtproxy]
   block:
     - name: MTProxy Create directory
@@ -51,3 +52,18 @@
     - name: MTProxy Show proxy link
       ansible.builtin.debug:
         msg: "MTProxy {{ domain_name }}: https://t.me/proxy?server={{ domain_name }}&port={{ vpnserver_mtproxy_port }}&secret={{ vpnserver_mtproxy_secret }}"
+
+- name: MTProxy remove
+  when: not vpnserver_mtproxy_enabled
+  tags: [mtproxy]
+  block:
+    - name: MTProxy Stop and remove container
+      community.docker.docker_container:
+        name: mtproxy
+        state: absent
+      failed_when: false
+
+    - name: MTProxy Remove directory
+      ansible.builtin.file:
+        path: "{{ vpnserver_mtproxy_path }}"
+        state: absent
