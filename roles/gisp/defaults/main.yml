@@ -21,7 +21,7 @@ directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0644"  # noqa: var-naming[no-role-prefix]
 
 # Service ports
-api_port: 8000  # noqa: var-naming[no-role-prefix]
+api_port: 8001  # noqa: var-naming[no-role-prefix]  # хост-публикация api; 8000 занят portainer на micro
 openwebui_port: 3333  # noqa: var-naming[no-role-prefix]
 semantic_port: 8010  # noqa: var-naming[no-role-prefix]
 postgres_port: 5432  # noqa: var-naming[no-role-prefix]
