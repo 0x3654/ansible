@@ -2,6 +2,7 @@
 
 - name: Import APT management tasks
   ansible.builtin.import_tasks: apt.yml
+  when: ansible_os_family == 'Debian'
   tags: [apt, upgrade]
 
 - name: Import file copy tasks
@@ -10,4 +11,5 @@
 
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
+  when: ansible_os_family == 'Debian'
   tags: [firewall]

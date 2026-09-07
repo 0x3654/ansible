@@ -1,9 +1,24 @@
 ---
 # GISP Embeddings - Recompute semantic embeddings
+# gisp_gpu=true (хост-параметр, только mac): нативный пересчёт на MPS вместо
+# docker-воркера — src/gpu/run_native_embeddings.sh в репо gisp
 - name: GISP Embeddings
   hosts: gisp_role
   gather_facts: false
   tasks:
+    - name: Run embeddings natively on GPU (gisp_gpu)
+      ansible.builtin.command:
+        cmd: bash src/gpu/run_native_embeddings.sh
+        chdir: "{{ gisp_project_src }}"
+      environment:
+        PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        GISP_GPU_PORT: "{{ gisp_gpu_port | default('8011') }}"
+        GISP_GPU_BACKEND: "{{ gisp_gpu_backend | default('torch-mps') }}"
+      register: embeddings_result
+      failed_when: false
+      changed_when: false
+      when: gisp_gpu | default(false) | bool
+
     - name: Run embeddings-worker container
       ansible.builtin.command:
         cmd: docker compose --profile embeddings run --rm --pull always embeddings-worker
@@ -13,6 +28,7 @@
       register: embeddings_result
       failed_when: false
       changed_when: false
+      when: not (gisp_gpu | default(false) | bool)
 
     - name: Show embeddings output
       ansible.builtin.debug:

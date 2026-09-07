@@ -74,3 +74,9 @@ embed_ids: ""  # noqa: var-naming[no-role-prefix]
 limit: ""  # noqa: var-naming[no-role-prefix]
 extra_embed_args: ""  # noqa: var-naming[no-role-prefix]
 semantic_url_override: ""  # noqa: var-naming[no-role-prefix]
+
+# GPU: нативный пересчёт эмбеддингов на Apple MPS вместо docker-воркера.
+# Включается per-host (moro в dev-инвентаре); код — src/gpu в репо gisp
+gisp_gpu: false  # noqa: var-naming[no-role-prefix]
+gisp_gpu_port: 8011  # noqa: var-naming[no-role-prefix]
+gisp_gpu_backend: "torch-mps"  # noqa: var-naming[no-role-prefix]

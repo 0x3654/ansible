@@ -1,0 +1,27 @@
+name: Deploy GISP
+
+env:
+  SEMAPHORE_URL: https://semaphore.0x3654.com
+  SEMAPHORE_PROJECT_ID: 1
+  SEMAPHORE_TEMPLATE_ID: 8
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'playbooks/deploy-gisp.yml'
+      - 'playbooks/gisp-*.yml'
+      - 'roles/gisp/**'
+      - 'host_vars/moro.yml'
+
+jobs:
+  trigger-semaphore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy-gisp in Semaphore
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.SEMAPHORE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            ${{ env.SEMAPHORE_URL }}/api/project/${{ env.SEMAPHORE_PROJECT_ID }}/tasks \
+            -d "{\"template_id\": ${{ env.SEMAPHORE_TEMPLATE_ID }}}"
