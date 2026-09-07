@@ -13,6 +13,7 @@
       environment:
         PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         GISP_GPU_PORT: "{{ gisp_gpu_port | default('8011') }}"
+        GISP_GPU_PG_PORT: "{{ gisp_gpu_pg_port | default('5432') }}"
         GISP_GPU_BACKEND: "{{ gisp_gpu_backend | default('torch-mps') }}"
       register: embeddings_result
       failed_when: false

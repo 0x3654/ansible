@@ -79,4 +79,5 @@ semantic_url_override: ""  # noqa: var-naming[no-role-prefix]
 # Включается per-host (moro в dev-инвентаре); код — src/gpu в репо gisp
 gisp_gpu: false  # noqa: var-naming[no-role-prefix]
 gisp_gpu_port: 8011  # noqa: var-naming[no-role-prefix]
+gisp_gpu_pg_port: 5432  # noqa: var-naming[no-role-prefix]
 gisp_gpu_backend: "torch-mps"  # noqa: var-naming[no-role-prefix]
