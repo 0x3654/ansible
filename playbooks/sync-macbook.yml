@@ -151,7 +151,7 @@
       # «Чат Beszel» = личка, куда пишут боты инфраструктуры; шлём туда же.
       # ignore_errors: нет кредита — просто без оповещения, синку не мешает.
       ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/roles/manage/vars/secrets.yml"
+        file: "{{ playbook_dir }}/../roles/manage/vars/secrets.yml"   # roles/ — в корне репо, playbook_dir = playbooks/
       ignore_errors: true
 
     - name: Снимок (block ради rescue-оповещения в ТГ)
@@ -181,6 +181,9 @@
             _dest_ssh: "{{ ansible_user | default('m') }}@{{ inventory_hostname }}.{{ sync_tailnet_domain }}"
           delegate_to: "{{ source_host }}"
           register: _sync_estimate
+          until: _sync_estimate.rc == 0
+          retries: 2
+          delay: 15
           changed_when: false
 
         - name: Pre-flight — объём к пересылке (байт)
