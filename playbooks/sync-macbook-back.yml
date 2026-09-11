@@ -269,6 +269,10 @@
   vars:
     _src_host: "{{ src_host | default('citrus') }}"
     _src_user: "{{ hostvars[_src_host].ansible_user | default('m') }}"
+    # Не возвращаются на moro: pkg-приложения от root на citrus — юзер не может
+    # прочитать бандл (rsync: Permission denied), на moro ставить вручную.
+    sync_apps_back_exclude:
+      - Dell Display and Peripheral Manager
   vars_files:
     - "{{ playbook_dir }}/vars/sync-excludes.yml"
 
@@ -308,15 +312,17 @@
           ansible.builtin.set_fact:
             _apps_new_root: >-
               {{ _src_apps.results[0].stdout_lines | select('match', '.*[.]app$')
-                 | map('regex_replace', '[.]app$', '') | list | difference(_dst_all_apps) }}
+                 | map('regex_replace', '[.]app$', '') | list
+                 | difference(_dst_all_apps) | difference(sync_apps_back_exclude) }}
             _apps_new_home: >-
               {{ _src_apps.results[1].stdout_lines | select('match', '.*[.]app$')
-                 | map('regex_replace', '[.]app$', '') | list | difference(_dst_all_apps) }}
+                 | map('regex_replace', '[.]app$', '') | list
+                 | difference(_dst_all_apps) | difference(sync_apps_back_exclude) }}
 
         - name: Объём новых приложений (du, для гвардии)
           ansible.builtin.command: du -sk {{ item }}
-          loop: "{{ _apps_new_root | map('regex_replace', '(.*)', '/Applications/\\1.app') | list
-                    + _apps_new_home | map('regex_replace', '(.*)', '/Users/' + _src_user + '/Applications/\\1.app') | list }}"
+          loop: "{{ _apps_new_root | map('regex_replace', '(.+)', '/Applications/\\1.app') | list
+                    + _apps_new_home | map('regex_replace', '(.+)', '/Users/' + _src_user + '/Applications/\\1.app') | list }}"
           loop_control:
             label: "{{ item | basename }}"
           delegate_to: "{{ _src_host }}"
