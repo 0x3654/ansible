@@ -1,6 +1,8 @@
 # micro-specific manage stack (deployed to /git/docker/manage via host_vars overrides)
 # Source of truth synced from host 2026-09-06. Secrets templated from vars/secrets.yml
 # and host_vars/micro.yml (manage_micro_beszel_token).
+# Host identity (hostname, notification tag, tsdproxy names, hub URL) comes from
+# inventory vars — renaming a host in inventory.yml renames it everywhere here.
 services:
   beszel:
     image: henrygd/beszel:latest
@@ -16,11 +18,11 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       # external URL used in notification links (was http://localhost:8090)
-      APP_URL: https://micro-beszel.koi-uaru.ts.net
+      APP_URL: https://{{ inventory_hostname }}-beszel.koi-uaru.ts.net
     labels:
       tsdproxy.enable: "true"
       # RFC 1123: underscores are invalid, tsdproxy rejected "micro_beszel"
-      tsdproxy.name: micro-beszel
+      tsdproxy.name: "{{ inventory_hostname }}-beszel"
       tsdproxy.container_port: 8090
       com.centurylinklabs.watchtower.enable: "true"
   beszel-agent:
@@ -37,7 +39,7 @@ services:
       LISTEN: 45877
       KEY: '{{manage_beszel_public_key}}'
       TOKEN: '{{manage_micro_beszel_token}}'
-      HUB_URL: http://10.0.1.51:8090
+      HUB_URL: http://{{ ansible_host }}:8090
       PORT: 45876
       MEM_CALC: htop
       # Delete next line if you want see all sensors
@@ -62,7 +64,7 @@ services:
       - portainer:/data
     labels:
       tsdproxy.enable: "true"
-      tsdproxy.name: micro-portainer
+      tsdproxy.name: "{{ inventory_hostname }}-portainer"
       tsdproxy.container_port: 9443
       tsdproxy.scheme: "https"
       tsdproxy.tlsvalidate: "false"
@@ -90,7 +92,7 @@ services:
   watchtower:
     image: nickfedor/watchtower:latest
     container_name: watchtower
-    hostname: "micro"
+    hostname: "{{ inventory_hostname }}"
     security_opt:
       - no-new-privileges:true
     dns:
@@ -111,7 +113,7 @@ services:
       - WATCHTOWER_ENABLE_LIFECYCLE_HOOKS=true
       - WATCHTOWER_LABEL_ENABLE=true
       - WATCHTOWER_HEALTHCHECK=true
-      - WATCHTOWER_NOTIFICATION_TITLE_TAG=micro
+      - WATCHTOWER_NOTIFICATION_TITLE_TAG={{ inventory_hostname }}
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     restart: unless-stopped

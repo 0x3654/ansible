@@ -29,6 +29,7 @@ services:
       - WATCHTOWER_INCLUDE_STOPPED=true
       - WATCHTOWER_REVIVE_STOPPED=false
       - WATCHTOWER_NOTIFICATIONS_HOSTNAME={{ansible_host}}
+      - WATCHTOWER_NOTIFICATION_TITLE_TAG={{ inventory_hostname }}
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
       - WATCHTOWER_NOTIFICATION_URL=telegram://{{manage_watchtower_tg_wt_bot_token}}@telegram/?channels={{manage_watchtower_tg_wt_chat_id}}
     restart: unless-stopped
