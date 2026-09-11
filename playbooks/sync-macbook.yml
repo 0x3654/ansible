@@ -22,8 +22,14 @@
 # Только сбор настроек в репо (без копирования на citrus):
 #   ansible-playbook playbooks/sync-macbook.yml -e "src_host=moro dest_host=citrus" --tags collect
 #
-# Не ездит между машинами (sync_code_excludes): файловые базы 1С (*.1CD/*.dt),
-# живой postgres gisp, билд-артефакты starter — ~26Г из 73Г _Work.
+# Не ездит между машинами (sync_code_excludes, ~117Г из 136Г ~/code): дампы/базы/
+# выгрузки 1С (_bd_backup, createrra _bases/_config, opti-com _config, *.1CD/*.dt),
+# данные сервисов gisp (postgres/dumps/files/модели), build/ везде, рантайм sLLM/_data,
+# дистрибутивы arm1c/dists, бэкапы (config/server-backup, semaphore vps_backup).
+#
+# Pre-flight перед снимком: свободное место dest против оценки объёма (rsync
+# --dry-run --stats с теми же excludes); порог — диск не выше 90% (citrus 256Г).
+# Итог и падение — TG-сообщением (бот watchtower, та же личка, куда пишет BeszelBot).
 # ~/.claude — additive whitelist: projects (диалоги+память), CLAUDE.md (правила),
 # settings.json, skills, hooks; рантайм (file-history, sessions, credentials) — машинный.
 # Сессии, начатые на citrus, при снимке не пропадают (без delete).
@@ -70,12 +76,26 @@
       - "--exclude=venv/"
       - "--exclude=*.pyc"
 
-    # Тяжёлое, что не нужно на другой машине (16Г базы 1С + 8Г живой postgres + 2Г build)
+    # Машино-локальное и тяжёлое, что не едет на другой мак (2026-09-11, ~116Г из 136Г):
+    # на citrus остаётся ~20Г собственно кода. Ревизия по du-разборке ~/code на moro.
     sync_code_excludes:
-      - "--exclude=*.1CD"
+      - "--exclude=_bd_backup/"                   # 47Г pg-дампы 1С
+      - "--exclude=_Work/createrra/_bases/"       # 16Г файловые базы 1С
+      - "--exclude=_Work/createrra/_config/"      # 29Г EDT .metadata + XML-выгрузки конфигураций
+      - "--exclude=_Work/opti-com/_config/"       # 3.7Г XML-выгрузки ut/ut09 + слепок confluence
+      - "--exclude=_Work/opti-com/gisp/dumps/"    # 7.2Г дампы миграций
+      - "--exclude=_Work/opti-com/gisp/files/"    # 771М входные CSV-дампы
+      - "--exclude=_Work/opti-com/gisp/services/postgres/"  # 7.6Г живая база (каталог = data/)
+      - "--exclude=_Work/opti-com/gisp/services/semantic/model/"  # 921М веса (bin+safetensors — один и тот же модель)
+      - "--exclude=_Work/opti-com/gisp-gpu/model-onnx/"     # 449М onnx-экспорт, генерируется
+      - "--exclude=build/"                        # билд-артефакты: starter 1.7Г, pulsesync 4.2Г, Xcode-проекты
+      - "--exclude=.svelte-kit/"                  # кэш open-webui
+      - "--exclude=sLLM/_data/"                   # 1Г рантайм open-webui (webui.db, vector_db)
+      - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
+      - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
+      - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
+      - "--exclude=*.1CD"                         # базы вне _bases, на всякий
       - "--exclude=*.dt"
-      - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
-      - "--exclude=_Work/opti-com/gisp/services/starter/build/"
 
     # Разница приложений moro→citrus зафиксирована 2026-09-04 (всего 50 шт, ~7.9Г).
     # Эти имена .app на citrus не едут: тяжёлые/игровые (8G RAM), редкие махины,
@@ -126,258 +146,358 @@
         - .claude/projects
         - .config/ghostty
 
-    - name: Collect live settings from {{ source_host }} into role files
-      # Пишем в эталонный репо на moro (delegate → source_host), НЕ в playbook_dir:
-      # из Semaphore playbook_dir — throwaway-клон в контейнере, изменения пропали бы.
+    - name: TG-креды для оповещений (vault manage — бот watchtower)
+      # «Чат Beszel» = личка, куда пишут боты инфраструктуры; шлём туда же.
+      # ignore_errors: нет кредита — просто без оповещения, синку не мешает.
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/roles/manage/vars/secrets.yml"
+      ignore_errors: true
+
+    - name: Снимок (block ради rescue-оповещения в ТГ)
       block:
-        - name: Collect Cursor settings
-          copy:
-            remote_src: true
-            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/settings.json"
-            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
-            mode: "0644"
+        - name: Pre-flight — место на диске dest
+          ansible.builtin.command: df -k {{ ansible_env.HOME }}/code
+          register: _df_dest
+          changed_when: false
 
-        - name: Collect Cursor keybindings
-          copy:
-            remote_src: true
-            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/keybindings.json"
-            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/keybindings.json"
-            mode: "0644"
+        - name: Pre-flight — оценка объёма снимка (rsync --dry-run --stats)
+          # Тот же набор exclude, что у прогона; без --checksum (быстрый stat-обход).
+          # openrsync печатает "Total transferred file size: N bytes" (с запятыми).
+          ansible.builtin.command:
+            argv: "{{ ['rsync', '--archive', '--dry-run', '--stats',
+                        '--rsh=ssh -S none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null']
+                       + _rsync_common + sync_code_excludes
+                       + [_src_home + '/code/', _dest_ssh + ':' + ansible_env.HOME + '/code/'] }}"
+          vars:
+            _src_home: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}"
+            _dest_ssh: "{{ ansible_user | default('m') }}@{{ inventory_hostname }}.{{ sync_tailnet_domain }}"
+          delegate_to: "{{ source_host }}"
+          register: _sync_estimate
+          changed_when: false
 
-        - name: Collect Ghostty config
-          copy:
-            remote_src: true
-            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/config"
-            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/config"
-            mode: "0644"
+        - name: Pre-flight — объём к пересылке (байт)
+          ansible.builtin.set_fact:
+            sync_payload_bytes: "{{ _sync_estimate.stdout | regex_findall('Total transferred file size: ([0-9,]+)') | first | replace(',', '') | int }}"
 
-        - name: Collect Ghostty icons
-          copy:
-            remote_src: true
-            src: "{{ item }}"
-            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/{{ item | basename }}"
-            mode: "0644"
-          with_fileglob:
-            - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/*.icns"
+        - name: Pre-flight — диск dest не уйдёт за 90%
+          # citrus — 256Г ноут, заполнение >90% роняет систему. Запас ×1.25 — на
+          # временные копии (--delay-updates) и мелкие синки (ghostty/fonts/apps/claude).
+          vars:
+            _avail_kb: "{{ _df_dest.stdout_lines[1].split()[3] | int }}"
+            _total_kb: "{{ _df_dest.stdout_lines[1].split()[1] | int }}"
+            _need_kb: "{{ (sync_payload_bytes | int * 1.25 / 1024) | int + (_total_kb | int * 0.10) | int }}"
+          ansible.builtin.assert:
+            that: "_avail_kb | int >= _need_kb | int"
+            fail_msg: >-
+              Диск {{ inventory_hostname }} переполнится: свободно
+              {{ (_avail_kb | int / 1048576) | round(1) }}Г, снимку нужно ~{{ (sync_payload_bytes | int / 1073741824) | round(1) }}Г
+              (×1.25 с запасом), а ≥10% из {{ (_total_kb | int / 1048576) | round(0) }}Г обязано остаться свободным.
+              Почисти dest или расширь sync_code_excludes.
 
-        - name: Collect bash dotfiles
+        - name: Collect live settings from {{ source_host }} into role files
+          # Пишем в эталонный репо на moro (delegate → source_host), НЕ в playbook_dir:
+          # из Semaphore playbook_dir — throwaway-клон в контейнере, изменения пропали бы.
+          block:
+            - name: Collect Cursor settings
+              copy:
+                remote_src: true
+                src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/settings.json"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
+                mode: "0644"
+
+            - name: Collect Cursor keybindings
+              copy:
+                remote_src: true
+                src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Application Support/Cursor/User/keybindings.json"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/cursor/keybindings.json"
+                mode: "0644"
+
+            - name: Collect Ghostty config
+              copy:
+                remote_src: true
+                src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/config"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/config"
+                mode: "0644"
+
+            - name: Collect Ghostty icons
+              copy:
+                remote_src: true
+                src: "{{ item }}"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/{{ item | basename }}"
+                mode: "0644"
+              with_fileglob:
+                - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/*.icns"
+
+            - name: Collect bash dotfiles
+              copy:
+                remote_src: true
+                src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/{{ item }}"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/bash/{{ item | basename }}"
+                mode: "0644"
+              loop:
+                - .bashrc
+                - .bash_profile
+          delegate_to: "{{ source_host }}"
+          tags: collect
+
+        - name: Snapshot ~/code from {{ source_host }}
+          synchronize:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/"
+            dest: "{{ ansible_env.HOME }}/code/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
+            checksum: true
+            delete: false
+          delegate_to: "{{ source_host }}"
+
+        - name: Sync ~/.config/ghostty from {{ source_host }}
+          synchronize:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/"
+            dest: "{{ ansible_env.HOME }}/.config/ghostty/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            checksum: true
+            delete: false
+          delegate_to: "{{ source_host }}"
+
+        - name: Sync ~/Library/Fonts from {{ source_host }}
+          synchronize:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Fonts/"
+            dest: "{{ ansible_env.HOME }}/Library/Fonts/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            checksum: true
+            delete: false
+          delegate_to: "{{ source_host }}"
+
+        - name: Apps on {{ source_host }} (эталон)
+          ansible.builtin.command: "ls {{ item }}"
+          loop:
+            - /Applications
+            - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications"
+          register: _src_apps
+          delegate_to: "{{ source_host }}"
+          changed_when: false
+          failed_when: false
+          tags: apps
+
+        - name: Apps on dest (citrus)
+          ansible.builtin.command: "ls {{ item }}"
+          loop:
+            - /Applications
+            - "{{ ansible_env.HOME }}/Applications"
+          register: _dst_apps
+          changed_when: false
+          failed_when: false
+          tags: apps
+
+        - name: Union of apps on citrus (/Applications + ~/Applications)
+          # Только целые .app, отсутствующие на citrus (в любом из её каталогов —
+          # Xcode на citrus живёт в ~/Applications, не в /Applications).
+          # В существующие бандлы не лезем.
+          ansible.builtin.set_fact:
+            _dst_all_apps: >-
+              {{ (_dst_apps.results | map(attribute='stdout_lines') | flatten)
+                 | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list }}
+          tags: apps
+
+        - name: App difference (есть на moro, нет на citrus, минус sync_apps_exclude)
+          ansible.builtin.set_fact:
+            _apps_new_root: >-
+              {{ _src_apps.results[0].stdout_lines
+                 | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
+                 | difference(sync_apps_exclude)
+                 | difference(_dst_all_apps) }}
+            _apps_new_home: >-
+              {{ _src_apps.results[1].stdout_lines
+                 | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
+                 | difference(sync_apps_exclude)
+                 | difference(_dst_all_apps) }}
+          tags: apps
+
+        - name: Sync app difference from {{ source_host }} → /Applications
+          # Целые бандлы: src без хвостового слеша, dest — каталог без пробелов в пути
+          # (openrsync не квотит remote-аргументы: 'server receiver mode requires two
+          # argument'). MAS-приложения приедут без receipt — App Store их не обновит
+          # (роль их не переустанавливает: host_vars/citrus.yml → macbook_appstore_apps_skip).
+          synchronize:
+            src: "/Applications/{{ item }}.app"
+            dest: "/Applications/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            delete: false
+          loop: "{{ _apps_new_root }}"
+          loop_control:
+            label: "{{ item }}"
+          delegate_to: "{{ source_host }}"
+          tags: apps
+
+        - name: Sync app difference from {{ source_host }} → ~/Applications
+          synchronize:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications/{{ item }}.app"
+            dest: "{{ ansible_env.HOME }}/Applications/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            delete: false
+          loop: "{{ _apps_new_home }}"
+          loop_control:
+            label: "{{ item }}"
+          delegate_to: "{{ source_host }}"
+          tags: apps
+
+        - name: Stat collected Cursor settings in snapshot
+          stat:
+            path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
+          register: _cursor_role_settings
+
+        - name: Deploy Cursor settings on {{ inventory_hostname }}
+          # Замыкает цикл: collect (живой moro → роль) → снимок → применение (роль → живой dest).
+          # Расширения ставит отдельно setup-macbook -t cursor.
           copy:
             remote_src: true
-            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/{{ item }}"
-            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/bash/{{ item | basename }}"
+            src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
+            dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/{{ item }}"
+            mode: "0644"
+          loop:
+            - settings.json
+            - keybindings.json
+          when: _cursor_role_settings.stat.exists
+
+        - name: Stat collected bash dotfiles in snapshot
+          stat:
+            path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/.bashrc"
+          register: _bash_role
+
+        - name: Deploy bash dotfiles on {{ inventory_hostname }}
+          # Тот же цикл, что у cursor: правки .bashrc/.bash_profile на эталоне раньше
+          # доезжали только разовым setup-macbook — теперь с каждым снимком.
+          copy:
+            remote_src: true
+            src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/{{ item }}"
+            dest: "{{ ansible_env.HOME }}/{{ item }}"
             mode: "0644"
           loop:
             - .bashrc
             - .bash_profile
-      delegate_to: "{{ source_host }}"
-      tags: collect
+          when: _bash_role.stat.exists
 
-    - name: Snapshot ~/code from {{ source_host }}
-      synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/"
-        dest: "{{ ansible_env.HOME }}/code/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
-        checksum: true
-        delete: false
-      delegate_to: "{{ source_host }}"
+        - name: SSH-дружба маков ({{ source_host }} ↔ {{ inventory_hostname }})
+          # Взаимный безпарольный доступ: pubkey каждого мака в authorized_keys другого
+          # + ssh-config блок с tailnet-именем (у moro Host * задаёт User root —
+          # специфичный блок обязан стоять выше, поэтому insertafter: BOF).
+          block:
+            - name: Pubkey эталона ({{ source_host }})
+              slurp:
+                src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/id_ed25519.pub"
+              register: _src_pubkey
+              delegate_to: "{{ source_host }}"
 
-    - name: Sync ~/.config/ghostty from {{ source_host }}
-      synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/"
-        dest: "{{ ansible_env.HOME }}/.config/ghostty/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
-        checksum: true
-        delete: false
-      delegate_to: "{{ source_host }}"
+            - name: Pubkey этого мака ({{ inventory_hostname }})
+              slurp:
+                src: "{{ ansible_env.HOME }}/.ssh/id_ed25519.pub"
+              register: _dst_pubkey
 
-    - name: Sync ~/Library/Fonts from {{ source_host }}
-      synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Fonts/"
-        dest: "{{ ansible_env.HOME }}/Library/Fonts/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
-        checksum: true
-        delete: false
-      delegate_to: "{{ source_host }}"
+            - name: Ключ эталона → authorized_keys этого мака
+              authorized_key:
+                user: "{{ ansible_user | default('m') }}"
+                key: "{{ _src_pubkey.content | b64decode | trim }}"
+                state: present
 
-    - name: Apps on {{ source_host }} (эталон)
-      ansible.builtin.command: "ls {{ item }}"
-      loop:
-        - /Applications
-        - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications"
-      register: _src_apps
-      delegate_to: "{{ source_host }}"
-      changed_when: false
-      failed_when: false
-      tags: apps
+            - name: Ключ этого мака → authorized_keys эталона ({{ source_host }})
+              authorized_key:
+                user: "{{ hostvars[source_host].ansible_user | default('m') }}"
+                key: "{{ _dst_pubkey.content | b64decode | trim }}"
+                state: present
+              delegate_to: "{{ source_host }}"
 
-    - name: Apps on dest (citrus)
-      ansible.builtin.command: "ls {{ item }}"
-      loop:
-        - /Applications
-        - "{{ ansible_env.HOME }}/Applications"
-      register: _dst_apps
-      changed_when: false
-      failed_when: false
-      tags: apps
+            - name: ssh-config блок эталона на этом маке
+              blockinfile:
+                path: "{{ ansible_env.HOME }}/.ssh/config"
+                state: present
+                create: true
+                mode: "0600"
+                insertafter: BOF
+                marker: "# {mark} ANSIBLE MANAGED mac-pair {{ source_host }}"
+                block: |
+                  Host {{ source_host }}
+                      HostName {{ source_host }}.{{ sync_tailnet_domain }}
+                      User {{ hostvars[source_host].ansible_user | default('m') }}
 
-    - name: Union of apps on citrus (/Applications + ~/Applications)
-      # Только целые .app, отсутствующие на citrus (в любом из её каталогов —
-      # Xcode на citrus живёт в ~/Applications, не в /Applications).
-      # В существующие бандлы не лезем.
-      ansible.builtin.set_fact:
-        _dst_all_apps: >-
-          {{ (_dst_apps.results | map(attribute='stdout_lines') | flatten)
-             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list }}
-      tags: apps
+            - name: ssh-config блок этого мака на эталоне ({{ source_host }})
+              blockinfile:
+                path: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/config"
+                state: present
+                create: true
+                mode: "0600"
+                insertafter: BOF
+                marker: "# {mark} ANSIBLE MANAGED mac-pair {{ inventory_hostname }}"
+                block: |
+                  Host {{ inventory_hostname }}
+                      HostName {{ inventory_hostname }}.{{ sync_tailnet_domain }}
+                      User {{ ansible_user | default('m') }}
+              delegate_to: "{{ source_host }}"
+          when: not _dry_run
 
-    - name: App difference (есть на moro, нет на citrus, минус sync_apps_exclude)
-      ansible.builtin.set_fact:
-        _apps_new_root: >-
-          {{ _src_apps.results[0].stdout_lines
-             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
-             | difference(sync_apps_exclude)
-             | difference(_dst_all_apps) }}
-        _apps_new_home: >-
-          {{ _src_apps.results[1].stdout_lines
-             | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
-             | difference(sync_apps_exclude)
-             | difference(_dst_all_apps) }}
-      tags: apps
-
-    - name: Sync app difference from {{ source_host }} → /Applications
-      # Целые бандлы: src без хвостового слеша, dest — каталог без пробелов в пути
-      # (openrsync не квотит remote-аргументы: 'server receiver mode requires two
-      # argument'). MAS-приложения приедут без receipt — App Store их не обновит
-      # (роль их не переустанавливает: host_vars/citrus.yml → macbook_appstore_apps_skip).
-      synchronize:
-        src: "/Applications/{{ item }}.app"
-        dest: "/Applications/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
-        delete: false
-      loop: "{{ _apps_new_root }}"
-      loop_control:
-        label: "{{ item }}"
-      delegate_to: "{{ source_host }}"
-      tags: apps
-
-    - name: Sync app difference from {{ source_host }} → ~/Applications
-      synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications/{{ item }}.app"
-        dest: "{{ ansible_env.HOME }}/Applications/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
-        delete: false
-      loop: "{{ _apps_new_home }}"
-      loop_control:
-        label: "{{ item }}"
-      delegate_to: "{{ source_host }}"
-      tags: apps
-
-    - name: Stat collected Cursor settings in snapshot
-      stat:
-        path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
-      register: _cursor_role_settings
-
-    - name: Deploy Cursor settings on {{ inventory_hostname }}
-      # Замыкает цикл: collect (живой moro → роль) → снимок → применение (роль → живой dest).
-      # Расширения ставит отдельно setup-macbook -t cursor.
-      copy:
-        remote_src: true
-        src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
-        dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/{{ item }}"
-        mode: "0644"
-      loop:
-        - settings.json
-        - keybindings.json
-      when: _cursor_role_settings.stat.exists
-
-    - name: Stat collected bash dotfiles in snapshot
-      stat:
-        path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/.bashrc"
-      register: _bash_role
-
-    - name: Deploy bash dotfiles on {{ inventory_hostname }}
-      # Тот же цикл, что у cursor: правки .bashrc/.bash_profile на эталоне раньше
-      # доезжали только разовым setup-macbook — теперь с каждым снимком.
-      copy:
-        remote_src: true
-        src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/{{ item }}"
-        dest: "{{ ansible_env.HOME }}/{{ item }}"
-        mode: "0644"
-      loop:
-        - .bashrc
-        - .bash_profile
-      when: _bash_role.stat.exists
-
-    - name: SSH-дружба маков ({{ source_host }} ↔ {{ inventory_hostname }})
-      # Взаимный безпарольный доступ: pubkey каждого мака в authorized_keys другого
-      # + ssh-config блок с tailnet-именем (у moro Host * задаёт User root —
-      # специфичный блок обязан стоять выше, поэтому insertafter: BOF).
-      block:
-        - name: Pubkey эталона ({{ source_host }})
-          slurp:
-            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/id_ed25519.pub"
-          register: _src_pubkey
+        - name: Snapshot ~/.claude from {{ source_host }} (additive, whitelist)
+          # Диалоги/память проектов + правила (CLAUDE.md, settings.json, skills, hooks).
+          # Остальное — рантайм машин, фильтром отсекается.
+          synchronize:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/"
+            dest: "{{ ansible_env.HOME }}/.claude/"
+            mode: push
+            rsync_opts: "{{ _rsync_common + sync_claude_includes + (['--dry-run'] if _dry_run else []) }}"
+            checksum: true
+            delete: false
           delegate_to: "{{ source_host }}"
 
-        - name: Pubkey этого мака ({{ inventory_hostname }})
-          slurp:
-            src: "{{ ansible_env.HOME }}/.ssh/id_ed25519.pub"
-          register: _dst_pubkey
+        - name: df dest после снимка (в отчёт)
+          ansible.builtin.command: df -k {{ ansible_env.HOME }}/code
+          register: _df_after
+          changed_when: false
 
-        - name: Ключ эталона → authorized_keys этого мака
-          authorized_key:
-            user: "{{ ansible_user | default('m') }}"
-            key: "{{ _src_pubkey.content | b64decode | trim }}"
-            state: present
+        - name: TG ✅ снимок прошёл
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ✅ sync {{ source_host }}→{{ inventory_hostname }}: снимок готов.
+                ~/code к пересылке ~{{ (sync_payload_bytes | default(0) | int / 1073741824) | round(1) }}Г;
+                диск {{ inventory_hostname }}: {{ _df_after.stdout_lines[1].split()[4] }} занято,
+                свободно {{ (_df_after.stdout_lines[1].split()[3] | int / 1048576) | round(1) }}Г.
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - not _dry_run
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
 
-        - name: Ключ этого мака → authorized_keys эталона ({{ source_host }})
-          authorized_key:
-            user: "{{ hostvars[source_host].ansible_user | default('m') }}"
-            key: "{{ _dst_pubkey.content | b64decode | trim }}"
-            state: present
-          delegate_to: "{{ source_host }}"
+      # Падение любой задачи блока (вкл. лимит диска и rsync-ошибки) — сообщение в ТГ,
+      # затем ошибка пробрасывается дальше (Semaphore видит fail).
+      rescue:
+        - name: TG ❌ снимок упал
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ❌ sync {{ source_host }}→{{ inventory_hostname }} упал на «{{ ansible_failed_task.name }}»:
+                {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('нет деталей')) | truncate(350) }}
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - not _dry_run
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
 
-        - name: ssh-config блок эталона на этом маке
-          blockinfile:
-            path: "{{ ansible_env.HOME }}/.ssh/config"
-            state: present
-            create: true
-            mode: "0600"
-            insertafter: BOF
-            marker: "# {mark} ANSIBLE MANAGED mac-pair {{ source_host }}"
-            block: |
-              Host {{ source_host }}
-                  HostName {{ source_host }}.{{ sync_tailnet_domain }}
-                  User {{ hostvars[source_host].ansible_user | default('m') }}
-
-        - name: ssh-config блок этого мака на эталоне ({{ source_host }})
-          blockinfile:
-            path: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/config"
-            state: present
-            create: true
-            mode: "0600"
-            insertafter: BOF
-            marker: "# {mark} ANSIBLE MANAGED mac-pair {{ inventory_hostname }}"
-            block: |
-              Host {{ inventory_hostname }}
-                  HostName {{ inventory_hostname }}.{{ sync_tailnet_domain }}
-                  User {{ ansible_user | default('m') }}
-          delegate_to: "{{ source_host }}"
-      when: not _dry_run
-
-    - name: Snapshot ~/.claude from {{ source_host }} (additive, whitelist)
-      # Диалоги/память проектов + правила (CLAUDE.md, settings.json, skills, hooks).
-      # Остальное — рантайм машин, фильтром отсекается.
-      synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/"
-        dest: "{{ ansible_env.HOME }}/.claude/"
-        mode: push
-        rsync_opts: "{{ _rsync_common + sync_claude_includes + (['--dry-run'] if _dry_run else []) }}"
-        checksum: true
-        delete: false
-      delegate_to: "{{ source_host }}"
+        - name: Проброс ошибки дальше (Semaphore увидит fail)
+          ansible.builtin.fail:
+            msg: "{{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('упало')) }}"
