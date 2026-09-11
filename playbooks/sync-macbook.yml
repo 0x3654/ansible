@@ -155,9 +155,16 @@
 
     - name: Снимок (block ради rescue-оповещения в ТГ)
       block:
-        - name: Pre-flight — место на диске dest
-          ansible.builtin.command: df -k {{ ansible_env.HOME }}/code
-          register: _df_dest
+        - name: Pre-flight — место на диске dest (statvfs, не df)
+          # df на macOS своебразен (APFS-контейнер, снапшоты, purgeable, колонки);
+          # statvfs — тот же источник без парсинга. f_bavail — что реально доступно
+          # юзеру (purgeable/снапшоты не в плюс, гвардия консервативна в нужную сторону).
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - 'import os,json; s=os.statvfs("{{ ansible_env.HOME }}/code"); print(json.dumps({"avail_kb": s.f_frsize*s.f_bavail//1024, "total_kb": s.f_frsize*s.f_blocks//1024, "used_pct": round(100*(s.f_blocks-s.f_bavail)/s.f_blocks)}))'
+          register: _disk_dest
           changed_when: false
 
         - name: Pre-flight — оценка объёма снимка (rsync --dry-run --stats)
@@ -183,8 +190,8 @@
           # citrus — 256Г ноут, заполнение >90% роняет систему. Запас ×1.25 — на
           # временные копии (--delay-updates) и мелкие синки (ghostty/fonts/apps/claude).
           vars:
-            _avail_kb: "{{ _df_dest.stdout_lines[1].split()[3] | int }}"
-            _total_kb: "{{ _df_dest.stdout_lines[1].split()[1] | int }}"
+            _avail_kb: "{{ (_disk_dest.stdout | from_json).avail_kb }}"
+            _total_kb: "{{ (_disk_dest.stdout | from_json).total_kb }}"
             _need_kb: "{{ (sync_payload_bytes | int * 1.25 / 1024) | int + (_total_kb | int * 0.10) | int }}"
           ansible.builtin.assert:
             that: "_avail_kb | int >= _need_kb | int"
@@ -450,9 +457,13 @@
             delete: false
           delegate_to: "{{ source_host }}"
 
-        - name: df dest после снимка (в отчёт)
-          ansible.builtin.command: df -k {{ ansible_env.HOME }}/code
-          register: _df_after
+        - name: Диск dest после снимка (statvfs, в отчёт)
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - 'import os,json; s=os.statvfs("{{ ansible_env.HOME }}/code"); print(json.dumps({"avail_kb": s.f_frsize*s.f_bavail//1024, "used_pct": round(100*(s.f_blocks-s.f_bavail)/s.f_blocks)}))'
+          register: _disk_after
           changed_when: false
 
         - name: TG ✅ снимок прошёл
@@ -465,8 +476,8 @@
               text: >-
                 ✅ sync {{ source_host }}→{{ inventory_hostname }}: снимок готов.
                 ~/code к пересылке ~{{ (sync_payload_bytes | default(0) | int / 1073741824) | round(1) }}Г;
-                диск {{ inventory_hostname }}: {{ _df_after.stdout_lines[1].split()[4] }} занято,
-                свободно {{ (_df_after.stdout_lines[1].split()[3] | int / 1048576) | round(1) }}Г.
+                диск {{ inventory_hostname }}: {{ (_disk_after.stdout | from_json).used_pct }}% занято,
+                свободно {{ ((_disk_after.stdout | from_json).avail_kb | int / 1048576) | round(1) }}Г.
             status_code: 200
             timeout: 15
           delegate_to: localhost
