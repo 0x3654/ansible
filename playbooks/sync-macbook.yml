@@ -94,6 +94,7 @@
       - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
       - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
       - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
+      - "--exclude=*.dmg"                         # скачанные инсталляторы (pulsesync 124М и пр.)
       - "--exclude=*.1CD"                         # базы вне _bases, на всякий
       - "--exclude=*.dt"
 
