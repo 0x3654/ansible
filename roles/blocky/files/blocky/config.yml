@@ -1,0 +1,21 @@
+# blocky config, схема v0.35 (upstream docs/config.yml)
+# Никакой фильтрации: фильтрует AdGuardHome на роутере для домашних;
+# blocky здесь — только транспорт (DoH по IP) и кэш для самого micro.
+# Upstream'ы DoH по голым IP: не нужен bootstrap-DNS, TLS-сертификаты
+# Cloudflare/Google покрывают IP SAN, перехват 53-го порта не задевает.
+upstreams:
+  groups:
+    default:
+      - https://1.1.1.1/dns-query
+      - https://8.8.8.8/dns-query
+
+ports:
+  dns:
+    - 53
+
+caching:
+  prefetching: true
+
+log:
+  level: warn
+  format: text

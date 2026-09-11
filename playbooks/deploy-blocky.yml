@@ -1,0 +1,10 @@
+---
+# Deploy blocky — собственный DoH-резолвер micro, не зависящий от перехвата
+# 53-го порта на роутере (инцидент 2026-09-12: смерть AGH = DNS-тьма всей LAN)
+- name: Deploy blocky DNS (DoH forwarder + cache)
+  hosts: micro
+  tasks:
+    - name: Run blocky role
+      ansible.builtin.include_role:
+        name: blocky
+      tags: [blocky]

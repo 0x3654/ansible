@@ -96,8 +96,10 @@ services:
     security_opt:
       - no-new-privileges:true
     dns:
-      - 1.1.1.1
-      - 8.8.8.8
+      # blocky на хосте (DoH по IP) + роутер fallback; внешние 8.8.8.8/1.1.1.1
+      # перехватываются lan_drop_leaked_dns на роутере и умирают вместе с AGH
+      - "{{ ansible_host }}"
+      - 10.0.1.10
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro

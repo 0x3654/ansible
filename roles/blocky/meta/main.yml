@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: blocky
+  author: "0x3654"
+  description: Local DoH DNS forwarder (blocky) for homelab hosts
+  license: MIT
+  min_ansible_version: "2.9"
+
+collections:
+  - community.general

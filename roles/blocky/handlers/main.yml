@@ -1,0 +1,31 @@
+---
+# Handlers for blocky stack
+- name: docker down {{ ansible_role_name | basename }}  # noqa: name[casing]
+  ansible.builtin.command: "{{ compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ path }}"
+  register: blocky_compose_down_result  # noqa: var-naming[no-role-prefix]
+  changed_when: >-
+    blocky_compose_down_result.stdout is search('Remov')
+    or blocky_compose_down_result.stdout is search('Stopp')
+  failed_when: false
+  listen: docker down blocky
+
+- name: docker up {{ ansible_role_name | basename }}  # noqa: name[casing]
+  ansible.builtin.command: "{{ compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: blocky_compose_up_result  # noqa: var-naming[no-role-prefix]
+  changed_when: >-
+    blocky_compose_up_result.stdout is search('Creat')
+    or blocky_compose_up_result.stdout is search('Recreat')
+    or blocky_compose_up_result.stdout is search('Start')
+  listen: docker up blocky
+
+# daemon.json (dns) не применяется без рестарта демона; контейнеры
+# с restart-политикой поднимутся обратно сами — короткий бонс стека
+- name: restart docker  # noqa: name[casing]
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  listen: restart docker

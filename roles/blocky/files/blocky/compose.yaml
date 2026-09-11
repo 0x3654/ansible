@@ -1,0 +1,21 @@
+# blocky — DoH-резолвер micro (immune to router port-53 hijack)
+services:
+  blocky:
+    image: ghcr.io/0xerr0r/blocky:{{ blocky_version }}
+    container_name: blocky
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config.yml:/app/config.yml:ro
+    healthcheck:
+      # встроенная подкоманда: DNS-запрос к самому себе (cmd/healthcheck.go upstream)
+      test: ["CMD", "/app/blocky", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

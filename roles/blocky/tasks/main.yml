@@ -1,0 +1,80 @@
+---
+# Resolve role-context values eagerly: inside the included common role,
+# role_path / ansible_role_name point at roles/common, so files_source_dir
+# would silently match nothing (core 2.21 lazy include vars) — см. роль manage.
+- name: Resolve file copy parameters in role context
+  ansible.builtin.set_fact:
+    blocky_resolved_files_source_dir: "{{ files_source_dir }}"
+    blocky_resolved_deploy_path: "{{ deploy_path }}"
+    blocky_resolved_folder_user: "{{ folder_user }}"
+    blocky_resolved_up_handler: "docker up {{ ansible_role_name | basename }}"
+    blocky_resolved_down_handler: "docker down {{ ansible_role_name | basename }}"
+
+- name: Create blocky directory
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    mode: "{{ directory_mode }}"
+
+- name: Ensure system user exists
+  ansible.builtin.user:
+    name: "{{ folder_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
+
+- name: Set directory ownership
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    owner: "{{ folder_user }}"
+    group: "{{ folder_user }}"
+    mode: "{{ directory_mode }}"
+
+- name: Include common file copy tasks
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: filescopy.yml
+  vars:
+    common_up_handler_name: "{{ blocky_resolved_up_handler }}"
+    common_down_handler_name: "{{ blocky_resolved_down_handler }}"
+    common_files_source_dir: "{{ blocky_resolved_files_source_dir }}"
+    common_folder_user: "{{ blocky_resolved_folder_user }}"
+    common_directory_mode: "{{ directory_mode }}"
+    common_file_mode: "{{ file_mode }}"
+    common_path: "{{ blocky_resolved_deploy_path }}"
+
+# --- Интеграция с хостом: только после того как blocky реально отвечает ---
+
+- name: Wait for blocky DNS to answer on localhost
+  ansible.builtin.command: dig @127.0.0.1 github.com +time=2 +tries=3 +short
+  register: blocky_check
+  until: blocky_check.rc == 0 and blocky_check.stdout | length > 0
+  retries: 15
+  delay: 4
+  changed_when: false
+
+- name: Point host resolv.conf at blocky (router as fallback)
+  ansible.builtin.copy:
+    content: |
+      search {{ blocky_search_domains | join(' ') }}
+      nameserver 127.0.0.1
+      nameserver {{ blocky_fallback_dns }}
+      options timeout:2 attempts:2
+    dest: /etc/resolv.conf
+    mode: '0644'
+    backup: true
+
+- name: Point dockerd at blocky for new containers
+  ansible.builtin.copy:
+    content: |
+      {"dns": ["{{ ansible_host }}", "{{ blocky_fallback_dns }}"]}
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+    backup: true
+  notify: restart docker
+
+- name: Verify host resolution through blocky
+  ansible.builtin.command: getent hosts github.com
+  changed_when: false

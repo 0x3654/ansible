@@ -1,0 +1,30 @@
+---
+# blocky: локальный DoH-резолвер micro — не зависит от перехвата 53-го порта
+# на роутере (GL.iNet lan_drop_leaked_dns перенаправляет весь LAN DNS в dnsmasq→AGH).
+# Upstream'ы DoH по голым IP: не нужен bootstrap-DNS и не задевается перехватом.
+
+# User and paths (universal DRY variables for easy role copy)
+folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+pwd: "/git/docker"  # noqa: var-naming[no-role-prefix]
+path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+
+# Variables for common role integration
+files_source_dir: "{{ role_path }}/files/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+deploy_path: "{{ path }}"  # noqa: var-naming[no-role-prefix]
+
+# File permissions
+directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
+file_mode: "0644"  # noqa: var-naming[no-role-prefix]
+
+# Image (pinned minor tag, watchtower updates within label-enabled containers)
+blocky_version: "v0.35.0"
+
+# DoH upstream'ы захардкожены в files/blocky/config.yml (см. комментарий там)
+
+# Fallback: роутерный dnsmasq (жив, пока жив AGH на роутере)
+blocky_fallback_dns: "10.0.1.10"
+
+# Host resolv.conf search-домены (как в текущем /etc/resolv.conf micro)
+blocky_search_domains:
+  - koi-uaru.ts.net
+  - lan
