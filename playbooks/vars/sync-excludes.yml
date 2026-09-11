@@ -1,11 +1,13 @@
 ---
-# Общие rsync-опции для sync-macbook.yml (снимок moro→citrus)
-# и sync-macbook-back.yml (возврат нового с citrus→moro).
+# ЕДИНЫЙ источник rsync-опций для sync-macbook.yml (снимок moro→citrus)
+# и sync-macbook-back.yml (возврат нового с citrus→moro). Оба плейбука
+# подключают этот файл через vars_files — правки только здесь.
 #
-# Что не ездит между машинами (26Г из 73Г _Work):
-#   *.1CD / *.dt       — файловые базы 1С (16Г), платформы на citrus нет
-#   postgres/data      — живой postgres gisp (8Г), rsync живой БД = битая копия
-#   starter/build      — билд-артефакты (2Г)
+# Машино-локальное и тяжёлое, что не ездит между маками (2026-09-11, ~117Г из
+# 136Г ~/code на moro; ревизия по du-разборке): дампы/базы/выгрузки 1С (_bd_backup,
+# createrra _bases/_config, opti-com _config, *.1CD/*.dt), данные сервисов gisp
+# (postgres/dumps/files/модели), build/ везде, рантайм sLLM/_data, дистрибутивы
+# arm1c/dists, бэкапы (config/server-backup, semaphore vps_backup), *.dmg.
 
 sync_rsync_common:
   - "--archive"
@@ -18,15 +20,28 @@ sync_rsync_common:
   - "--exclude=*.pyc"
 
 sync_code_excludes:
-  - "--exclude=*.1CD"
+  - "--exclude=_bd_backup/"                   # 47Г pg-дампы 1С (маунт /backups контейнера pg1c)
+  - "--exclude=_Work/createrra/_bases/"       # 16Г файловые базы 1С
+  - "--exclude=_Work/createrra/_config/"      # 29Г EDT .metadata + XML-выгрузки конфигураций
+  - "--exclude=_Work/opti-com/_config/"       # 3.7Г XML-выгрузки ut/ut09 + слепок confluence
+  - "--exclude=_Work/opti-com/gisp/dumps/"    # 7.2Г дампы миграций
+  - "--exclude=_Work/opti-com/gisp/files/"    # 771М входные CSV-дампы
+  - "--exclude=_Work/opti-com/gisp/services/postgres/"  # 7.6Г живая база (каталог = data/)
+  - "--exclude=_Work/opti-com/gisp/services/semantic/model/"  # 921М веса (bin+safetensors — одна модель)
+  - "--exclude=_Work/opti-com/gisp-gpu/model-onnx/"     # 449М onnx-экспорт, генерируется
+  - "--exclude=build/"                        # билд-артефакты: starter 1.7Г, pulsesync 4.2Г, Xcode-проекты
+  - "--exclude=.svelte-kit/"                  # кэш open-webui
+  - "--exclude=sLLM/_data/"                   # 1Г рантайм open-webui (webui.db, vector_db)
+  - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
+  - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
+  - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
+  - "--exclude=*.dmg"                         # скачанные инсталляторы
+  - "--exclude=*.1CD"                         # базы вне _bases, на всякий
   - "--exclude=*.dt"
-  - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
-  - "--exclude=_Work/opti-com/gisp/services/starter/build/"
 
 # ~/.claude: whitelist того, что ездит между маками (порядок важен — родители до
 # содержимого, последним catch-all exclude). Рантайм (file-history, sessions, ide,
 # backups, credentials) и local_settings.json остаются машинными.
-# Используется back-синком; снимок держит такую же копию в своих vars.
 sync_claude_includes:
   - "--include=/CLAUDE.md"
   - "--include=/settings.json"

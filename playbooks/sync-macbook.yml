@@ -22,7 +22,7 @@
 # Только сбор настроек в репо (без копирования на citrus):
 #   ansible-playbook playbooks/sync-macbook.yml -e "src_host=moro dest_host=citrus" --tags collect
 #
-# Не ездит между машинами (sync_code_excludes, ~117Г из 136Г ~/code): дампы/базы/
+# Не ездит между машинами (~117Г из 136Г ~/code; список — playbooks/vars/sync-excludes.yml): дампы/базы/
 # выгрузки 1С (_bd_backup, createrra _bases/_config, opti-com _config, *.1CD/*.dt),
 # данные сервисов gisp (postgres/dumps/files/модели), build/ везде, рантайм sLLM/_data,
 # дистрибутивы arm1c/dists, бэкапы (config/server-backup, semaphore vps_backup).
@@ -43,6 +43,8 @@
 - name: Snapshot ~/code from source Mac to dest Mac
   hosts: "{{ dest_host | default('citrus') }}"
   gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/vars/sync-excludes.yml"   # excludes/claude-whitelist едины с back-синком
   vars:
     source_host: "{{ src_host | default('moro') }}"
     _dry_run: "{{ dry_run | default(false) | bool }}"
@@ -66,37 +68,7 @@
       - "--include=/projects/***"
       - "--exclude=*"
 
-    _rsync_common:
-      - "--archive"
-      - "--human-readable"
-      - "--exclude=.DS_Store"
-      - "--exclude=node_modules/"
-      - "--exclude=__pycache__/"
-      - "--exclude=.venv/"
-      - "--exclude=venv/"
-      - "--exclude=*.pyc"
-
-    # Машино-локальное и тяжёлое, что не едет на другой мак (2026-09-11, ~116Г из 136Г):
-    # на citrus остаётся ~20Г собственно кода. Ревизия по du-разборке ~/code на moro.
-    sync_code_excludes:
-      - "--exclude=_bd_backup/"                   # 47Г pg-дампы 1С
-      - "--exclude=_Work/createrra/_bases/"       # 16Г файловые базы 1С
-      - "--exclude=_Work/createrra/_config/"      # 29Г EDT .metadata + XML-выгрузки конфигураций
-      - "--exclude=_Work/opti-com/_config/"       # 3.7Г XML-выгрузки ut/ut09 + слепок confluence
-      - "--exclude=_Work/opti-com/gisp/dumps/"    # 7.2Г дампы миграций
-      - "--exclude=_Work/opti-com/gisp/files/"    # 771М входные CSV-дампы
-      - "--exclude=_Work/opti-com/gisp/services/postgres/"  # 7.6Г живая база (каталог = data/)
-      - "--exclude=_Work/opti-com/gisp/services/semantic/model/"  # 921М веса (bin+safetensors — один и тот же модель)
-      - "--exclude=_Work/opti-com/gisp-gpu/model-onnx/"     # 449М onnx-экспорт, генерируется
-      - "--exclude=build/"                        # билд-артефакты: starter 1.7Г, pulsesync 4.2Г, Xcode-проекты
-      - "--exclude=.svelte-kit/"                  # кэш open-webui
-      - "--exclude=sLLM/_data/"                   # 1Г рантайм open-webui (webui.db, vector_db)
-      - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
-      - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
-      - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
-      - "--exclude=*.dmg"                         # скачанные инсталляторы (pulsesync 124М и пр.)
-      - "--exclude=*.1CD"                         # базы вне _bases, на всякий
-      - "--exclude=*.dt"
+    # sync_rsync_common / sync_code_excludes / sync_claude_includes — в vars/sync-excludes.yml.
 
     # Разница приложений moro→citrus зафиксирована 2026-09-04 (всего 50 шт, ~7.9Г).
     # Эти имена .app на citrus не едут: тяжёлые/игровые (8G RAM), редкие махины,
@@ -174,7 +146,7 @@
           ansible.builtin.command:
             argv: "{{ ['rsync', '--archive', '--dry-run', '--stats',
                         '--rsh=ssh -S none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null']
-                       + _rsync_common + sync_code_excludes
+                       + sync_rsync_common + sync_code_excludes
                        + [_src_home + '/code/', _dest_ssh + ':' + ansible_env.HOME + '/code/'] }}"
           vars:
             _src_home: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}"
@@ -256,7 +228,7 @@
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/"
             dest: "{{ ansible_env.HOME }}/code/"
             mode: push
-            rsync_opts: "{{ _rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + sync_code_excludes + (['--dry-run'] if _dry_run else []) }}"
             checksum: true
             delete: false
           delegate_to: "{{ source_host }}"
@@ -266,7 +238,7 @@
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/"
             dest: "{{ ansible_env.HOME }}/.config/ghostty/"
             mode: push
-            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + (['--dry-run'] if _dry_run else []) }}"
             checksum: true
             delete: false
           delegate_to: "{{ source_host }}"
@@ -276,7 +248,7 @@
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Library/Fonts/"
             dest: "{{ ansible_env.HOME }}/Library/Fonts/"
             mode: push
-            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + (['--dry-run'] if _dry_run else []) }}"
             checksum: true
             delete: false
           delegate_to: "{{ source_host }}"
@@ -335,7 +307,7 @@
             src: "/Applications/{{ item }}.app"
             dest: "/Applications/"
             mode: push
-            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + (['--dry-run'] if _dry_run else []) }}"
             delete: false
           loop: "{{ _apps_new_root }}"
           loop_control:
@@ -348,7 +320,7 @@
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/Applications/{{ item }}.app"
             dest: "{{ ansible_env.HOME }}/Applications/"
             mode: push
-            rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + (['--dry-run'] if _dry_run else []) }}"
             delete: false
           loop: "{{ _apps_new_home }}"
           loop_control:
@@ -456,7 +428,7 @@
             src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/"
             dest: "{{ ansible_env.HOME }}/.claude/"
             mode: push
-            rsync_opts: "{{ _rsync_common + sync_claude_includes + (['--dry-run'] if _dry_run else []) }}"
+            rsync_opts: "{{ sync_rsync_common + sync_claude_includes + (['--dry-run'] if _dry_run else []) }}"
             checksum: true
             delete: false
           delegate_to: "{{ source_host }}"

@@ -7,63 +7,403 @@
 # ОГРАНИЧЕНИЕ: конфликт «правили в обоих местах» не детектируется —
 # побеждает файл с более свежей датой. Удалённое на citrus на moro не исчезает.
 #
-# Запуск откуда угодно (Semaphore на moro / терминал): приём делегируется
-# на {{ dest_host }} явно, localhost (контейнер семафора) не годится:
-#   ansible-playbook playbooks/sync-macbook-back.yml
-# Явно: -e "src_host=citrus dest_host=moro"
+# Возвращаются не только ~/code: конфиги, которые снимок перезаписывает на citrus
+# (ghostty, cursor, bash) — иначе правки на citrus терялись бы каждым снимком, —
+# и приложения, поставленные на citrus, которых на moro нет (целиком).
+# ПОРЯДОК: гонять back ДО снимка (sync-macbook.yml), тогда правки citrus через
+# moro попадают в следующий collect и круг замыкается.
 #
-# Excludes общие со снимком: playbooks/vars/sync-excludes.yml
+# Запуск откуда угодно (Semaphore на moro / терминал):
+#   ansible-playbook playbooks/sync-macbook-back.yml
+# Явно: -e "src_host=citrus dest_host_override=moro"
+#
+# Excludes общие со снимком: playbooks/vars/sync-excludes.yml (одна ревизия на оба).
+# Как у снимка: pre-flight гвардия диска приёмника (≤90%) и TG-отчёт ботом watchtower.
+# Грабли openrsync: remote-аргументы с пробелами не квотятся — приложения едем
+# push'ем с citrus (пробелы только в ЛОКАЛЬНОМ src), cursor-настройки через staging.
 
 - name: Pull newer files from citrus back to moro
   hosts: "{{ src_host | default('citrus') }}"
   vars:
     dest_host: "{{ dest_host_override | default('moro') }}"
+    sync_tailnet_domain: koi-uaru.ts.net
+    _dest_home: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}"
+    _src_home: "/Users/{{ ansible_user | default('m') }}"
   gather_facts: true
   vars_files:
     - "{{ playbook_dir }}/vars/sync-excludes.yml"
 
   tasks:
-    - name: Create directories on {{ dest_host }} (приёмник)
-      file:
-        path: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/{{ item }}"
-        state: directory
-        mode: "0755"
-      delegate_to: "{{ dest_host }}"
-      loop:
-        - code
-        - Library/Fonts
-        - .claude/projects
-        - .claude/skills
-        - .claude/hooks
+    - name: TG-креды для оповещений (vault manage — бот watchtower)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../roles/manage/vars/secrets.yml"   # roles/ — в корне репо
+      ignore_errors: true
 
-    - name: Pull newer ~/code files from {{ inventory_hostname }}
-      synchronize:
-        src: "/Users/{{ ansible_user | default('m') }}/code/"
-        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/code/"
-        mode: pull
-        rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--itemize-changes'] }}"
-        checksum: false
-        delete: false
-      delegate_to: "{{ dest_host }}"
+    - name: Возврат нового (block ради rescue-оповещения в ТГ)
+      block:
+        - name: Директории на {{ dest_host }} (приёмник)
+          file:
+            path: "{{ _dest_home }}/{{ item }}"
+            state: directory
+            mode: "0755"
+          delegate_to: "{{ dest_host }}"
+          loop:
+            - code
+            - Library/Fonts
+            - .claude/projects
+            - .claude/skills
+            - .claude/hooks
+            - .config/ghostty
 
-    - name: Pull newer ~/Library/Fonts from {{ inventory_hostname }}
-      synchronize:
-        src: "/Users/{{ ansible_user | default('m') }}/Library/Fonts/"
-        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/Library/Fonts/"
-        mode: pull
-        rsync_opts: "{{ sync_rsync_common + ['--update'] }}"
-        checksum: false
-        delete: false
-      delegate_to: "{{ dest_host }}"
+        - name: Pre-flight — место на диске приёмника (statvfs, не df)
+          # df на macOS своебразен (APFS-контейнер, снапшоты, purgeable, колонки).
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - 'import os,json; s=os.statvfs("{{ _dest_home }}/code"); print(json.dumps({"avail_kb": s.f_frsize*s.f_bavail//1024, "total_kb": s.f_frsize*s.f_blocks//1024, "used_pct": round(100*(s.f_blocks-s.f_bavail)/s.f_blocks)}))'
+          delegate_to: "{{ dest_host }}"
+          register: _disk_dest
+          changed_when: false
 
-    - name: Pull newer ~/.claude from {{ inventory_hostname }} (диалоги/правила с citrus)
-      # Тот же whitelist, что у снимка: projects + CLAUDE.md + settings + skills + hooks.
-      # Рантайм и credentials citrus остаются на citrus.
-      synchronize:
-        src: "/Users/{{ ansible_user | default('m') }}/.claude/"
-        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/.claude/"
-        mode: pull
-        rsync_opts: "{{ sync_rsync_common + sync_claude_includes + ['--update', '--itemize-changes'] }}"
-        checksum: false
-        delete: false
-      delegate_to: "{{ dest_host }}"
+        - name: Pre-flight — оценка объёма возврата (rsync --dry-run --stats --update)
+          # Pull-вид: rsync крутится на moro, источник — citrus. Без --checksum
+          # (быстрый stat-обход); --update как у реального прогона.
+          ansible.builtin.command:
+            argv: "{{ ['rsync', '--archive', '--dry-run', '--stats', '--update',
+                        '--rsh=ssh -S none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null']
+                       + sync_rsync_common + sync_code_excludes
+                       + [_src_rsync + ':/Users/' + (ansible_user | default('m')) + '/code/', _dest_home + '/code/'] }}"
+          vars:
+            _src_rsync: "{{ ansible_user | default('m') }}@{{ inventory_hostname }}.{{ sync_tailnet_domain }}"
+          delegate_to: "{{ dest_host }}"
+          register: _sync_estimate
+          until: _sync_estimate.rc == 0
+          retries: 2
+          delay: 15
+          changed_when: false
+
+        - name: Pre-flight — объём к пересылке (байт)
+          ansible.builtin.set_fact:
+            sync_payload_bytes: "{{ _sync_estimate.stdout | regex_findall('Total transferred file size: ([0-9,]+)') | first | replace(',', '') | int }}"
+
+        - name: Pre-flight — диск приёмника не уйдёт за 90%
+          # moro тоже не резиновый (~81% на 2026-09). Запас ×1.25 — на временные
+          # копии (--delay-updates) и то, что оценка не видит (конфиги/claude/apps).
+          vars:
+            _avail_kb: "{{ (_disk_dest.stdout | from_json).avail_kb }}"
+            _total_kb: "{{ (_disk_dest.stdout | from_json).total_kb }}"
+            _need_kb: "{{ (sync_payload_bytes | int * 1.25 / 1024) | int + (_total_kb | int * 0.10) | int }}"
+          ansible.builtin.assert:
+            that: "_avail_kb | int >= _need_kb | int"
+            fail_msg: >-
+              Диск {{ dest_host }} переполнится: свободно {{ (_avail_kb | int / 1048576) | round(1) }}Г,
+              возврат ~{{ (sync_payload_bytes | int / 1073741824) | round(1) }}Г (×1.25 с запасом),
+              а ≥10% из {{ (_total_kb | int / 1048576) | round(0) }}Г обязано остаться свободным.
+
+        - name: Pull newer ~/code files from {{ inventory_hostname }}
+          synchronize:
+            src: "{{ _src_home }}/code/"
+            dest: "{{ _dest_home }}/code/"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--itemize-changes'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ dest_host }}"
+
+        - name: Pull newer ~/Library/Fonts from {{ inventory_hostname }}
+          synchronize:
+            src: "{{ _src_home }}/Library/Fonts/"
+            dest: "{{ _dest_home }}/Library/Fonts/"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + ['--update'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ dest_host }}"
+
+        - name: Pull реальную разницу ~/.config/ghostty с {{ inventory_hostname }}
+          # Правки ghostty на citrus раньше затирались каждым снимком — теперь
+          # возвращаются на moro (оттуда collect заберёт их в роль dotfiles).
+          # --update --checksum: едем только если НОВЕЕ и СОДЕРЖИМОЕ отличается —
+          # деплой снимка пишет те же байты со свежим mtime, чексумма отсекает
+          # пинг-понг (только mtime гнало бы файлы туда-сюда каждый прогон).
+          synchronize:
+            src: "{{ _src_home }}/.config/ghostty/"
+            dest: "{{ _dest_home }}/.config/ghostty/"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + ['--update', '--checksum'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ dest_host }}"
+
+        - name: Cursor-настройки citrus → staging (remote-путь с пробелами openrsync не квотит)
+          ansible.builtin.command:
+            argv:
+              - mkdir
+              - "-p"
+              - "{{ _src_home }}/.cursor-sync-staging"
+          changed_when: false
+
+        - name: Копия Cursor-настроек в staging
+          ansible.builtin.command:
+            argv:
+              - cp
+              - "{{ _src_home }}/Library/Application Support/Cursor/User/{{ item }}"
+              - "{{ _src_home }}/.cursor-sync-staging/{{ item }}"
+          loop:
+            - settings.json
+            - keybindings.json
+          changed_when: false
+
+        - name: Pull staging → moro (путь без пробелов)
+          synchronize:
+            src: "{{ _src_home }}/.cursor-sync-staging/"
+            dest: "{{ _dest_home }}/.cursor-sync-staging/"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + ['--update', '--checksum'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ dest_host }}"
+
+        - name: Cursor-настройки moro ← staging (локальный mv, пробелы безопасны)
+          ansible.builtin.command:
+            argv:
+              - mv
+              - "{{ _dest_home }}/.cursor-sync-staging/{{ item }}"
+              - "{{ _dest_home }}/Library/Application Support/Cursor/User/{{ item }}"
+          loop:
+            - settings.json
+            - keybindings.json
+          delegate_to: "{{ dest_host }}"
+          changed_when: false
+
+        - name: Pull newer bash dotfiles from {{ inventory_hostname }}
+          # .bashrc/.bash_profile на citrus тоже перезаписываются снимком (deploy
+          # из роли) — возвращаем новее на moro тем же кругом, что и ghostty.
+          synchronize:
+            src: "{{ _src_home }}/{{ item }}"
+            dest: "{{ _dest_home }}/{{ item }}"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + ['--update', '--checksum'] }}"
+            checksum: false
+            delete: false
+          loop:
+            - .bashrc
+            - .bash_profile
+          delegate_to: "{{ dest_host }}"
+
+        - name: Pull newer ~/.claude from {{ inventory_hostname }} (диалоги/правила с citrus)
+          # Тот же whitelist, что у снимка: projects + CLAUDE.md + settings + skills + hooks.
+          # Рантайм и credentials citrus остаются на citrus.
+          synchronize:
+            src: "{{ _src_home }}/.claude/"
+            dest: "{{ _dest_home }}/.claude/"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + sync_claude_includes + ['--update', '--itemize-changes'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ dest_host }}"
+
+        - name: Диск приёмника после возврата (statvfs, в отчёт)
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - 'import os,json; s=os.statvfs("{{ _dest_home }}/code"); print(json.dumps({"avail_kb": s.f_frsize*s.f_bavail//1024, "used_pct": round(100*(s.f_blocks-s.f_bavail)/s.f_blocks)}))'
+          delegate_to: "{{ dest_host }}"
+          register: _disk_after
+          changed_when: false
+
+        - name: TG ✅ возврат прошёл
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ✅ sync {{ inventory_hostname }}→{{ dest_host }}: возврат готов.
+                ~/code к пересылке ~{{ (sync_payload_bytes | default(0) | int / 1073741824) | round(1) }}Г;
+                диск {{ dest_host }}: {{ (_disk_dest.stdout | from_json).used_pct }}% → {{ (_disk_after.stdout | from_json).used_pct }}% занято,
+                свободно {{ ((_disk_after.stdout | from_json).avail_kb | int / 1048576) | round(1) }}Г.
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
+
+      # Падение любой задачи блока (вкл. лимит диска и rsync-ошибки) — сообщение в ТГ,
+      # затем ошибка пробрасывается дальше (Semaphore видит fail).
+      rescue:
+        - name: TG ❌ возврат упал
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ❌ sync {{ inventory_hostname }}→{{ dest_host }} упал на «{{ ansible_failed_task.name }}»:
+                {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('нет деталей')) | truncate(350) }}
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
+
+        - name: Проброс ошибки дальше (Semaphore увидит fail)
+          ansible.builtin.fail:
+            msg: "{{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('упало')) }}"
+
+- name: Apps citrus → moro (есть на citrus, нет на moro)
+  # Отдельным плейем: synchronize push требует hosts=приёмник(moro),
+  # delegate=источник(citrus) — тогда пробелы в именах .app живут только
+  # в ЛОКАЛЬНОМ argv (openrsync remote-аргументы не квотит).
+  # MAS-приложения приедут на moro без receipt — App Store их там не обновит.
+  hosts: "{{ dest_host_override | default('moro') }}"
+  gather_facts: true
+  vars:
+    _src_host: "{{ src_host | default('citrus') }}"
+    _src_user: "{{ hostvars[_src_host].ansible_user | default('m') }}"
+  vars_files:
+    - "{{ playbook_dir }}/vars/sync-excludes.yml"
+
+  tasks:
+    - name: TG-креды для оповещений (vault manage — бот watchtower)
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../roles/manage/vars/secrets.yml"
+      ignore_errors: true
+
+    - name: Приложения citrus → moro (block ради rescue-оповещения в ТГ)
+      block:
+        - name: Apps на citrus (источник)
+          ansible.builtin.command: ls {{ item }}
+          loop:
+            - /Applications
+            - "/Users/{{ _src_user }}/Applications"
+          delegate_to: "{{ _src_host }}"
+          register: _src_apps
+          changed_when: false
+
+        - name: Apps на moro (приёмник)
+          ansible.builtin.command: ls {{ item }}
+          loop:
+            - /Applications
+            - "{{ ansible_env.HOME }}/Applications"
+          register: _dst_apps
+          changed_when: false
+          failed_when: false
+
+        - name: Union apps на moro
+          ansible.builtin.set_fact:
+            _dst_all_apps: >-
+              {{ (_dst_apps.results | map(attribute='stdout_lines') | flatten | select('match', '.*[.]app$'))
+                 | map('regex_replace', '[.]app$', '') | list }}
+
+        - name: Разница (есть на citrus, нет на moro)
+          ansible.builtin.set_fact:
+            _apps_new_root: >-
+              {{ _src_apps.results[0].stdout_lines | select('match', '.*[.]app$')
+                 | map('regex_replace', '[.]app$', '') | list | difference(_dst_all_apps) }}
+            _apps_new_home: >-
+              {{ _src_apps.results[1].stdout_lines | select('match', '.*[.]app$')
+                 | map('regex_replace', '[.]app$', '') | list | difference(_dst_all_apps) }}
+
+        - name: Объём новых приложений (du, для гвардии)
+          ansible.builtin.command: du -sk {{ item }}
+          loop: "{{ _apps_new_root | map('regex_replace', '(.*)', '/Applications/\\1.app') | list
+                    + _apps_new_home | map('regex_replace', '(.*)', '/Users/' + _src_user + '/Applications/\\1.app') | list }}"
+          loop_control:
+            label: "{{ item | basename }}"
+          delegate_to: "{{ _src_host }}"
+          register: _apps_du
+          changed_when: false
+          failed_when: false
+
+        - name: Pre-flight — место на moro под приложения (statvfs)
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - 'import os,json; s=os.statvfs("/Applications"); print(json.dumps({"avail_kb": s.f_frsize*s.f_bavail//1024, "total_kb": s.f_frsize*s.f_blocks//1024}))'
+          register: _disk_moro
+          changed_when: false
+
+        - name: Pre-flight — хватит ли места под приложения
+          vars:
+            _apps_kb: "{{ _apps_du.results | map(attribute='stdout') | map('regex_findall', '^[0-9]+') | flatten | map('int') | sum | int }}"
+            _avail_kb: "{{ (_disk_moro.stdout | from_json).avail_kb }}"
+            _total_kb: "{{ (_disk_moro.stdout | from_json).total_kb }}"
+          ansible.builtin.assert:
+            that: "_avail_kb | int >= _apps_kb | int + (_total_kb | int * 0.10) | int"
+            fail_msg: >-
+              Приложения с citrus (~{{ (_apps_kb | int / 1048576) | round(1) }}Г) не влезут на moro:
+              свободно {{ (_avail_kb | int / 1048576) | round(1) }}Г, ≥10% из {{ (_total_kb | int / 1048576) | round(0) }}Г — неприкосновенно.
+
+        - name: Push новых приложений citrus → /Applications moro
+          synchronize:
+            src: "/Applications/{{ item }}.app"
+            dest: "/Applications/"
+            mode: push
+            rsync_opts: "{{ sync_rsync_common }}"
+            delete: false
+          loop: "{{ _apps_new_root }}"
+          loop_control:
+            label: "{{ item }}"
+          delegate_to: "{{ _src_host }}"
+
+        - name: Push новых приложений citrus → ~/Applications moro
+          synchronize:
+            src: "/Users/{{ _src_user }}/Applications/{{ item }}.app"
+            dest: "{{ ansible_env.HOME }}/Applications/"
+            mode: push
+            rsync_opts: "{{ sync_rsync_common }}"
+            delete: false
+          loop: "{{ _apps_new_home }}"
+          loop_control:
+            label: "{{ item }}"
+          delegate_to: "{{ _src_host }}"
+
+        - name: TG ✅ приложения вернулись
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ✅ apps {{ _src_host }}→{{ inventory_hostname }}: {{ _apps_new_root | length + _apps_new_home | length }} новых приложений.
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
+
+      rescue:
+        - name: TG ❌ возврат приложений упал
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ manage_watchtower_tg_wt_bot_token | default('') }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ manage_watchtower_tg_wt_chat_id | default('') }}"
+              text: >-
+                ❌ apps {{ _src_host }}→{{ inventory_hostname }} упал на «{{ ansible_failed_task.name }}»:
+                {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('нет деталей')) | truncate(350) }}
+            status_code: 200
+            timeout: 15
+          delegate_to: localhost
+          run_once: true
+          when:
+            - manage_watchtower_tg_wt_bot_token is defined
+          failed_when: false
+
+        - name: Проброс ошибки дальше (Semaphore увидит fail)
+          ansible.builtin.fail:
+            msg: "{{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('упало')) }}"
