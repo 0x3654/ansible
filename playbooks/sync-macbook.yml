@@ -1,9 +1,14 @@
 ---
 # Односторонний снимок с эталона (moro) на citrus:
-# ~/code + ~/Library/Fonts + /Applications (разница) + ~/.config/ghostty + ~/.claude/projects.
+# ~/code + ~/Library/Fonts + /Applications (разница) + ~/.config/ghostty + ~/.claude (whitelist).
 #
-# Перед снимком собирает живые настройки приложений (cursor, ghostty) c moro
+# Перед снимком собирает живые настройки приложений (cursor, ghostty, bash) c moro
 # в файлы роли dotfiles — они внутри ~/code и едут дальше rsync'ом.
+#
+# SSH-дружба маков: взаимные authorized_keys + ssh-config блоки mac↔mac (idempotent,
+# tailnet-имена).known_hosts не трогаем — записи уже есть, host keys у клонов одинаковые.
+# НЕ автоматизировано (нужен root, sudo на маках с паролем): sshd-дропин
+# /etc/ssh/sshd_config.d/101-no-password.conf (запрет паролей) — ставить вручную на каждый мак.
 # Коммитить сабмодуль dotfiles не обязательно — на обмен между маками гит не влияет.
 #
 # Run from moro (одна команда на всё):
@@ -19,8 +24,10 @@
 #
 # Не ездит между машинами (sync_code_excludes): файловые базы 1С (*.1CD/*.dt),
 # живой postgres gisp, билд-артефакты starter — ~26Г из 73Г _Work.
-# ~/.claude/projects (история диалогов Claude Code) — additive, без delete:
-# сессии, начатые на citrus, при снимке не пропадают.
+# ~/.claude — additive whitelist: projects (диалоги+память), CLAUDE.md (правила),
+# settings.json, skills, hooks; рантайм (file-history, sessions, credentials) — машинный.
+# Сессии, начатые на citrus, при снимке не пропадают (без delete).
+# CLAUDE.md внутри ~/code едут со снимком кода.
 # Обратное направление (новее-по-mtime с citrus) — sync-macbook-back.yml.
 #
 # Выполнение: из Semaphore (контейнер на moro) или из терминала moro — без разницы:
@@ -37,6 +44,21 @@
 
     # Эталонный репо dotfiles на moro (для collect; из Semaphore playbook_dir — клон в контейнере)
     sync_dotfiles_dir: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/code/ansible"
+
+    # Tailnet-домен маков (MagicDNS) — для ssh-config блоков дружбы
+    sync_tailnet_domain: koi-uaru.ts.net
+
+    # ~/.claude: что едет между маками (whitelist; порядок важен — родители до содержимого)
+    sync_claude_includes:
+      - "--include=/CLAUDE.md"
+      - "--include=/settings.json"
+      - "--include=/skills/"
+      - "--include=/skills/***"
+      - "--include=/hooks/"
+      - "--include=/hooks/***"
+      - "--include=/projects/"
+      - "--include=/projects/***"
+      - "--exclude=*"
 
     _rsync_common:
       - "--archive"
@@ -137,6 +159,16 @@
             mode: "0644"
           with_fileglob:
             - "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.config/ghostty/*.icns"
+
+        - name: Collect bash dotfiles
+          copy:
+            remote_src: true
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/{{ item }}"
+            dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/bash/{{ item | basename }}"
+            mode: "0644"
+          loop:
+            - .bashrc
+            - .bash_profile
       delegate_to: "{{ source_host }}"
       tags: collect
 
@@ -263,12 +295,89 @@
         - keybindings.json
       when: _cursor_role_settings.stat.exists
 
-    - name: Snapshot ~/.claude/projects from {{ source_host }} (additive)
+    - name: Stat collected bash dotfiles in snapshot
+      stat:
+        path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/.bashrc"
+      register: _bash_role
+
+    - name: Deploy bash dotfiles on {{ inventory_hostname }}
+      # Тот же цикл, что у cursor: правки .bashrc/.bash_profile на эталоне раньше
+      # доезжали только разовым setup-macbook — теперь с каждым снимком.
+      copy:
+        remote_src: true
+        src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/bash/{{ item }}"
+        dest: "{{ ansible_env.HOME }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - .bashrc
+        - .bash_profile
+      when: _bash_role.stat.exists
+
+    - name: SSH-дружба маков ({{ source_host }} ↔ {{ inventory_hostname }})
+      # Взаимный безпарольный доступ: pubkey каждого мака в authorized_keys другого
+      # + ssh-config блок с tailnet-именем (у moro Host * задаёт User root —
+      # специфичный блок обязан стоять выше, поэтому insertafter: BOF).
+      block:
+        - name: Pubkey эталона ({{ source_host }})
+          slurp:
+            src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/id_ed25519.pub"
+          register: _src_pubkey
+          delegate_to: "{{ source_host }}"
+
+        - name: Pubkey этого мака ({{ inventory_hostname }})
+          slurp:
+            src: "{{ ansible_env.HOME }}/.ssh/id_ed25519.pub"
+          register: _dst_pubkey
+
+        - name: Ключ эталона → authorized_keys этого мака
+          authorized_key:
+            user: "{{ ansible_user | default('m') }}"
+            key: "{{ _src_pubkey.content | b64decode | trim }}"
+            state: present
+
+        - name: Ключ этого мака → authorized_keys эталона ({{ source_host }})
+          authorized_key:
+            user: "{{ hostvars[source_host].ansible_user | default('m') }}"
+            key: "{{ _dst_pubkey.content | b64decode | trim }}"
+            state: present
+          delegate_to: "{{ source_host }}"
+
+        - name: ssh-config блок эталона на этом маке
+          blockinfile:
+            path: "{{ ansible_env.HOME }}/.ssh/config"
+            state: present
+            create: true
+            mode: "0600"
+            insertafter: BOF
+            marker: "# {mark} ANSIBLE MANAGED mac-pair {{ source_host }}"
+            block: |
+              Host {{ source_host }}
+                  HostName {{ source_host }}.{{ sync_tailnet_domain }}
+                  User {{ hostvars[source_host].ansible_user | default('m') }}
+
+        - name: ssh-config блок этого мака на эталоне ({{ source_host }})
+          blockinfile:
+            path: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.ssh/config"
+            state: present
+            create: true
+            mode: "0600"
+            insertafter: BOF
+            marker: "# {mark} ANSIBLE MANAGED mac-pair {{ inventory_hostname }}"
+            block: |
+              Host {{ inventory_hostname }}
+                  HostName {{ inventory_hostname }}.{{ sync_tailnet_domain }}
+                  User {{ ansible_user | default('m') }}
+          delegate_to: "{{ source_host }}"
+      when: not _dry_run
+
+    - name: Snapshot ~/.claude from {{ source_host }} (additive, whitelist)
+      # Диалоги/память проектов + правила (CLAUDE.md, settings.json, skills, hooks).
+      # Остальное — рантайм машин, фильтром отсекается.
       synchronize:
-        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/projects/"
-        dest: "{{ ansible_env.HOME }}/.claude/projects/"
+        src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/"
+        dest: "{{ ansible_env.HOME }}/.claude/"
         mode: push
-        rsync_opts: "{{ _rsync_common + (['--dry-run'] if _dry_run else []) }}"
+        rsync_opts: "{{ _rsync_common + sync_claude_includes + (['--dry-run'] if _dry_run else []) }}"
         checksum: true
         delete: false
       delegate_to: "{{ source_host }}"

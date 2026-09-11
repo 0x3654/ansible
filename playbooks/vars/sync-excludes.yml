@@ -22,3 +22,18 @@ sync_code_excludes:
   - "--exclude=*.dt"
   - "--exclude=_Work/opti-com/gisp/services/postgres/data/"
   - "--exclude=_Work/opti-com/gisp/services/starter/build/"
+
+# ~/.claude: whitelist того, что ездит между маками (порядок важен — родители до
+# содержимого, последним catch-all exclude). Рантайм (file-history, sessions, ide,
+# backups, credentials) и local_settings.json остаются машинными.
+# Используется back-синком; снимок держит такую же копию в своих vars.
+sync_claude_includes:
+  - "--include=/CLAUDE.md"
+  - "--include=/settings.json"
+  - "--include=/skills/"
+  - "--include=/skills/***"
+  - "--include=/hooks/"
+  - "--include=/hooks/***"
+  - "--include=/projects/"
+  - "--include=/projects/***"
+  - "--exclude=*"

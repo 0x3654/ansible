@@ -33,6 +33,8 @@
         - code
         - Library/Fonts
         - .claude/projects
+        - .claude/skills
+        - .claude/hooks
 
     - name: Pull newer ~/code files from {{ inventory_hostname }}
       synchronize:
@@ -54,12 +56,14 @@
         delete: false
       delegate_to: "{{ dest_host }}"
 
-    - name: Pull newer ~/.claude/projects from {{ inventory_hostname }} (диалоги с citrus)
+    - name: Pull newer ~/.claude from {{ inventory_hostname }} (диалоги/правила с citrus)
+      # Тот же whitelist, что у снимка: projects + CLAUDE.md + settings + skills + hooks.
+      # Рантайм и credentials citrus остаются на citrus.
       synchronize:
-        src: "/Users/{{ ansible_user | default('m') }}/.claude/projects/"
-        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/.claude/projects/"
+        src: "/Users/{{ ansible_user | default('m') }}/.claude/"
+        dest: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}/.claude/"
         mode: pull
-        rsync_opts: "{{ sync_rsync_common + ['--update', '--itemize-changes'] }}"
+        rsync_opts: "{{ sync_rsync_common + sync_claude_includes + ['--update', '--itemize-changes'] }}"
         checksum: false
         delete: false
       delegate_to: "{{ dest_host }}"
