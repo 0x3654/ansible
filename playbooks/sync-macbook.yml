@@ -480,7 +480,7 @@
               text: >-
                 ✅ sync {{ source_host }}→{{ inventory_hostname }}: снимок готов.
                 ~/code к пересылке ~{{ (sync_payload_bytes | default(0) | int / 1073741824) | round(1) }}Г;
-                диск {{ inventory_hostname }}: {{ (_disk_after.stdout | from_json).used_pct }}% занято,
+                диск {{ inventory_hostname }}: {{ (_disk_dest.stdout | from_json).used_pct }}% → {{ (_disk_after.stdout | from_json).used_pct }}% занято,
                 свободно {{ ((_disk_after.stdout | from_json).avail_kb | int / 1048576) | round(1) }}Г.
             status_code: 200
             timeout: 15
