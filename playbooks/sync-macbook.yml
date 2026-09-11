@@ -245,6 +245,24 @@
       delegate_to: "{{ source_host }}"
       tags: apps
 
+    - name: Stat collected Cursor settings in snapshot
+      stat:
+        path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
+      register: _cursor_role_settings
+
+    - name: Deploy Cursor settings on {{ inventory_hostname }}
+      # Замыкает цикл: collect (живой moro → роль) → снимок → применение (роль → живой dest).
+      # Расширения ставит отдельно setup-macbook -t cursor.
+      copy:
+        remote_src: true
+        src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
+        dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/{{ item }}"
+        mode: "0644"
+      loop:
+        - settings.json
+        - keybindings.json
+      when: _cursor_role_settings.stat.exists
+
     - name: Snapshot ~/.claude/projects from {{ source_host }} (additive)
       synchronize:
         src: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}/.claude/projects/"
