@@ -1,0 +1,12 @@
+---
+# ghcr.io (behind lscr.io/linuxserver/* and ghcr.io/*) serves anonymous pulls
+# from a shared per-IP quota; watchtower exhausts it and gets 429 "registry
+# rate limited", dropping the update after a few retries. Logging in moves
+# host CLI pulls and watchtower (reads /config.json mounted in compose) to
+# the per-user quota.
+- name: Log in to ghcr.io
+  ansible.builtin.command:
+    cmd: docker login ghcr.io --username {{ manage_ghcr_user }} --password-stdin
+    stdin: "{{ manage_ghcr_pat }}"
+  changed_when: false
+  no_log: true
