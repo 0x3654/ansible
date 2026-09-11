@@ -106,7 +106,7 @@
             src: "{{ _src_home }}/code/"
             dest: "{{ _dest_home }}/code/"
             mode: pull
-            rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--itemize-changes'] }}"
+            rsync_opts: "{{ sync_rsync_common + sync_code_excludes + ['--update', '--checksum', '--itemize-changes'] }}"
             checksum: false
             delete: false
           delegate_to: "{{ dest_host }}"
@@ -116,7 +116,7 @@
             src: "{{ _src_home }}/Library/Fonts/"
             dest: "{{ _dest_home }}/Library/Fonts/"
             mode: pull
-            rsync_opts: "{{ sync_rsync_common + ['--update'] }}"
+            rsync_opts: "{{ sync_rsync_common + ['--update', '--checksum'] }}"
             checksum: false
             delete: false
           delegate_to: "{{ dest_host }}"
@@ -199,7 +199,7 @@
             src: "{{ _src_home }}/.claude/"
             dest: "{{ _dest_home }}/.claude/"
             mode: pull
-            rsync_opts: "{{ sync_rsync_common + sync_claude_includes + ['--update', '--itemize-changes'] }}"
+            rsync_opts: "{{ sync_rsync_common + sync_claude_includes + ['--update', '--checksum', '--itemize-changes'] }}"
             checksum: false
             delete: false
           delegate_to: "{{ dest_host }}"
