@@ -350,6 +350,15 @@
             label: "{{ item }}"
           delegate_to: "{{ source_host }}"
 
+        # ── merge md-файлов claude ДО rsync: журнал/правила правятся сессиями
+        #    на обеих машинах, mtime-LWW терял бы записи (см. tasks/sync-claude-merge.yml)
+        - name: Claude md merge (журнал/правила, обе стороны)
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-claude-merge.yml"
+          vars:
+            _claude_merge_a_home: "{{ _moro_home }}"
+            _claude_merge_a_host: "{{ source_host }}"
+            _claude_merge_b_home: "{{ _citrus_home }}"
+
         - name: Push ~/.claude moro→citrus (additive whitelist)
           synchronize:
             src: "{{ _moro_home }}/.claude/"

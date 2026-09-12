@@ -192,6 +192,14 @@
             - .bash_profile
           delegate_to: "{{ dest_host }}"
 
+        - name: Claude md merge (журнал/правила, обе стороны)
+          # ДО rsync ~/.claude: mtime-LWW терял бы записи параллельных сессий
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-claude-merge.yml"
+          vars:
+            _claude_merge_a_home: "/Users/{{ hostvars[dest_host].ansible_user | default('m') }}"
+            _claude_merge_a_host: "{{ dest_host }}"
+            _claude_merge_b_home: "{{ ansible_env.HOME }}"
+
         - name: Pull newer ~/.claude from {{ inventory_hostname }} (диалоги/правила с citrus)
           # Тот же whitelist, что у снимка: projects + CLAUDE.md + settings + skills + hooks.
           # Рантайм и credentials citrus остаются на citrus.

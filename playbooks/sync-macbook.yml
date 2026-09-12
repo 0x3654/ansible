@@ -421,6 +421,14 @@
               delegate_to: "{{ source_host }}"
           when: not _dry_run
 
+        - name: Claude md merge (журнал/правила, обе стороны)
+          # ДО rsync ~/.claude: mtime-LWW терял бы записи параллельных сессий
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-claude-merge.yml"
+          vars:
+            _claude_merge_a_home: "/Users/{{ hostvars[source_host].ansible_user | default('m') }}"
+            _claude_merge_a_host: "{{ source_host }}"
+            _claude_merge_b_home: "{{ ansible_env.HOME }}"
+
         - name: Snapshot ~/.claude from {{ source_host }} (additive, whitelist)
           # Диалоги/память проектов + правила (CLAUDE.md, settings.json, skills, hooks).
           # Остальное — рантайм машин, фильтром отсекается.

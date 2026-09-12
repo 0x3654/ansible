@@ -1,0 +1,55 @@
+---
+# Слияние md-файлов ~/.claude (CLAUDE.md, CLAUDE-CHANGELOG.md) между маками.
+# Эти файлы правят параллельные сессии на ОБЕИХ машинах — mtime-LWW (обычный
+# --update у rsync) молча терял бы записи журнала и правки правил.
+#
+# Схема: копии с B → staging на A → секционный union-merge (обе стороны) →
+# staging обратно на B. После этого штатный rsync ~/.claude видит идентичные файлы.
+#
+# Импортируется с переменными:
+#   _claude_merge_a_home / _claude_merge_a_host — машина A (moro, эталон)
+#   _claude_merge_b_home                          — машина B (citrus; play host)
+
+- name: Claude merge | staging на A
+  ansible.builtin.file:
+    path: "{{ _claude_merge_a_home }}/.claude-merge-staging"
+    state: directory
+    mode: "0700"
+  delegate_to: "{{ _claude_merge_a_host }}"
+
+- name: Claude merge | копии md с B в staging
+  ansible.posix.synchronize:
+    src: "{{ _claude_merge_b_home }}/.claude/"
+    dest: "{{ _claude_merge_a_home }}/.claude-merge-staging/"
+    mode: pull
+    rsync_opts:
+      - "--archive"
+      - "--include=/CLAUDE.md"
+      - "--include=/CLAUDE-CHANGELOG.md"
+      - "--exclude=*"
+    delete: false
+  delegate_to: "{{ _claude_merge_a_host }}"
+
+- name: Claude merge | секционный union (пишет обе стороны)
+  ansible.builtin.script:
+    cmd: "{{ playbook_dir }}/files/sync-merge-md.py {{ _claude_merge_a_home }}/.claude {{ _claude_merge_a_home }}/.claude-merge-staging"
+  register: _claude_merge_result
+  changed_when: "'MERGED' in _claude_merge_result.stdout"
+  delegate_to: "{{ _claude_merge_a_host }}"
+
+- name: Claude merge | результат на B
+  ansible.posix.synchronize:
+    src: "{{ _claude_merge_a_home }}/.claude-merge-staging/"
+    dest: "{{ _claude_merge_b_home }}/.claude/"
+    mode: push
+    rsync_opts:
+      - "--archive"
+      - "--itemize-changes"
+    delete: false
+  delegate_to: "{{ _claude_merge_a_host }}"
+
+- name: Claude merge | убрать staging
+  ansible.builtin.file:
+    path: "{{ _claude_merge_a_home }}/.claude-merge-staging"
+    state: absent
+  delegate_to: "{{ _claude_merge_a_host }}"
