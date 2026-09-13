@@ -78,6 +78,12 @@
     # версии, пофайльное смешивание бандлов недопустимо (никаких --ignore-existing).
     sync_apps_exclude:
       - Docker                       # citrus 8G RAM — докеру там делать нечего (2026-09-13)
+      - iMovie                       # Apple-медиа, снесено на citrus 2026-09-13
+      - GarageBand                   # Apple-медиа
+      - LM Studio                    # ML на 8G бессмысленно
+      - MakeMKV                      # утилиты дисков — на moro
+      - VideoProc Converter 4K
+      - MadMapperDemo 6.0.2          # демка
       - AnyDesk                      # снесён вручную, cask стоит
       - AppCleaner                   # снесён вручную, cask стоит
       - Blackmagic Disk Speed Test   # бенчмарк, в MAS skip
