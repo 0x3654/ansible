@@ -240,6 +240,17 @@
           loop: [.bashrc, .bash_profile]
           delegate_to: "{{ source_host }}"
 
+        - name: Конфиги citrus→moro — language-handler
+          synchronize:
+            src: "{{ _citrus_home }}/Library/Application Support/language-handler/config.json"
+            dest: "{{ _moro_home }}/Library/Application Support/language-handler/config.json"
+            mode: pull
+            rsync_opts: "{{ sync_rsync_common + ['--update', '--checksum'] }}"
+            checksum: false
+            delete: false
+          delegate_to: "{{ source_host }}"
+          failed_when: false  # на citrus может ещё не быть конфига
+
         # ── фаза 2: collect moro → роль dotfiles (в git-историю; moro уже сошёлся) ──
         - name: Collect живых настроек moro в роль
           block:
@@ -269,6 +280,12 @@
                 mode: "0644"
               with_fileglob:
                 - "{{ _moro_home }}/.config/ghostty/*.icns"
+            - name: Collect language-handler config
+              ansible.builtin.copy:
+                remote_src: true
+                src: "{{ _moro_home }}/Library/Application Support/language-handler/config.json"
+                dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/language-handler/config.json"
+                mode: "0644"
             - name: Collect bash dotfiles
               ansible.builtin.copy:
                 remote_src: true
@@ -308,6 +325,44 @@
             checksum: true
             delete: false
           delegate_to: "{{ source_host }}"
+
+        # language-handler: бинарник/конфиг/агент едут из роли dotfiles (git — источник истины),
+        # агент (пере)запускается — на citrus он должен жить даже после чистки ~/Applications
+        - name: language-handler — каталоги на citrus
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            mode: "0755"
+          loop:
+            - "{{ _citrus_home }}/Applications"
+            - "{{ _citrus_home }}/Library/Application Support/language-handler"
+            - "{{ _citrus_home }}/Library/LaunchAgents"
+
+        - name: language-handler — binary/config/LaunchAgent moro→citrus
+          ansible.builtin.copy:
+            src: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/language-handler/{{ item.src }}"
+            dest: "{{ item.dest }}"
+            mode: "{{ item.mode | default('0644') }}"
+          loop:
+            - src: language-handler
+              dest: "{{ _citrus_home }}/Applications/language-handler"
+              mode: "0755"
+            - src: config.json
+              dest: "{{ _citrus_home }}/Library/Application Support/language-handler/config.json"
+            - src: com.user.language-handler.plist
+              dest: "{{ _citrus_home }}/Library/LaunchAgents/com.user.language-handler.plist"
+          delegate_to: "{{ source_host }}"
+          register: _lh_files
+
+        - name: language-handler — агент на citrus (загрузить при отсутствии, перезапустить при изменении)
+          ansible.builtin.shell: |
+            launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.user.language-handler.plist" 2>/dev/null || true
+            launchctl kickstart -k "gui/$(id -u)/com.user.language-handler" 2>/dev/null || true
+            sleep 1
+            ps ax | grep -v grep | grep -q "Applications/language-handler" && echo RUNNING
+          register: _lh_agent
+          changed_when: _lh_files is changed
+          failed_when: _lh_agent.stdout.find('RUNNING') == -1
 
         - name: Apps на moro (эталон)
           ansible.builtin.command: ls {{ item }}
