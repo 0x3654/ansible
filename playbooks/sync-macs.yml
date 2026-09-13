@@ -43,6 +43,8 @@
       - MakeMKV                    # утилиты дисков — на moro
       - VideoProc Converter 4K
       - MadMapperDemo 6.0.2        # демка
+      - Telegram Lite              # дубль: 0 запусков, приехал синком (2026-09-13)
+      - Telegram QT                # дубль: 0 запусков, приехал синком
       - AnyDesk
       - AppCleaner
       - Blackmagic Disk Speed Test
