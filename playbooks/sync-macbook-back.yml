@@ -325,7 +325,8 @@
             _apps_new_home: >-
               {{ _src_apps.results[1].stdout_lines | select('match', '.*[.]app$')
                  | map('regex_replace', '[.]app$', '') | list
-                 | difference(_dst_all_apps) | difference(sync_apps_back_exclude) }}
+                 | difference(_dst_all_apps) | difference(sync_apps_back_exclude)
+                 | difference(_apps_new_root) }}
 
         - name: Объём новых приложений (du, для гвардии)
           ansible.builtin.command: du -sk {{ item }}

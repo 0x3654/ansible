@@ -304,7 +304,8 @@
               {{ _src_apps.results[1].stdout_lines
                  | select('match', '.*[.]app$') | map('regex_replace', '[.]app$', '') | list
                  | difference(sync_apps_exclude)
-                 | difference(_dst_all_apps) }}
+                 | difference(_dst_all_apps)
+                 | difference(_apps_new_root) }}
           tags: apps
 
         - name: Sync app difference from {{ source_host }} → /Applications
