@@ -1,0 +1,113 @@
+---
+# Обновление общих приложений по версиям (кастом-билды ездят в обе стороны).
+# Сравнивается CFBundleShortVersionString из Info.plist: у источника новее —
+# бандл заменяется на приёмнике атомарно (staging + rm + mv).
+#
+# Импортируется с переменными:
+#   _av_src_host / _av_src_user — машина-источник
+#   _av_dst_host / _av_dst_user — машина-приёмник (план и замена выполняются на ней)
+#   _av_exclude                 — список имён .app, которые не трогаем
+#   _av_tag                     — метка направления для лога
+
+- name: "Версии приложений на {{ _av_src_host }} (name<TAB>ver<TAB>dir)"
+  ansible.builtin.shell: |
+    for d in /Applications/*.app "/Users/{{ _av_src_user }}/Applications/"*.app; do
+      [ -d "$d" ] || continue
+      v=$(plutil -extract CFBundleShortVersionString raw -o - "$d/Contents/Info.plist" 2>/dev/null | head -1)
+      pdir=$(dirname "$d")
+      printf '%s\t%s\t%s\n' "$(basename "$d" .app)" "${v:-?}" "$pdir"
+    done
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ _av_src_host }}"
+  register: _av_src_tsv
+  changed_when: false
+  failed_when: false
+
+- name: "Версии приложений на {{ _av_dst_host }}"
+  ansible.builtin.shell: |
+    mkdir -p /tmp/.av-{{ _av_tag }}
+    for d in /Applications/*.app "/Users/{{ _av_dst_user }}/Applications/"*.app; do
+      [ -d "$d" ] || continue
+      v=$(plutil -extract CFBundleShortVersionString raw -o - "$d/Contents/Info.plist" 2>/dev/null | head -1)
+      pdir=$(dirname "$d")
+      printf '%s\t%s\t%s\n' "$(basename "$d" .app)" "${v:-?}" "$pdir"
+    done > /tmp/.av-{{ _av_tag }}/dst.tsv
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ _av_dst_host }}"
+  changed_when: false
+  failed_when: false
+
+- name: "Версии источника → приёмник"
+  ansible.builtin.copy:
+    content: "{{ _av_src_tsv.stdout }}"
+    dest: "/tmp/.av-{{ _av_tag }}/src.tsv"
+    mode: "0644"
+  delegate_to: "{{ _av_dst_host }}"
+
+- name: "План обновлений {{ _av_tag }}"
+  ansible.builtin.script:
+    cmd: "{{ playbook_dir }}/files/sync-app-versions.py /tmp/.av-{{ _av_tag }}/src.tsv /tmp/.av-{{ _av_tag }}/dst.tsv {{ _av_exclude | join(',') }}"
+  delegate_to: "{{ _av_dst_host }}"
+  register: _av_plan
+  changed_when: false
+
+- name: "Список к обновлению {{ _av_tag }}"
+  ansible.builtin.set_fact:
+    _av_updates: >-
+      {{ _av_plan.stdout_lines | select('match', '^UPDATE\t') | map('regex_replace', '^UPDATE\t', '') | list }}
+
+- name: "Обновляемые приложения {{ _av_tag }}: {{ _av_updates | map('regex_replace', '\t.*', '') | join(', ') | default('нет') }}"
+  ansible.builtin.debug:
+    msg: >-
+      Обновления {{ _av_tag }}: {{ _av_updates | map('regex_replace', '\t.*', '') | join(', ') | default('нет') }};
+      скипнуто: {{ _av_plan.stdout_lines | select('match', '^SKIP') | map('regex_replace', '^SKIP\t([^\t]+)\t.*$', '\1') | join(', ') | default('нет') }}.
+
+- name: "Тянем новые бандлы на приёмник (staging) {{ _av_tag }}"
+  ansible.posix.synchronize:
+    src: "{{ item.split('\t')[1] }}/{{ item.split('\t')[0] }}.app"
+    dest: "/tmp/.av-{{ _av_tag }}/incoming/"
+    mode: push
+    rsync_opts: "{{ sync_rsync_common | default(['--archive']) }}"
+    delete: false
+  loop: "{{ _av_updates }}"
+  loop_control:
+    label: "{{ item.split('\t')[0] }}"
+  delegate_to: "{{ _av_src_host }}"
+  when: _av_updates | length > 0
+
+- name: "Атомарная замена бандлов {{ _av_tag }}"
+  # rm+mv в одном каталоге:mv атомарен; упало (права/занятость) — фиксируем, не роняя синк
+  ansible.builtin.shell: |
+    set -e
+    name="{{ item.split('\t')[0] }}"
+    srcdir="{{ item.split('\t')[1] }}"
+    dstdir=$(awk -F'\t' -v n="$name" '$1==n{print $3; exit}' /tmp/.av-{{ _av_tag }}/dst.tsv)
+    [ -n "$dstdir" ] || { echo "NO-DST-DIR"; exit 1; }
+    rm -rf "$dstdir/${name}.app"
+    mv "/tmp/.av-{{ _av_tag }}/incoming/${name}.app" "$dstdir/${name}.app"
+  args:
+    executable: /bin/bash
+  loop: "{{ _av_updates }}"
+  loop_control:
+    label: "{{ item.split('\t')[0] }}"
+  delegate_to: "{{ _av_dst_host }}"
+  register: _av_swap
+  failed_when: false
+  changed_when: _av_swap.rc == 0
+  when: _av_updates | length > 0
+
+- name: "Итог замены {{ _av_tag }}"
+  ansible.builtin.debug:
+    msg: >-
+      {% set failed = _av_swap.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'ne', 0) | list %}
+      {% set done = _av_swap.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list %}
+      Заменено {{ done | length }}; не удалось {{ failed | length }}{% if failed %}: {{ failed | map(attribute='item') | map('regex_replace', '\t.*', '') | join(', ') }} (поставить вручную){% endif %}.
+  when: _av_updates | length > 0
+
+- name: "Убрать staging {{ _av_tag }}"
+  ansible.builtin.file:
+    path: "/tmp/.av-{{ _av_tag }}"
+    state: absent
+  delegate_to: "{{ _av_dst_host }}"

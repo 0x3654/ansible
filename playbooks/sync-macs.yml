@@ -36,6 +36,7 @@
 
     # Разница приложений moro→citrus: что НЕ едет на citrus (см. sync-macbook.yml).
     sync_apps_exclude:
+      - Docker                     # citrus 8G RAM — докеру там делать нечего (2026-09-13)
       - AnyDesk
       - AppCleaner
       - Blackmagic Disk Speed Test
@@ -57,6 +58,10 @@
       - Sigil
       - balenaEtcher
       - Airmine Pollen
+
+    # Расширения cursor, которые не ставим на citrus (parallels-приложения там нет)
+    sync_cursor_ext_skip_citrus:
+      - parallelsdesktop.parallels-desktop
 
   tasks:
     - name: TG-креды для оповещений (vault manage — бот watchtower)
@@ -350,6 +355,18 @@
             label: "{{ item }}"
           delegate_to: "{{ source_host }}"
 
+        # ── версии общих приложений: кастом-билды moro (нет в основных ветках)
+        #    едут на citrus, если их версия новее; встречное — плей apps-back ниже
+        - name: Версии приложений moro→citrus (кастом-билды)
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-app-versions.yml"
+          vars:
+            _av_src_host: "{{ source_host }}"
+            _av_src_user: "{{ hostvars[source_host].ansible_user | default('m') }}"
+            _av_dst_host: "{{ inventory_hostname }}"
+            _av_dst_user: "{{ ansible_user | default('m') }}"
+            _av_exclude: "{{ sync_apps_exclude }}"
+            _av_tag: moro2citrus
+
         # ── merge md-файлов claude ДО rsync: журнал/правила правятся сессиями
         #    на обеих машинах, mtime-LWW терял бы записи (см. tasks/sync-claude-merge.yml)
         - name: Claude md merge (журнал/правила, обе стороны)
@@ -464,6 +481,62 @@
                       HostName {{ inventory_hostname }}.{{ sync_tailnet_domain }}
                       User {{ ansible_user | default('m') }}
               delegate_to: "{{ source_host }}"
+
+        # ── расширения cursor: union обеих машин (новое с moro → citrus и обратно);
+        #    настройки расширений живут в settings.json — он уже синкается выше
+        - name: Cursor CLI на citrus
+          ansible.builtin.stat:
+            path: /Applications/Cursor.app/Contents/Resources/app/bin/cursor
+          register: _cursor_cli_dst
+
+        - name: Cursor CLI на moro
+          ansible.builtin.stat:
+            path: /Applications/Cursor.app/Contents/Resources/app/bin/cursor
+          delegate_to: "{{ source_host }}"
+          register: _cursor_cli_src
+
+        - name: Список расширений на moro
+          ansible.builtin.command: /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions
+          environment:
+            VSCODE_IPC_HOOK_CLI: ""
+          delegate_to: "{{ source_host }}"
+          register: _ext_src
+          changed_when: false
+          when: _cursor_cli_src.stat.exists and _cursor_cli_dst.stat.exists
+
+        - name: Список расширений на citrus
+          ansible.builtin.command: /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions
+          environment:
+            VSCODE_IPC_HOOK_CLI: ""
+          register: _ext_dst
+          changed_when: false
+          when: _cursor_cli_src.stat.exists and _cursor_cli_dst.stat.exists
+
+        - name: Расширения moro → citrus (недостающие)
+          # failed_when false: не-галерейные (codesnap-plus) уже стоят копией каталога
+          ansible.builtin.command: /Applications/Cursor.app/Contents/Resources/app/bin/cursor --install-extension {{ item }}
+          environment:
+            VSCODE_IPC_HOOK_CLI: ""
+          loop: "{{ (_ext_src.stdout_lines | default([])) | difference(_ext_dst.stdout_lines | default([])) | difference(sync_cursor_ext_skip_citrus) }}"
+          loop_control:
+            label: "{{ item }}"
+          register: _ext_install_dst
+          failed_when: false
+          changed_when: "'successfully installed' in (_ext_install_dst.stdout ~ _ext_install_dst.stderr) | lower"
+          when: _cursor_cli_src.stat.exists and _cursor_cli_dst.stat.exists
+
+        - name: Расширения citrus → moro (недостающие)
+          ansible.builtin.command: /Applications/Cursor.app/Contents/Resources/app/bin/cursor --install-extension {{ item }}
+          environment:
+            VSCODE_IPC_HOOK_CLI: ""
+          loop: "{{ (_ext_dst.stdout_lines | default([])) | difference(_ext_src.stdout_lines | default([])) }}"
+          loop_control:
+            label: "{{ item }}"
+          delegate_to: "{{ source_host }}"
+          register: _ext_install_src
+          failed_when: false
+          changed_when: "'successfully installed' in (_ext_install_src.stdout ~ _ext_install_src.stderr) | lower"
+          when: _cursor_cli_src.stat.exists and _cursor_cli_dst.stat.exists
 
         # ── отчёт ───────────────────────────────────────────────────────────────
         - name: Диски после (statvfs, оба)
@@ -632,6 +705,17 @@
           loop_control:
             label: "{{ item }}"
           delegate_to: "{{ _src_host }}"
+
+        # ── версии общих приложений: кастом-билды, собранные на citrus, едут на moro
+        - name: Версии приложений citrus→moro (кастом-билды)
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-app-versions.yml"
+          vars:
+            _av_src_host: "{{ _src_host }}"
+            _av_src_user: "{{ _src_user }}"
+            _av_dst_host: "{{ inventory_hostname }}"
+            _av_dst_user: "{{ ansible_user | default('m') }}"
+            _av_exclude: "{{ sync_apps_back_exclude + ['Docker'] }}"
+            _av_tag: citrus2moro
 
         - name: TG ✅ приложения вернулись
           ansible.builtin.uri:

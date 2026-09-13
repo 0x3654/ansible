@@ -77,6 +77,7 @@
     # чего на citrus нет. Существующие приложения не трогаем вовсе: у citrus свои
     # версии, пофайльное смешивание бандлов недопустимо (никаких --ignore-existing).
     sync_apps_exclude:
+      - Docker                       # citrus 8G RAM — докеру там делать нечего (2026-09-13)
       - AnyDesk                      # снесён вручную, cask стоит
       - AppCleaner                   # снесён вручную, cask стоит
       - Blackmagic Disk Speed Test   # бенчмарк, в MAS skip
