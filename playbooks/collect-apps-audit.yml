@@ -1,0 +1,31 @@
+---
+# Аудит дрейфа приложений на эталоне: живой /Applications против списков роли
+# dotfiles (brew casks + MAS). Показывает, что забыто для восстановления
+# чистого мака без moro/citrus.
+#
+# Запуск (moro или Semaphore):
+#   ansible-playbook playbooks/collect-apps-audit.yml -l moro
+
+- name: Аудит приложений против списков роли
+  hosts: "{{ target | default('moro') }}"
+  gather_facts: true
+  tasks:
+    - name: Скрипт аудита → на машину
+      copy:
+        src: "{{ playbook_dir }}/files/collect-apps-audit.py"
+        dest: /tmp/collect-apps-audit.py
+        mode: "0755"
+
+    - name: Аудит (живое vs casks/MAS роли)
+      command: "/usr/bin/python3 /tmp/collect-apps-audit.py /Users/{{ ansible_user | default('m') }}/code/ansible/roles/dotfiles/defaults/main.yml"
+      register: _audit
+      changed_when: false
+
+    - name: Отчёт
+      debug:
+        msg: "{{ _audit.stdout }}"
+
+    - name: Убрать скрипт
+      file:
+        path: /tmp/collect-apps-audit.py
+        state: absent

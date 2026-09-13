@@ -122,6 +122,37 @@
     VSCODE_IPC_HOOK_CLI: ""
   tags: cursor
 
+- name: Cursor | codesnap-plus установлен (его нет в gallery)
+  stat:
+    path: "{{ ansible_env.HOME }}/.cursor/extensions/huibizhang.codesnap-plus-1.4.1"
+  register: cursor_codesnap_dir
+  tags: cursor
+
+# Cursor | Install codesnap-plus из файлов роли (нет в gallery):
+# каталог + register.py (extensions.json) — для чистого мака без moro/citrus
+- block:
+    - name: Cursor | Копия каталога codesnap-plus
+      copy:
+        src: "{{ role_path }}/files/dotfiles/macos/apps/cursor/extensions/codesnap-plus/"
+        dest: "{{ ansible_env.HOME }}/.cursor/extensions/huibizhang.codesnap-plus-1.4.1/"
+        mode: preserve
+    - name: Cursor | Регистрация в extensions.json
+      command: "/usr/bin/python3 {{ role_path }}/files/dotfiles/macos/apps/cursor/extensions/register.py {{ ansible_env.HOME }}/.cursor/extensions/huibizhang.codesnap-plus-1.4.1"
+      register: cursor_codesnap_reg
+      changed_when: "'registered' in cursor_codesnap_reg.stdout"
+  when:
+    - cursor_cli.stat.exists
+    - not cursor_codesnap_dir.stat.exists
+  tags: cursor
+
+- name: Deploy user fonts (OFL: Shantell Sans, Symbols Nerd)
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_env.HOME }}/Library/Fonts/"
+    mode: "0644"
+  with_fileglob:
+    - "{{ role_path }}/files/dotfiles/macos/fonts/*.ttf"
+
 - name: Deploy SSH client config
   copy:
     src: "{{ role_path }}/files/dotfiles/macos/ssh/config"
