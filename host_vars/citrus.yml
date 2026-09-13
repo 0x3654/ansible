@@ -32,3 +32,6 @@ macbook_appstore_apps_skip:
 
 macbook_cursor_extensions_skip:
   - parallelsdesktop.parallels-desktop
+
+# Профиль: standard — мобильная сборка (по умолчанию и так standard)
+macbook_profile: standard

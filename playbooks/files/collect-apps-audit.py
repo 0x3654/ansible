@@ -27,6 +27,14 @@ MANUAL = {
     "App Store", "Launchpad", "Mission Control", "Screenshot", "Widgets", "Dickens",
     # свои сборки / ставится ролью отдельно / приватный слой
     "BetterOSD", "language-handler", "Яндекс Музыка",  # мод-сборка — приватный слой
+    "PulseSync", "Lampa - Каталог фильмов и сериалов", "Transmission Remote GUI",
+    "Telegram QT", "oMLX", "DynamicNotch",              # свои форки: release-таски (2026-09-13)
+    "Semaphore", "Semaphore local",
+    # личное Steam / лаунчеры — восстанавливает сам Steam
+    "Steam", "GameHub", "Heroic", "Factorio", "FTL Faster Than Light",
+    "Into the Breach", "Prison Architect", "Door Kickers 2",
+    # сайтовые .dmg без brew/MAS — ручная установка (чеклист восстановления)
+    "МТС Линк", "Yandex.Telemost",
     # macOS-обновляемые системные пакеты
     "Install macOS Sonoma", "Install macOS Sequoia", "Install macOS Tahoe",
 }
@@ -85,6 +93,24 @@ def brew_cask_apps():
     return mapping
 
 
+def role_cask_app_names(tokens):
+    """Имена .app по токенам role-списка (в т.ч. не установленным) — один brew info."""
+    if not tokens:
+        return set()
+    out = sh(["brew", "info", "--cask", "--json=v2", *sorted(tokens)])
+    try:
+        names = set()
+        for c in json.loads(out)["casks"]:
+            for art in c.get("artifacts", []):
+                for app in art.get("app", []) if isinstance(art, dict) else []:
+                    name = app if isinstance(app, str) else app.get("path", "")
+                    if name:
+                        names.add(os.path.basename(name).removesuffix(".app"))
+        return names
+    except Exception:
+        return set()
+
+
 def mas_installed():
     out = sh(["mas", "list"])
     return {re.sub(r"\s+\(\S+\)$", "", l.split(None, 1)[1]).strip() for l in out.splitlines() if l.split(None, 1)[1:]}
@@ -101,7 +127,7 @@ def main():
     brew_map = brew_cask_apps()
     mas_set = mas_installed()
 
-    covered = set(brew_map) | mas_set | role_mas_names | MANUAL
+    covered = set(brew_map) | mas_set | role_mas_names | role_cask_app_names(role_casks) | MANUAL
     uncovered = sorted(installed - covered)
 
     brew_tokens = set(brew_map.values())

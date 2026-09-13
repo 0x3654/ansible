@@ -145,7 +145,7 @@
     - not cursor_codesnap_dir.stat.exists
   tags: cursor
 
-- name: Deploy user fonts (OFL: Shantell Sans, Symbols Nerd)
+- name: "Deploy user fonts (OFL — Shantell Sans, Symbols Nerd)"
   copy:
     src: "{{ item }}"
     dest: "{{ ansible_env.HOME }}/Library/Fonts/"

@@ -23,7 +23,7 @@ macbook_homebrew_formulae:
   - bash                  # 5.x — /bin/bash on macOS is 3.2, bash-completion@2 needs 4.1+
   - bash-completion@2
   - bat
-  - docker
+  - docker                   # CLI (сам Docker Desktop — cask, см. ниже)
   - docker-completion
   - duf
   - eza
@@ -63,6 +63,14 @@ macbook_homebrew_formulae:
   - yazi
   - zoxide
 
+# Профиль машины: pro (moro — полная сборка) | standard (citrus — мобильная)
+macbook_profile: standard
+
+# Cask'и только pro-профиля (тяжёлые рабочие инструменты; standard их не ставит)
+macbook_homebrew_casks_pro:
+  - dbeaver-community
+  - postman
+
 macbook_homebrew_casks:
   - anydesk
   - appcleaner
@@ -70,7 +78,7 @@ macbook_homebrew_casks:
 #  - cloudflare-warp  # installer hangs via CLI, install manually
   - cursor
   - datagrip
-  - docker
+  - docker-desktop             # homebrew переименовал токен docker (2026-09)
   - element
   - finetune
   - font-symbols-only-nerd-font  # required for eza --icons=always
@@ -78,10 +86,18 @@ macbook_homebrew_casks:
   - keepingyouawake
   - keka
   - monitorcontrol
+  - stats
+  - aldente
+  - lasso
+  - macwhisper
+  - makemkv
+  - bitrix24
+  - hammerspoon
+  - keyclu
   - nightfall
-#  - obsidian
+  - obsidian
   - qlcolorcode
-#  - rectangle
+  - rectangle
   - plex
   - tailscale
   - transmission

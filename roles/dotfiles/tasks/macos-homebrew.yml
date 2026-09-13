@@ -33,7 +33,10 @@
     name: "{{ item }}"
     state: present
     install_options: "adopt"
-  loop: "{{ macbook_homebrew_casks | difference(macbook_homebrew_casks_skip | default([])) }}"
+  # pro-профиль добавляет тяжёлые инструменты (moro), standard — базовый набор
+  loop: >-
+    {{ (macbook_homebrew_casks + (macbook_homebrew_casks_pro if macbook_profile == 'pro' else []))
+       | difference(macbook_homebrew_casks_skip | default([])) }}
   failed_when: false
   environment:
     PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
