@@ -70,6 +70,26 @@ macbook_profile: standard
 macbook_homebrew_casks_pro:
   - dbeaver-community
   - postman
+  - claude
+  - google-chrome
+  - discord
+  - whatsapp
+  - sublime-text
+  - daisydisk
+  - betterdisplay
+  - popclip
+  - hot
+  - fluor
+  - ukelele
+  - sirimote
+  - kap
+  - imazing
+  - vorssaint
+  - lm-studio
+  - obs
+  - ollama
+  # без brew-токенов (машинные/самодельные): Keyboop, ANTICATER, Pollen *,
+  # Airmine Pollen, ChatGPT Classic, DynamicNotch — MANUAL в collect-apps-audit
 
 macbook_homebrew_casks:
   - anydesk

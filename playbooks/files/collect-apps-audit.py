@@ -35,6 +35,9 @@ MANUAL = {
     "Into the Breach", "Prison Architect", "Door Kickers 2",
     # сайтовые .dmg без brew/MAS — ручная установка (чеклист восстановления)
     "МТС Линк", "Yandex.Telemost",
+    # без brew-токена, решение «оставить в pro вручную» (2026-09-13)
+    "Keyboop", "ANTICATER", "Pollen Count", "Pollen Forecast", "Airmine Pollen",
+    "ChatGPT Classic",
     # macOS-обновляемые системные пакеты
     "Install macOS Sonoma", "Install macOS Sequoia", "Install macOS Tahoe",
 }
