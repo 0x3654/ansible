@@ -6,14 +6,15 @@
 tsv-файлы (собираются на машинах): имя\tверсия\tкаталог (/Applications или ~/Applications).
 Версия — CFBundleShortVersionString, '?' если plist не отдал.
 
-Вывод (по одной строке на приложение, есть в ОБОИХ машинах):
-  UPDATE<TAB>имя<TAB>каталог_на_источнике   — версия источника новее, обновить
-  SKIP<TAB>имя<TAB>причина                  — same/new-app/no-version/older/excluded/readonly
+stdout — JSON-массив [{"name":…, "src_dir":…}] приложений к обновлению
+(есть на обоих, версия источника новее, приёмник доступен на запись);
+человекочитаемые SKIP-причины — в stderr (new-app/no-version/older/excluded/readonly).
 
 Новые (отсутствующие на приёмнике) приложения здесь НЕ рассматриваются —
 ими занимается фаза разницы. Кастом-билды ловятся сменой версии: локальная
 сборка с bumped-версией едет на другую машину, пока встречная не соберёт ещё новее.
 """
+import json
 import os
 import re
 import sys
@@ -44,23 +45,25 @@ def main():
     dst = load(sys.argv[2])
     excl = {e.strip() for e in sys.argv[3].split(",")} if len(sys.argv) > 3 and sys.argv[3] else set()
 
+    updates = []
     for name, (sv, spdir) in src.items():
         if name in excl:
-            print(f"SKIP\t{name}\texcluded")
+            print(f"SKIP {name} excluded", file=sys.stderr)
         elif name not in dst:
-            print(f"SKIP\t{name}\tnew-app")  # фаза разницы этим занимается
+            print(f"SKIP {name} new-app", file=sys.stderr)  # фаза разницы этим занимается
         elif sv == "?" or dst[name][0] == "?":
-            print(f"SKIP\t{name}\tno-version")
+            print(f"SKIP {name} no-version", file=sys.stderr)
         elif sv == dst[name][0]:
-            print(f"SKIP\t{name}\tsame")
+            pass  # same — молча
         elif vkey(sv) > vkey(dst[name][0]):
             dst_app = os.path.join(dst[name][1], name + ".app")
             if not os.access(dst_app, os.W_OK):
-                print(f"SKIP\t{name}\treadonly")
+                print(f"SKIP {name} readonly", file=sys.stderr)
             else:
-                print(f"UPDATE\t{name}\t{spdir}")
+                updates.append({"name": name, "src_dir": spdir})
         else:
-            print(f"SKIP\t{name}\tolder")  # на приёмнике новее — поедет встречным направлением
+            print(f"SKIP {name} older", file=sys.stderr)  # встречное направление
+    print(json.dumps(updates))
 
 
 if __name__ == "__main__":
