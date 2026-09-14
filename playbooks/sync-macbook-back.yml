@@ -316,12 +316,15 @@
               {{ (_dst_apps.results | map(attribute='stdout_lines') | flatten | select('match', '.*[.]app$'))
                  | map('regex_replace', '[.]app$', '') | list }}
 
-        - name: Разница (есть на citrus, нет на moro)
+        - name: Разница — root (есть на citrus, нет на moro)
           ansible.builtin.set_fact:
             _apps_new_root: >-
               {{ _src_apps.results[0].stdout_lines | select('match', '.*[.]app$')
                  | map('regex_replace', '[.]app$', '') | list
                  | difference(_dst_all_apps) | difference(sync_apps_back_exclude) }}
+
+        - name: Разница — home (имена из root не дублируем)
+          ansible.builtin.set_fact:
             _apps_new_home: >-
               {{ _src_apps.results[1].stdout_lines | select('match', '.*[.]app$')
                  | map('regex_replace', '[.]app$', '') | list
