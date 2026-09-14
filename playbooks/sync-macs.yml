@@ -343,6 +343,7 @@
             src: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/language-handler/{{ item.src }}"
             dest: "{{ item.dest }}"
             mode: "{{ item.mode | default('0644') }}"
+            remote_src: true   # иначе copy ищет src на контроллере (контейнер семафора) и падает
           loop:
             - src: language-handler
               dest: "{{ _citrus_home }}/Applications/language-handler"
