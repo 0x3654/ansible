@@ -224,6 +224,14 @@ macbook_system_defaults:
   # General
   - { domain: NSGlobalDomain, key: NSDocumentSaveNewDocumentsToCloud, type: bool, value: false }
   - { domain: NSGlobalDomain, key: AppleInterfaceStyle, type: string, value: Dark }
+  # Живой дрейф moro, снятый диффом с citrus 2026-09-16 (moro — эталон)
+  - { domain: NSGlobalDomain, key: NSGlassDiffusionSetting, type: int, value: 1 }
+  - { domain: NSGlobalDomain, key: UIPreferredContentSizeCategoryName, type: string, value: UICTContentSizeCategoryL }
+  - { domain: NSGlobalDomain, key: NavPanelFileListModeForSaveMode, type: int, value: 2 }
+  - { domain: com.apple.dock, key: no-bouncing, type: int, value: 0 }
+  - { domain: com.apple.dock, key: wvous-br-modifier, type: int, value: 0 }
+  - { domain: com.apple.controlcenter, key: "NSStatusItem VisibleCC FocusModes", type: int, value: 1 }
+  - { domain: com.apple.controlcenter, key: "NSStatusItem Preferred Position FocusModes", type: int, value: 239 }
 
 # ── Cursor extensions ─────────────────────────────────────────────────────────
 # Эталон — moro. Обновить список:

@@ -504,6 +504,11 @@
             mode: "0644"
           loop: [.bashrc, .bash_profile]
 
+        # Системные настройки macOS (меню-бар/док/glass и пр.) — moro эталон, one-way.
+        # Список ключей — roles/dotfiles/defaults/main.yml → macbook_system_defaults.
+        - name: Системные defaults macOS moro→citrus
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-macos-defaults.yml"
+
         - name: SSH-дружба moro ↔ citrus
           block:
             - name: Pubkey эталона (moro)

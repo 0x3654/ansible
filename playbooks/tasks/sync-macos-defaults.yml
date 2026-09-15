@@ -1,0 +1,37 @@
+---
+# Применение системных defaults macOS на citrus из списка роли (moro — эталон).
+# Список читается из репо-копии роли на citrus (push ~/code уже прошёл фазой выше) —
+# единственный источник правды: правим macbook_system_defaults в defaults/main.yml.
+# Направление one-way moro→citrus; двусторонний сбор настроек — отдельная будущая задача.
+# Значения позиций статус-айтемов (FocusModes и пр.) — «как на moro»: экраны другие,
+# позиция применяется как preferred, macOS при неудаче ставит ближайшую.
+
+- name: Системные defaults | список из роли
+  ansible.builtin.include_vars:
+    file: "{{ _citrus_home }}/code/ansible/roles/dotfiles/defaults/main.yml"
+    name: _sysdef_role
+
+- name: Системные defaults | применить
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+  loop: "{{ _sysdef_role.macbook_system_defaults }}"
+  register: _sysdef_apply
+  failed_when: false
+
+- name: Системные defaults | перезапустить UI-процессы при изменениях
+  ansible.builtin.shell: |
+    killall cfprefsd 2>/dev/null || true
+    killall Finder 2>/dev/null || true
+    killall Dock 2>/dev/null || true
+    killall SystemUIServer 2>/dev/null || true
+  when: _sysdef_apply.results | selectattr('changed', 'equalto', true) | list | length > 0
+  changed_when: true
+
+- name: Системные defaults | итог
+  ansible.builtin.debug:
+    msg: >-
+      {% set changed = _sysdef_apply.results | selectattr('changed', 'equalto', true) | map(attribute='item') | list %}
+      Изменено {{ changed | length }} ключей{% if changed %}: {{ changed | map(attribute='key') | join(', ') }}{% endif %}.
