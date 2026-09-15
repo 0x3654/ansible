@@ -233,6 +233,12 @@ macbook_system_defaults:
   - { domain: com.apple.controlcenter, key: "NSStatusItem VisibleCC FocusModes", type: int, value: 1 }
   - { domain: com.apple.controlcenter, key: "NSStatusItem Preferred Position FocusModes", type: int, value: 239 }
 
+# ByHost-область (defaults -currentHost → ~/Library/Preferences/ByHost/.GlobalPreferences.<UUID>.plist).
+# osx_defaults её не умеет — применяется отдельной задачей через defaults -currentHost.
+macbook_system_defaults_host:
+  - { key: NSStatusItemSpacing, type: int, value: 3 }          # плотная упаковка иконок меню-бара
+  - { key: NSStatusItemSelectionPadding, type: int, value: 2 }
+
 # ── Cursor extensions ─────────────────────────────────────────────────────────
 # Эталон — moro. Обновить список:
 #   /Applications/Cursor.app/Contents/Resources/app/bin/cursor --list-extensions

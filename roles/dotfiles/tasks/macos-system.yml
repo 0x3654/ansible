@@ -12,6 +12,21 @@
     - killall Dock
     - killall SystemUIServer
 
+- name: Set macOS system defaults (ByHost scope)
+  # NSStatusItemSpacing и пр. — вне досягаемости osx_defaults, пишем через defaults -currentHost
+  ansible.builtin.shell: |
+    cur=$(defaults -currentHost read -globalDomain {{ item.key }} 2>/dev/null || echo "__unset__")
+    if [ "$cur" != "{{ item.value }}" ]; then
+      defaults -currentHost write -globalDomain {{ item.key }} -{{ item.type }} {{ item.value }}
+      echo CHANGED
+    fi
+  loop: "{{ macbook_system_defaults_host | default([]) }}"
+  register: _sysdef_host
+  changed_when: "'CHANGED' in _sysdef_host.stdout"
+  failed_when: false
+  notify:
+    - killall SystemUIServer
+
 - name: Set screenshot save location
   community.general.osx_defaults:
     domain: com.apple.screencapture

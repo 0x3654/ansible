@@ -21,13 +21,27 @@
   register: _sysdef_apply
   failed_when: false
 
+- name: Системные defaults (ByHost) | применить
+  # NSStatusItemSpacing и др. живут в ByHost-области, osx_defaults её не пишет
+  ansible.builtin.shell: |
+    cur=$(defaults -currentHost read -globalDomain {{ item.key }} 2>/dev/null || echo "__unset__")
+    if [ "$cur" != "{{ item.value }}" ]; then
+      defaults -currentHost write -globalDomain {{ item.key }} -{{ item.type }} {{ item.value }}
+      echo CHANGED
+    fi
+  loop: "{{ _sysdef_role.macbook_system_defaults_host | default([]) }}"
+  register: _sysdef_host_apply
+  changed_when: "'CHANGED' in _sysdef_host.stdout"
+
 - name: Системные defaults | перезапустить UI-процессы при изменениях
   ansible.builtin.shell: |
     killall cfprefsd 2>/dev/null || true
     killall Finder 2>/dev/null || true
     killall Dock 2>/dev/null || true
     killall SystemUIServer 2>/dev/null || true
-  when: _sysdef_apply.results | selectattr('changed', 'equalto', true) | list | length > 0
+  when: >-
+    (_sysdef_apply.results | selectattr('changed', 'equalto', true) | list | length > 0) or
+    (_sysdef_host_apply.results | default([]) | selectattr('changed', 'equalto', true) | list | length > 0)
   changed_when: true
 
 - name: Системные defaults | итог
