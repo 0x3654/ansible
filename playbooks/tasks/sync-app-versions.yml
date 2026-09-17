@@ -46,9 +46,23 @@
     mode: "0644"
   delegate_to: "{{ _av_dst_host }}"
 
+- name: "Скрипт плана → приёмник {{ _av_tag }}"
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/files/sync-app-versions.py"
+    dest: "/tmp/.av-{{ _av_tag }}/plan.py"
+    mode: "0755"
+  delegate_to: "{{ _av_dst_host }}"
+
 - name: "План обновлений {{ _av_tag }}"
-  ansible.builtin.script:
-    cmd: "{{ playbook_dir }}/files/sync-app-versions.py /tmp/.av-{{ _av_tag }}/src.tsv /tmp/.av-{{ _av_tag }}/dst.tsv {{ _av_exclude | join(',') }}"
+  # command+argv вместо script-модуля: stdout детерминирован, пробелы
+  # в именах исключений не режутся шеллом
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - "/tmp/.av-{{ _av_tag }}/plan.py"
+      - "/tmp/.av-{{ _av_tag }}/src.tsv"
+      - "/tmp/.av-{{ _av_tag }}/dst.tsv"
+      - "{{ _av_exclude | join(',') }}"
   delegate_to: "{{ _av_dst_host }}"
   register: _av_plan
   changed_when: false
