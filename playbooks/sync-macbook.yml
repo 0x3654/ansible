@@ -347,14 +347,14 @@
             path: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/settings.json"
           register: _cursor_role_settings
 
-        - name: Deploy Cursor settings on {{ inventory_hostname }}
+        - name: Deploy Cursor settings on {{ inventory_hostname }} (поключевой merge)
           # Замыкает цикл: collect (живой moro → роль) → снимок → применение (роль → живой dest).
           # Расширения ставит отдельно setup-macbook -t cursor.
-          copy:
-            remote_src: true
-            src: "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
-            dest: "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/{{ item }}"
-            mode: "0644"
+          # НЕ затирка: merge сохраняет ключи приёмника, конфликт решает роль (moro).
+          script: >-
+            {{ playbook_dir }}/files/sync-merge-json.py
+            "{{ ansible_env.HOME }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
+            "{{ ansible_env.HOME }}/Library/Application Support/Cursor/User/{{ item }}"
           loop:
             - settings.json
             - keybindings.json

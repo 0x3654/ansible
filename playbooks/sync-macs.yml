@@ -219,15 +219,42 @@
             delete: false
           delegate_to: "{{ source_host }}"
 
-        - name: Конфиги citrus→moro — раскладка cursor на moro (локальный mv, пробелы безопасны)
+        - name: Конфиги citrus→moro — поключевой merge cursor-настроек на moro
+          # НЕ mv-затирка: у citrus бывают свои ключи, у moro — свои (плагины);
+          # merge сохраняет обе стороны, конфликт решает moro (auth)
+          ansible.builtin.script:
+            cmd: >-
+              {{ playbook_dir }}/files/sync-merge-json.py
+              "{{ _moro_home }}/Library/Application Support/Cursor/User/{{ item }}"
+              "{{ _moro_home }}/.cursor-sync-staging/{{ item }}"
+          loop: [settings.json, keybindings.json]
+          delegate_to: "{{ source_host }}"
+          register: _cursor_merge_back
+          failed_when: _cursor_merge_back.rc not in [0, 1]   # rc=1: безопасный SKIP (битый JSON)
+
+        - name: Конфиги citrus→moro — выгрузить слитое обратно на citrus (staging)
+          ansible.posix.synchronize:
+            src: "{{ _moro_home }}/.cursor-sync-staging/"
+            dest: "{{ _citrus_home }}/.cursor-sync-staging/"
+            mode: push
+            rsync_opts: "{{ sync_rsync_common }}"
+            delete: false
+          delegate_to: "{{ source_host }}"
+
+        - name: Конфиги citrus→moro — раскладка на citrus (локальный mv, пробелы безопасны)
           ansible.builtin.command:
             argv:
               - mv
-              - "{{ _moro_home }}/.cursor-sync-staging/{{ item }}"
-              - "{{ _moro_home }}/Library/Application Support/Cursor/User/{{ item }}"
+              - "{{ _citrus_home }}/.cursor-sync-staging/{{ item }}"
+              - "{{ _citrus_home }}/Library/Application Support/Cursor/User/{{ item }}"
           loop: [settings.json, keybindings.json]
-          delegate_to: "{{ source_host }}"
           changed_when: false
+
+        - name: Конфиги citrus→moro — убрать staging moro
+          ansible.builtin.file:
+            path: "{{ _moro_home }}/.cursor-sync-staging"
+            state: absent
+          delegate_to: "{{ source_host }}"
 
         - name: Конфиги citrus→moro — bash dotfiles
           synchronize:
@@ -488,13 +515,17 @@
           delegate_to: "{{ source_host }}"
 
         # ── фаза 5: deploy конфигов на citrus + ssh-дружба ─────────────────────
-        - name: Deploy Cursor settings на citrus
-          ansible.builtin.copy:
-            remote_src: true
-            src: "{{ _citrus_home }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
-            dest: "{{ _citrus_home }}/Library/Application Support/Cursor/User/{{ item }}"
-            mode: "0644"
+        - name: Deploy Cursor settings на citrus (поключевой merge)
+          # Поключевой JSON-мердж (инцидент 2026-09-17: файл-уровневая затирка
+          # теряла ключи плагинов). auth=роль/moro, citrus-ключи сохраняются.
+          ansible.builtin.script:
+            cmd: >-
+              {{ playbook_dir }}/files/sync-merge-json.py
+              "{{ _citrus_home }}/code/ansible/roles/dotfiles/files/dotfiles/macos/apps/cursor/{{ item }}"
+              "{{ _citrus_home }}/Library/Application Support/Cursor/User/{{ item }}"
           loop: [settings.json, keybindings.json]
+          register: _cursor_deploy_merge
+          failed_when: _cursor_deploy_merge.rc not in [0, 1]
 
         - name: Deploy bash dotfiles на citrus
           ansible.builtin.copy:
