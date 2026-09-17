@@ -6,10 +6,16 @@
 # Значения позиций статус-айтемов (FocusModes и пр.) — «как на moro»: экраны другие,
 # позиция применяется как preferred, macOS при неудаче ставит ближайшую.
 
-- name: Системные defaults | список из роли
-  ansible.builtin.include_vars:
-    file: "{{ _citrus_home }}/code/ansible/roles/dotfiles/defaults/main.yml"
-    name: _sysdef_role
+- name: Системные defaults | файл роли с диска citrus
+  # slurp+from_yaml, НЕ include_vars: action-плагин include_vars читает файл
+  # на КОНТРОЛЛЕРЕ (в Semaphore это контейнер без /Users/...)
+  ansible.builtin.slurp:
+    src: "{{ _citrus_home }}/code/ansible/roles/dotfiles/defaults/main.yml"
+  register: _sysdef_role_file
+
+- name: Системные defaults | распарсить
+  ansible.builtin.set_fact:
+    _sysdef_role: "{{ _sysdef_role_file.content | b64decode | from_yaml }}
 
 - name: Системные defaults | применить
   community.general.osx_defaults:
