@@ -44,6 +44,35 @@
     (_sysdef_host_apply.results | default([]) | selectattr('changed', 'equalto', true) | list | length > 0)
   changed_when: true
 
+- name: Cursor | выключить встроенный themeSync (облако Cursor затирает настройки)
+  # Инцидент 2026-09-17: citrus→облако→moro переписал settings.json целиком,
+  # снесши ключи плагинов. Наш sync-macs — единственный канал переноса настроек.
+  # При запущенном Cursor значение в памяти: задача идемпотентна, ночные прогоны
+  # дожимают; постоянным оно станет после рестарта редактора.
+  ansible.builtin.shell: |
+    DB="{{ _citrus_home }}/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+    [ -f "$DB" ] || { echo "нет state.vscdb"; exit 0; }
+    cur=$(/usr/bin/sqlite3 "$DB" "SELECT value FROM ItemTable WHERE key='cursor.themeSync.enabled'" 2>/dev/null)
+    if [ "$cur" != "false" ]; then
+      /usr/bin/sqlite3 "$DB" "UPDATE ItemTable SET value='false' WHERE key='cursor.themeSync.enabled'" && echo CHANGED
+    fi
+  register: _cursor_themesync
+  changed_when: "'CHANGED' in _cursor_themesync.stdout"
+  failed_when: false
+
+- name: Cursor | выключить themeSync на moro (зеркально)
+  ansible.builtin.shell: |
+    DB="{{ _moro_home }}/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+    [ -f "$DB" ] || { echo "нет state.vscdb"; exit 0; }
+    cur=$(/usr/bin/sqlite3 "$DB" "SELECT value FROM ItemTable WHERE key='cursor.themeSync.enabled'" 2>/dev/null)
+    if [ "$cur" != "false" ]; then
+      /usr/bin/sqlite3 "$DB" "UPDATE ItemTable SET value='false' WHERE key='cursor.themeSync.enabled'" && echo CHANGED
+    fi
+  delegate_to: "{{ source_host }}"
+  register: _cursor_themesync_moro
+  changed_when: "'CHANGED' in _cursor_themesync_moro.stdout"
+  failed_when: false
+
 - name: Системные defaults | итог
   ansible.builtin.debug:
     msg: >-
