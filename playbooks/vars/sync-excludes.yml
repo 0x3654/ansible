@@ -37,6 +37,8 @@ sync_code_excludes:
   - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
   - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
   - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
+  - "--exclude=YMusic/trailer/"               # 5Г видео-ассеты — не для код-синка (2026-09-18)
+  - "--exclude=v8dock/dists/"                 # 2.4Г дистрибутивы 1С — как arm1c/dists
   - "--exclude=*.dmg"                         # скачанные инсталляторы
   - "--exclude=*.1CD"                         # базы вне _bases, на всякий
   - "--exclude=*.dt"
