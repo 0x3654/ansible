@@ -15,7 +15,7 @@
 
 - name: Системные defaults | распарсить
   ansible.builtin.set_fact:
-    _sysdef_role: "{{ _sysdef_role_file.content | b64decode | from_yaml }}
+    _sysdef_role: "{{ _sysdef_role_file.content | b64decode | from_yaml }}"
 
 - name: Системные defaults | применить
   community.general.osx_defaults:
