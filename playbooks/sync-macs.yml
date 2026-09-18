@@ -326,6 +326,11 @@
               loop: [.bashrc, .bash_profile]
           delegate_to: "{{ source_host }}"
 
+        # Collect-снимок в git: история настроек, чистый статус, актуальный
+        # bootstrap. Пуш не триггерит семафор (вебхуков нет), идущему прогону не мешает.
+        - name: Dotfiles collect autocommit
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-dotfiles-autocommit.yml"
+
         # ── фаза 3: push moro → citrus ──────────────────────────────────────────
         - name: Push ~/code moro→citrus (--update, citrus-новее не трогаем)
           synchronize:

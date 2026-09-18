@@ -1,0 +1,98 @@
+---
+# Автокоммит collect-снимка dotfiles-сабмодуля (+ указатель в ansible).
+# Вызывается из sync-macs сразу после фазы collect, всё на moro (delegate).
+#
+# Безопасность:
+#  - добавляются ТОЛЬКО явные collect-цели (никаких add -A / случайного мусора);
+#  - вебхуков у семафора нет: пуш не триггерит задач и не влияет на идущие;
+#  - коммиты подписаны (gpgsign настроен в обоих репо на moro).
+# Откат фикса «moro при первичной важнее» не нужен: collect уже слил citrus-правки.
+
+- name: Dotfiles autocommit | есть ли изменения collect-целей
+  ansible.builtin.command:
+    argv: [git, status, --porcelain, --,
+           bash/.bashrc, bash/.bash_profile,
+           "macos/apps/cursor/settings.json", "macos/apps/cursor/keybindings.json",
+           "macos/apps/ghostty/config", "macos/apps/ghostty/"]
+  args:
+    chdir: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles"
+  delegate_to: "{{ source_host }}"
+  register: _dotfiles_dirt
+  changed_when: false
+
+- name: Dotfiles autocommit | снять изменения в master
+  # сабмодуль в detached HEAD: коммитим в ветку, пушим HEAD:master
+  when: _dotfiles_dirt.stdout | length > 0
+  block:
+    - name: Dotfiles autocommit | на ветке master
+      ansible.builtin.command:
+        argv: [git, checkout, -q, master]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles"
+      delegate_to: "{{ source_host }}"
+      failed_when: false
+
+    - name: Dotfiles autocommit | добавить только collect-цели
+      ansible.builtin.command:
+        argv: [git, add, --,
+               bash/.bashrc, bash/.bash_profile,
+               "macos/apps/cursor/settings.json", "macos/apps/cursor/keybindings.json",
+               "macos/apps/ghostty/config", "macos/apps/ghostty/"]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles"
+      delegate_to: "{{ source_host }}"
+
+    - name: Dotfiles autocommit | коммит (подписанный)
+      ansible.builtin.command:
+        argv: [git, commit, -q, -m, "collect: cursor/bash/ghosty snapshot {{ lookup('pipe', 'date +%Y-%m-%d') }}"]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles"
+      delegate_to: "{{ source_host }}"
+      register: _dotfiles_commit
+      failed_when: _dotfiles_commit.rc != 0 and 'nothing to commit' not in (_dotfiles_commit.stdout ~ _dotfiles_commit.stderr)
+
+    - name: Dotfiles autocommit | пуш сабмодуля
+      ansible.builtin.command:
+        argv: [git, push, -q, git@github.com:0x3654/dotfiles.git, HEAD:refs/heads/master]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles"
+      delegate_to: "{{ source_host }}"
+
+- name: Dotfiles autocommit | указатель сабмодуля сменился?
+  ansible.builtin.command:
+    argv: [git, status, --porcelain, --, roles/dotfiles/files/dotfiles]
+  args:
+    chdir: "{{ sync_dotfiles_dir }}"
+  delegate_to: "{{ source_host }}"
+  register: _submodule_ptr
+  changed_when: false
+
+- name: Dotfiles autocommit | зафиксировать указатель в ansible
+  when: _submodule_ptr.stdout | length > 0
+  block:
+    - name: Dotfiles autocommit | add указателя
+      ansible.builtin.command:
+        argv: [git, add, roles/dotfiles/files/dotfiles]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}"
+      delegate_to: "{{ source_host }}"
+
+    - name: Dotfiles autocommit | коммит ansible
+      ansible.builtin.command:
+        argv: [git, commit, -q, -m, "chore: dotfiles collect snapshot (ночной sync-macs)"]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}"
+      delegate_to: "{{ source_host }}"
+
+    - name: Dotfiles autocommit | пуш ansible main
+      ansible.builtin.command:
+        argv: [git, push, -q, git@github.com:0x3654/ansible.git, HEAD:refs/heads/main]
+      args:
+        chdir: "{{ sync_dotfiles_dir }}"
+      delegate_to: "{{ source_host }}"
+
+- name: Dotfiles autocommit | итог
+  ansible.builtin.debug:
+    msg: >-
+      dotfiles: {{ 'снимок закоммичен и запушен' if _dotfiles_dirt.stdout | length > 0 else 'без изменений' }};
+      указатель ansible: {{ 'обновлён' if _submodule_ptr.stdout | length > 0 else 'актуален' }}.
