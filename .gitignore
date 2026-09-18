@@ -40,3 +40,4 @@ roles/semaphore/files/database.sqlite
 # Исключаем файлы с секретами (незашифрованные)
 .vault__pycache__/
 *.pyc
+.vault
