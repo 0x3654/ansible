@@ -37,7 +37,7 @@
     fi
   loop: "{{ _sysdef_role.macbook_system_defaults_host | default([]) }}"
   register: _sysdef_host_apply
-  changed_when: "'CHANGED' in _sysdef_host.stdout"
+  changed_when: "'CHANGED' in _sysdef_host_apply.stdout"
 
 - name: Системные defaults | перезапустить UI-процессы при изменениях
   ansible.builtin.shell: |
