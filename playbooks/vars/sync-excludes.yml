@@ -22,26 +22,9 @@ sync_rsync_common:
   - "--exclude=*.pyc"
 
 sync_code_excludes:
-  - "--exclude=_bd_backup/"                   # 47Г pg-дампы 1С (маунт /backups контейнера pg1c)
-  - "--exclude=_Work/createrra/_bases/"       # 16Г файловые базы 1С
-  - "--exclude=_Work/createrra/_config/.metadata/"   # 10.8Г внутренности EDT-воркспейса (XML-выгрузки ЕДУТ)
-  - "--exclude=Ext/ParentConfigurations/"     # 3.3Г .cf-дампы родительских конфигураций внутри XML-выгрузок
-  - "--exclude=_Work/opti-com/gisp/dumps/"    # 7.2Г дампы миграций
-  - "--exclude=_Work/opti-com/gisp/files/"    # 771М входные CSV-дампы
-  - "--exclude=_Work/opti-com/gisp/services/postgres/"  # 7.6Г живая база (каталог = data/)
-  - "--exclude=_Work/opti-com/gisp/services/semantic/model/"  # 921М веса (bin+safetensors — одна модель)
-  - "--exclude=_Work/opti-com/gisp-gpu/model-onnx/"     # 449М onnx-экспорт, генерируется
-  - "--exclude=build/"                        # билд-артефакты: starter 1.7Г, pulsesync 4.2Г, Xcode-проекты
-  - "--exclude=.svelte-kit/"                  # кэш open-webui
-  - "--exclude=sLLM/_data/"                   # 1Г рантайм open-webui (webui.db, vector_db)
-  - "--exclude=arm1c/dists/"                  # 2.3Г дистрибутивы 1С
-  - "--exclude=config/server-backup/"         # 1.3Г бэкапы homelab
-  - "--exclude=docker/semaphore/vps_backup/"  # 1Г бэкапы semaphore
-  - "--exclude=YMusic/trailer/"               # 5Г видео-ассеты — не для код-синка (2026-09-18)
-  - "--exclude=v8dock/dists/"                 # 2.4Г дистрибутивы 1С — как arm1c/dists
-  - "--exclude=*.dmg"                         # скачанные инсталляторы
-  - "--exclude=*.1CD"                         # базы вне _bases, на всякий
-  - "--exclude=*.dt"
+  # один источник паттернов — файл в стиле .gitignore (см. sync-exclude.patterns);
+  # путь абсолютный: rsync всегда исполняется на moro (делегат), репо там же
+  - "--exclude-from=/Users/m/code/ansible/playbooks/vars/sync-exclude.patterns"
 
 # ~/.claude: whitelist того, что ездит между маками (порядок важен — родители до
 # содержимого, последним catch-all exclude). Рантайм (file-history, sessions, ide,

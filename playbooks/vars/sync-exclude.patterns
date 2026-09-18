@@ -1,0 +1,35 @@
+# Паттерны исключений код-синка moro⇄citrus (rsync --exclude-from).
+# Синтаксис как у .gitignore: путь/дикие-карты, # — комментарий.
+# Файл один на оба направления; правки только здесь.
+#
+# Путь к файлу обязан существовать на машине, где крутится rsync
+# (делегат moro / приёмник — репо-копия есть на обоих мака).
+
+# ── машино-локальное и тяжёлое ───────────────────────────────────────────────
+_bd_backup/
+_Work/createrra/_bases/
+_Work/createrra/_config/.metadata/
+Ext/ParentConfigurations/
+_Work/opti-com/gisp/dumps/
+_Work/opti-com/gisp/files/
+_Work/opti-com/gisp/services/postgres/
+_Work/opti-com/gisp/services/semantic/model/
+_Work/opti-com/gisp-gpu/model-onnx/
+build/
+.svelte-kit/
+sLLM/_data/
+arm1c/dists/
+config/server-backup/
+docker/semaphore/vps_backup/
+YMusic/trailer/
+v8dock/dists/
+*.dmg
+*.1CD
+*.dt
+
+# ── ДУБЛИ ПЕРЕНОСОВ ПРОЕКТОВ — секция на удаление ───────────────────────────
+# Старые копии переезжавших проектов; живые места указаны в комментариях.
+# Когда решите сносить физически — удалите каталоги и эту секцию целиком.
+_Work/gisp/        # → _Work/opti-com/gisp (сирота на обоих мака)
+_Work/old_gisp/    # → _Work/opti-com/gisp
+dotfiles/          # → ansible submodule roles/dotfiles (stow-репо 180М)
