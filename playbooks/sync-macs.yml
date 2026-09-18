@@ -43,6 +43,10 @@
       - MakeMKV                    # утилиты дисков — на moro
       - VideoProc Converter 4K
       - MadMapperDemo 6.0.2        # демка
+      - DynamicNotch               # снесено, пинг-понгит через citrus (2026-09-18)
+      - DynamicNotch-1.4.0.bak     # мусор
+      - Hozy
+      - "Bongo Cat"
       - Telegram Lite              # дубль: 0 запусков, приехал синком (2026-09-13)
       - Telegram QT                # дубль: 0 запусков, приехал синком
       - AnyDesk
@@ -717,6 +721,10 @@
     # на moro ставить вручную.
     sync_apps_back_exclude:
       - Dell Display and Peripheral Manager
+      - DynamicNotch               # снесено 2026-09-13/16, не возвращать с citrus
+      - DynamicNotch-1.4.0.bak
+      - Hozy
+      - "Bongo Cat"
 
   tasks:
     - name: TG-креды для оповещений (vault manage — бот watchtower)
