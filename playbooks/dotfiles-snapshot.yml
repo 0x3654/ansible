@@ -1,0 +1,54 @@
+---
+# Снимок живых настроек moro в git (dotfiles-сабмодуль + указатель ansible).
+# Отдельное задание ДО ночного sync-macs (schedule ~05:53): основной прогон
+# начинается с уже зафиксированным состоянием; его собственный autocommit
+# после collect отрабатывает no-op'ом.
+#
+# Работает только с moro — citrus не участвует. Пустой прогон (нет изменений)
+# ничего не коммитит и не пушит.
+
+- name: Dotfiles snapshot (мини-collect + автокоммит)
+  hosts: moro
+  gather_facts: true
+  vars:
+    source_host: moro
+    sync_dotfiles_dir: "/Users/{{ hostvars['moro'].ansible_user | default('m') }}/code/ansible"
+    _moro_home: "/Users/{{ hostvars['moro'].ansible_user | default('m') }}"
+
+  tasks:
+    - name: Мини-collect | каталоги
+      ansible.builtin.file:
+        path: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/{{ item.dest | dirname }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - { dest: macos/apps/cursor/settings.json }
+        - { dest: macos/apps/cursor/keybindings.json }
+        - { dest: macos/apps/ghostty/config }
+        - { dest: bash/.bashrc }
+        - { dest: bash/.bash_profile }
+
+    - name: Мини-collect | живые конфиги moro → сабмодуль
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ item.src }}"
+        dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/{{ item.dest }}"
+        mode: "0644"
+      loop:
+        - { src: "{{ _moro_home }}/Library/Application Support/Cursor/User/settings.json", dest: macos/apps/cursor/settings.json }
+        - { src: "{{ _moro_home }}/Library/Application Support/Cursor/User/keybindings.json", dest: macos/apps/cursor/keybindings.json }
+        - { src: "{{ _moro_home }}/.config/ghostty/config", dest: macos/apps/ghostty/config }
+        - { src: "{{ _moro_home }}/.bashrc", dest: bash/.bashrc }
+        - { src: "{{ _moro_home }}/.bash_profile", dest: bash/.bash_profile }
+
+    - name: Мини-collect | иконки ghostty
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ item }}"
+        dest: "{{ sync_dotfiles_dir }}/roles/dotfiles/files/dotfiles/macos/apps/ghostty/{{ item | basename }}"
+        mode: "0644"
+      with_fileglob:
+        - "{{ _moro_home }}/.config/ghostty/*.icns"
+
+    - name: Автокоммит снимка
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/sync-dotfiles-autocommit.yml"
