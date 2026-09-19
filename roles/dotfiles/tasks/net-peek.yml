@@ -1,0 +1,50 @@
+---
+# net-peek — TUI-сниффер трафика per remote IP (github.com/itcaat/net-peek).
+# macbook: ~/.local/bin, запуск через sudo (BPF на macOS требует рута)
+# homelab: /usr/local/bin + setcap → запуск без sudo; alias npk = gateway-режим
+# vps: не ставим (см. dotfiles_net_peek_levels) — headless-режима у тула нет,
+#       постоянные метрики там уже собирает beszel (manage).
+
+- name: net-peek | Ensure install dir exists (macOS)
+  ansible.builtin.file:
+    path: "{{ dotfiles_net_peek_install_dir }}"
+    state: directory
+    mode: "0755"
+  when: dotfiles_level == 'macbook'
+
+- name: net-peek | Download checksums
+  ansible.builtin.get_url:
+    url: "https://github.com/itcaat/net-peek/releases/download/{{ dotfiles_net_peek_version }}/checksums.txt"
+    dest: "{{ dotfiles_net_peek_tmpdir }}/checksums.txt"
+    mode: "0644"
+
+- name: net-peek | Read sha256 for this platform
+  ansible.builtin.command: >-
+    awk '$2 == "{{ dotfiles_net_peek_asset }}" {print $1}' {{ dotfiles_net_peek_tmpdir }}/checksums.txt
+  register: dotfiles_net_peek_sha256
+  changed_when: false
+  failed_when: dotfiles_net_peek_sha256.stdout | length != 64
+
+- name: net-peek | Download release tarball
+  ansible.builtin.get_url:
+    url: "https://github.com/itcaat/net-peek/releases/download/{{ dotfiles_net_peek_version }}/{{ dotfiles_net_peek_asset }}"
+    dest: "{{ dotfiles_net_peek_tmpdir }}/{{ dotfiles_net_peek_asset }}"
+    checksum: "sha256:{{ dotfiles_net_peek_sha256.stdout }}"
+    mode: "0644"
+
+# Тарболл = ./net-peek + ./README.md; README в bin-каталог не распаковываем.
+# unarchive идемпотентен сам: не распакует, если бинарь в dest новее тарболла.
+- name: net-peek | Install binary
+  ansible.builtin.unarchive:
+    src: "{{ dotfiles_net_peek_tmpdir }}/{{ dotfiles_net_peek_asset }}"
+    dest: "{{ dotfiles_net_peek_install_dir }}"
+    exclude: ["README.md"]
+    remote_src: true
+    mode: "0755"
+
+- name: net-peek | Grant packet-capture capabilities (Linux)
+  community.general.capabilities:
+    path: "{{ dotfiles_net_peek_install_dir }}/net-peek"
+    capability: cap_net_raw,cap_net_admin+eip
+    state: present
+  when: ansible_system == 'Linux'

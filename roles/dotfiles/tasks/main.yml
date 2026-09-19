@@ -1,15 +1,24 @@
 ---
-- import_tasks: bash.yml
+- name: Deploy bash configs
+  ansible.builtin.import_tasks: bash.yml
   tags: [dotfiles, bash]
 
-- import_tasks: macos-setup.yml
+- name: Run macOS bootstrap tasks
+  ansible.builtin.import_tasks: macos-setup.yml
   tags: [bootstrap, homebrew, appstore, ssh, system]
   when: dotfiles_level == 'macbook'
 
-- import_tasks: macos.yml
+- name: Deploy macOS configs
+  ansible.builtin.import_tasks: macos.yml
   tags: [dotfiles, configs, macos]
   when: dotfiles_level == 'macbook'
 
-- import_tasks: linux.yml
+- name: Deploy Linux configs
+  ansible.builtin.import_tasks: linux.yml
   tags: [dotfiles, linux]
   when: dotfiles_level in ['homelab', 'vps']
+
+- name: Install net-peek
+  ansible.builtin.import_tasks: net-peek.yml
+  tags: [dotfiles, net-peek]
+  when: dotfiles_level in dotfiles_net_peek_levels

@@ -196,6 +196,17 @@ macbook_appstore_apps:
 # Исключения из MAS-списка по name для конкретных машин (см. host_vars/)
 macbook_appstore_apps_skip: []
 
+# ── net-peek — TUI-сниффер трафика per remote IP ──────────────────────────────
+# github.com/itcaat/net-peek: маки — диагностика «кто жрёт сеть» (sudo),
+# micro — gateway-режим по src+dst (alias npk). Linux-бинарь получает setcap.
+dotfiles_net_peek_version: "v0.1.8"
+dotfiles_net_peek_levels: [macbook, homelab]  # vps осознанно нет: headless-режима нет, метрики — beszel
+dotfiles_net_peek_asset: >-
+  net-peek_{{ dotfiles_net_peek_version }}_{{ 'darwin' if ansible_system == 'Darwin' else 'linux' }}_
+  {{ 'arm64' if ansible_architecture in ['arm64', 'aarch64'] else 'amd64' }}.tar.gz
+dotfiles_net_peek_install_dir: "{{ ansible_env.HOME ~ '/.local/bin' if dotfiles_level == 'macbook' else '/usr/local/bin' }}"
+dotfiles_net_peek_tmpdir: /tmp/net-peek  # кэш тарболлов между прогонами; /tmp чистится сам
+
 macbook_system_defaults:
   # Finder
   - { domain: com.apple.finder, key: ShowHiddenFiles, type: bool, value: true }
