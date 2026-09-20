@@ -792,15 +792,18 @@
           changed_when: false
 
         - name: Хватит ли места под приложения (≤90%)
+          # резерв = min(10% диска, 40Г) — как в основных гвардиях (1557 упал
+          # на голых 10% от 2ТБ при нулевом объёме приложений)
           vars:
             _apps_kb: "{{ _apps_du.results | map(attribute='stdout') | map('regex_findall', '^[0-9]+') | flatten | map('int') | sum | int }}"
             _avail_kb: "{{ (_disk_moro.stdout | from_json).avail_kb }}"
             _total_kb: "{{ (_disk_moro.stdout | from_json).total_kb }}"
           ansible.builtin.assert:
-            that: "_avail_kb | int >= _apps_kb | int + (_total_kb | int * 0.10) | int"
+            that: "_avail_kb | int >= _apps_kb | int + [_total_kb | int * 0.10, 41943040] | min | int"
             fail_msg: >-
               Приложения с citrus (~{{ (_apps_kb | int / 1048576) | round(1) }}Г) не влезут на moro:
-              свободно {{ (_avail_kb | int / 1048576) | round(1) }}Г, ≥10% из {{ (_total_kb | int / 1048576) | round(0) }}Г — неприкосновенно.
+              свободно {{ (_avail_kb | int / 1048576) | round(1) }}Г,
+              неприкосновенный резерв min(10%, 40Г) из {{ (_total_kb | int / 1048576) | round(0) }}Г.
 
         - name: Push новых приложений citrus → /Applications moro
           synchronize:
