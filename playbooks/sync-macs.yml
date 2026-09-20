@@ -138,10 +138,11 @@
             sync_push_bytes: "{{ _est_push.stdout | regex_findall('Total transferred file size: ([0-9,]+)') | first | replace(',', '') | int }}"
 
         - name: Guard — citrus не уйдёт за 90%
+          # резерв приёмника: min(10% диска, 40Г) — на 2ТБ дисках 10% абсурдны
           vars:
             _avail_kb: "{{ (_disk_citrus_pre.stdout | from_json).avail_kb }}"
             _total_kb: "{{ (_disk_citrus_pre.stdout | from_json).total_kb }}"
-            _need_kb: "{{ (sync_push_bytes | int * 1.25 / 1024) | int + (_total_kb | int * 0.10) | int }}"
+            _need_kb: "{{ (sync_push_bytes | int * 1.25 / 1024) | int + [_total_kb | int * 0.10, 41943040] | min | int }}"
           ansible.builtin.assert:
             that: "_avail_kb | int >= _need_kb | int"
             fail_msg: >-
@@ -180,7 +181,7 @@
           vars:
             _avail_kb: "{{ (_disk_moro_pre.stdout | from_json).avail_kb }}"
             _total_kb: "{{ (_disk_moro_pre.stdout | from_json).total_kb }}"
-            _need_kb: "{{ (sync_pull_bytes | int * 1.25 / 1024) | int + (_total_kb | int * 0.10) | int }}"
+            _need_kb: "{{ (sync_pull_bytes | int * 1.25 / 1024) | int + [_total_kb | int * 0.10, 41943040] | min | int }}"
           ansible.builtin.assert:
             that: "_avail_kb | int >= _need_kb | int"
             fail_msg: >-
