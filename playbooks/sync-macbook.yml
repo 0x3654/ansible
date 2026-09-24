@@ -24,7 +24,7 @@
 #
 # Не ездит между машинами (~117Г из 136Г ~/code; список — playbooks/vars/sync-excludes.yml): дампы/базы/
 # выгрузки 1С (_bd_backup, createrra _bases/_config, opti-com _config, *.1CD/*.dt),
-# данные сервисов gisp (postgres/dumps/files/модели), build/ везде, рантайм sLLM/_data,
+# данные сервисов gisp (postgres/dumps/files/logs/модели), build/ везде, рантайм sLLM/_data,
 # дистрибутивы arm1c/dists, бэкапы (config/server-backup, semaphore vps_backup).
 #
 # Pre-flight перед снимком: свободное место dest против оценки объёма (rsync

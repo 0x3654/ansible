@@ -6,7 +6,7 @@
 # Машино-локальное и тяжёлое, что не ездит между маками (2026-09-12, ~95Г из
 # 136Г ~/code на moro; ревизия по du-разборке): дампы/базы/выгрузки 1С (_bd_backup,
 # createrra _bases + _config/.metadata, *.1CD/.dt/.cf-родители), данные сервисов gisp
-# (postgres/dumps/files/модели), build/ везде, рантайм sLLM/_data, дистрибутивы
+# (postgres/dumps/files/logs/модели), build/ везде, рантайм sLLM/_data, дистрибутивы
 # arm1c/dists, бэкапы (config/server-backup, semaphore vps_backup), *.dmg.
 # В сет вернулись (2026-09-12): opti-com/_config целиком (3.7Г) и XML-выгрузки
 # createrra/_config/*XML* без .cf (~21.5Г) — анализ конфигураций на citrus.
