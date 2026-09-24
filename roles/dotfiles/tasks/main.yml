@@ -13,6 +13,11 @@
   tags: [dotfiles, configs, macos]
   when: dotfiles_level == 'macbook'
 
+- name: Time Machine nightly schedule
+  ansible.builtin.import_tasks: macos-timemachine.yml
+  tags: [dotfiles, timemachine]
+  when: dotfiles_level == 'macbook'
+
 - name: Deploy Linux configs
   ansible.builtin.import_tasks: linux.yml
   tags: [dotfiles, linux]

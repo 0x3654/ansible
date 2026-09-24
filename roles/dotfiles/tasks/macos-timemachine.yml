@@ -1,0 +1,48 @@
+---
+# Time Machine — только ночные копии (02:30, launchd-демон от root).
+# Автобэкапы macOS выключаем: дефолтные часовые (или AutoBackupInterval=86400,
+# ставившийся вручную до 2026-09-25) грузили сеть днём и рандомно теряли дни.
+# Ключ AutoBackupInterval не трогаем — при AutoBackup=0 он мёртв.
+
+- name: Time Machine | Текущее состояние AutoBackup
+  ansible.builtin.command:
+    cmd: defaults read /Library/Preferences/com.apple.TimeMachine.plist AutoBackup
+  register: _tm_autobackup
+  changed_when: false
+  failed_when: false
+
+- name: Time Machine | Выключить автобэкапы (копии — по ночам джобой)
+  ansible.builtin.command:
+    cmd: tmutil disable
+  when: _tm_autobackup.stdout | trim != '0'
+  become: true
+
+- name: Time Machine | Установить LaunchDaemon ночной копии
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/dotfiles/macos/timemachine/com.user.timemachine-nightly.plist"
+    dest: /Library/LaunchDaemons/com.user.timemachine-nightly.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  become: true
+  register: _tm_plist
+
+- name: Time Machine | Выгрузить демона перед заменой plist
+  ansible.builtin.command:
+    cmd: launchctl bootout system/com.user.timemachine-nightly
+  when: _tm_plist.changed
+  become: true
+  failed_when: false
+
+- name: Time Machine | Проверить, что демон загружен
+  ansible.builtin.command:
+    cmd: launchctl print system/com.user.timemachine-nightly
+  register: _tm_loaded
+  changed_when: false
+  failed_when: false
+
+- name: Time Machine | Загрузить демона
+  ansible.builtin.command:
+    cmd: launchctl bootstrap system /Library/LaunchDaemons/com.user.timemachine-nightly.plist
+  when: _tm_loaded.rc != 0
+  become: true
