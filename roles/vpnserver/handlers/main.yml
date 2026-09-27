@@ -3,7 +3,7 @@
 # handlers file for vpn_servers
 
 - name: Restart docker amneziawg
-  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
     chdir: "{{ vpnserver_amneziawg_path }}"
   register: vpnserver_compose_result
@@ -14,7 +14,7 @@
   when: ansible_facts['architecture'] != 'aarch64'
 
 - name: Restart docker fail2ban
-  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
   args:
     chdir: "{{ vpnserver_fail2ban_path }}"
   register: vpnserver_compose_result

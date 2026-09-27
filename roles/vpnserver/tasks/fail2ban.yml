@@ -2,13 +2,18 @@
 - name: Fail2ban jail setup
   tags: [fail2ban]
   block:
+    - name: Check for rsyslog binary
+      ansible.builtin.stat:
+        path: /usr/sbin/rsyslog
+      register: vpnserver_rsyslog_bin
+
     - name: Install rsyslog (missing on journald-only hosts)
-      when: ansible_facts.pkg_mgr == 'apt'
+      when:
+        - ansible_facts.pkg_mgr == 'apt'
+        - not vpnserver_rsyslog_bin.stat.exists
       ansible.builtin.apt:
         name: rsyslog
         state: present
-        update_cache: true
-        cache_valid_time: 3600
 
     - name: Enable rsyslog so sshd logs reach /var/log/auth.log
       when: ansible_facts.pkg_mgr == 'apt'
