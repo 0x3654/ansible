@@ -1,0 +1,57 @@
+---
+- name: Fail2ban jail setup
+  tags: [fail2ban]
+  block:
+    - name: Enable rsyslog so sshd logs reach /var/log/auth.log
+      when: ansible_facts.pkg_mgr == 'apt'
+      ansible.builtin.systemd:
+        name: rsyslog
+        state: started
+        enabled: true
+
+    - name: Check auth.log
+      ansible.builtin.stat:
+        path: /var/log/auth.log
+      register: vpnserver_authlog
+
+    - name: Create auth.log if missing (fail2ban refuses jails without a log file)
+      when: not vpnserver_authlog.stat.exists
+      ansible.builtin.file:
+        path: /var/log/auth.log
+        state: touch
+        owner: root
+        group: adm
+        mode: '0640'
+
+    - name: Ensure fail2ban config dir exists
+      ansible.builtin.file:
+        path: "{{ vpnserver_fail2ban_path }}/config/fail2ban"
+        state: directory
+        mode: '0755'
+
+    - name: Deploy fail2ban jail.local
+      ansible.builtin.template:
+        src: fail2ban-jail.local.j2
+        dest: "{{ vpnserver_fail2ban_path }}/config/fail2ban/jail.local"
+        mode: '0644'
+      notify: Restart docker fail2ban
+
+    # Compose re-render (filescopy) and jail.local both notify handlers;
+    # apply them now so the container is already on the role config path
+    # before we check its mounts and drop the legacy /path tree.
+    - name: Apply pending compose and fail2ban changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Read fail2ban container info
+      community.docker.docker_container_info:
+        name: fail2ban
+      register: vpnserver_f2b_info
+      failed_when: false
+
+    - name: Remove legacy /path mount tree once fail2ban is off it
+      when:
+        - vpnserver_f2b_info.exists | default(false)
+        - vpnserver_f2b_info.container.HostConfig.Binds | default([]) | select('match', '^/path/to') | list | length == 0
+      ansible.builtin.file:
+        path: /path
+        state: absent

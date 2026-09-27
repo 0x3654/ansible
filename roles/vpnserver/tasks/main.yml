@@ -23,6 +23,10 @@
   ansible.builtin.import_tasks: mtproxy.yml
   tags: [mtproxy]
 
+- name: Import fail2ban tasks
+  ansible.builtin.import_tasks: fail2ban.yml
+  tags: [fail2ban]
+
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]

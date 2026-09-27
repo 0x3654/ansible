@@ -1,0 +1,15 @@
+{{ ansible_managed }}
+# Fail2ban jails for VPN servers. Host /var/log is mounted read-only
+# into the container, sshd logs land in /var/log/auth.log (rsyslog).
+
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+port = {{ ssh_port | default('ssh') }}
+logpath = /var/log/auth.log
+backend = auto
