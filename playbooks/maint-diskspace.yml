@@ -68,6 +68,7 @@
                 - /root/.cursor-server
                 - /root/.zed_server
                 - /root/.local/share/zed
+                - /Users
 
             - name: Find old logs
               ansible.builtin.find:
@@ -160,6 +161,17 @@
                     truncate -s 0 {{ item.path }}
                   loop: "{{ docker_volume_logs.files }}"
                   when: docker_volume_logs.files | length > 0
+                  changed_when: false
+                  args:
+                    executable: /bin/bash
+
+                - name: Truncate large log files inside container writable layers
+                  ansible.builtin.shell: |
+                    set -o pipefail
+                    docker ps -q | while read -r id; do
+                      upper=$(docker inspect --format '{{ '{{' }}.GraphDriver.Data.UpperDir{{ '}}' }}' "$id" 2>/dev/null) || continue
+                      find "$upper" -type f -name '*.log' -size +10M -print -exec truncate -s 0 {} \; 2>/dev/null
+                    done
                   changed_when: false
                   args:
                     executable: /bin/bash

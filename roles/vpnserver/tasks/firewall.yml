@@ -39,14 +39,14 @@
           {{ vpnserver_firewall_rules
           + ['-A INPUT -p tcp -m tcp --dport ' + vpnserver_mtproxy_port + ' -j ACCEPT'] }}
 
-    - name: Add AmneziaWG port for non-ARM64
+    - name: Add AmneziaWG port when enabled and non-ARM64
       ansible.builtin.set_fact:
         vpnserver_firewall_rules: >-
           {{ vpnserver_firewall_rules
           + ['-A INPUT -p udp -m udp --dport '
           + vpnserver_amneziawg_wg_port | default(51820) | string
           + ' -j ACCEPT'] }}
-      when: ansible_facts['architecture'] != 'aarch64'
+      when: ansible_facts['architecture'] != 'aarch64' and vpnserver_amneziawg_enabled | default(true)
 
     - name: Call firewall role with dynamic rules
       ansible.builtin.include_role:

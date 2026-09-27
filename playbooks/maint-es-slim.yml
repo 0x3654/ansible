@@ -1,0 +1,142 @@
+---
+# One-shot slim-down of es (2026-09): drop dead channels (awg, mtproxy),
+# fix fail2ban config mount (/path/to -> role path), trim apt lists, cap journald.
+# Removal/compose logic mirrors roles/vpnserver toggles vpnserver_{amneziawg,mtproxy}_enabled.
+- name: ES one-shot slim-down
+  hosts: es
+  become: true
+  vars:
+    pwd: /server
+    path: "{{ pwd }}/vpnserver"
+    vpnserver_fail2ban_path: "{{ path }}/fail2ban"
+    vpnserver_amneziawg_path: "{{ path }}/amneziawg"
+    vpnserver_mtproxy_path: "{{ path }}/mtproxy"
+    vpnserver_amneziawg_enabled: false
+    vpnserver_mtproxy_enabled: false
+
+  tasks:
+    - name: Stop and remove dead channel containers
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: absent
+      failed_when: false
+      loop:
+        - awg
+        - mtproxy
+
+    - name: Remove dead channel dirs and legacy empty dirs from old layout
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ vpnserver_amneziawg_path }}"
+        - "{{ vpnserver_mtproxy_path }}"
+        - /server/amneziawg
+        - /server/3x-ui
+        - /server/fail2ban
+
+    - name: Migrate fail2ban config from /path/to mount to role path
+      ansible.builtin.copy:
+        src: /path/to/fail2ban/config
+        dest: "{{ vpnserver_fail2ban_path }}/config"
+        remote_src: true
+        mode: preserve
+
+    - name: Fix ownership of migrated fail2ban config (LSIO PUID)
+      ansible.builtin.file:
+        path: "{{ vpnserver_fail2ban_path }}/config"
+        owner: "1000"
+        group: "1000"
+        recurse: true
+
+    - name: Render main compose without dead channels
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/vpnserver/files/vpnserver/compose.yaml"
+        dest: "{{ path }}/compose.yaml"
+        mode: "0644"
+
+    - name: Render fail2ban compose with fixed volume path
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/vpnserver/files/vpnserver/fail2ban/compose.yaml"
+        dest: "{{ vpnserver_fail2ban_path }}/compose.yaml"
+        mode: "0644"
+
+    - name: Recreate fail2ban with new config path
+      ansible.builtin.command:
+        cmd: docker compose -f {{ path }}/compose.yaml up -d --no-deps fail2ban
+      register: f2b_up
+      changed_when: "'Started' in f2b_up.stdout or 'Recreated' in f2b_up.stdout or 'recreated' in f2b_up.stdout"
+
+    - name: Verify fail2ban is running and mounts the new config path
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' fail2ban | grep -qx true
+        docker inspect --format '{{ '{{range .Mounts}}' }}{{ '{{' }}.Source{{ '}}' }}{{ '{{end}}' }}' fail2ban \
+          | grep -q '{{ vpnserver_fail2ban_path }}/config'
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Remove legacy /path and stray /Users dirs
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /path
+        - /Users
+
+    - name: Disable deb-src entries in sources.list
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '^(deb-src .*)$'
+        replace: '# \1'
+
+    - name: Drop duplicate http backports entry (https one stays)
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list
+        regexp: '^deb http://deb\.debian\.org/debian bookworm-backports main'
+        state: absent
+
+    - name: Skip translated package indexes
+      ansible.builtin.copy:
+        content: 'Acquire::Languages "none";'
+        dest: /etc/apt/apt.conf.d/99-no-languages
+        mode: '0644'
+
+    - name: Wipe apt lists for slim redownload
+      ansible.builtin.file:
+        path: /var/lib/apt/lists
+        state: absent
+
+    - name: Recreate apt lists dir
+      ansible.builtin.file:
+        path: /var/lib/apt/lists/partial
+        state: directory
+        owner: _apt
+        group: root
+        mode: '0755'
+
+    - name: Refresh apt cache with slim indexes
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Create journald drop-in dir
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        mode: '0755'
+
+    - name: Cap journald disk usage at 25M
+      ansible.builtin.copy:
+        content: |
+          [Journal]
+          SystemMaxUse=25M
+        dest: /etc/systemd/journald.conf.d/90-maxuse.conf
+        mode: '0644'
+      notify: Restart journald
+
+  handlers:
+    - name: Restart journald
+      ansible.builtin.systemd:
+        name: systemd-journald
+        state: restarted

@@ -1,4 +1,5 @@
 - name: AmneziaWG Create and get AmneziaWG client configuration
+  when: vpnserver_amneziawg_enabled | default(true) and ansible_facts['architecture'] != 'aarch64'
   tags: [amneziawg]
   block:
     - name: AmneziaWG Create directory for client configurations
@@ -141,3 +142,18 @@
         src: "{{ vpnserver_amneziawg_path }}/clients/awg.conf"
         dest: "{{ playbook_dir }}/../configs/awg_{{ domain_name }}.conf"
         flat: true
+
+- name: AmneziaWG remove (disabled per host or ARM64)
+  when: not (vpnserver_amneziawg_enabled | default(true)) or ansible_facts['architecture'] == 'aarch64'
+  tags: [amneziawg]
+  block:
+    - name: Stop and remove awg container
+      community.docker.docker_container:
+        name: awg
+        state: absent
+      failed_when: false
+
+    - name: Remove AmneziaWG directory
+      ansible.builtin.file:
+        path: "{{ vpnserver_amneziawg_path }}"
+        state: absent
