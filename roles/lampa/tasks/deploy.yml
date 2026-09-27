@@ -1,0 +1,46 @@
+---
+- name: Deploy lampa with health-check
+  # откат на :stable не предусмотрен — у nnm-rss один тег latest; CI образ
+  # собирается только из зелёной ветки с тестами
+  block:
+    - name: Pull latest image
+      ansible.builtin.command:
+        cmd: "docker pull {{ lampa_image }}"
+      register: lampa_pull_result
+      changed_when: "'Downloaded newer image' in lampa_pull_result.stdout or 'Pull complete' in lampa_pull_result.stdout"
+      notify: docker up lampa
+      tags: [deploy]
+
+    - name: Bring stack up
+      # явный up: хендлер «docker up lampa» флушится только в конце плея,
+      # а health-check ниже требует живой контейнер уже сейчас
+      ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+      args:
+        chdir: "{{ path }}"
+      register: lampa_up_result
+      changed_when: >-
+        lampa_up_result.stdout is search('Creating')
+        or lampa_up_result.stdout is search('Recreating')
+        or lampa_up_result.stdout is search('Starting')
+        or lampa_up_result.stderr is search('Creating')
+        or lampa_up_result.stderr is search('Started')
+      tags: [deploy]
+
+    - name: Wait for container to be ready
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: "{{ lampa_backend_port }}"
+        delay: 5
+        timeout: 60
+      tags: [deploy]
+
+    - name: Health check
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ lampa_backend_port }}/healthz"
+        method: GET
+        status_code: [200]
+      register: lampa_health_check
+      retries: 5
+      delay: 5
+      until: lampa_health_check.status == 200
+      tags: [deploy]

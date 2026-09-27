@@ -1,0 +1,21 @@
+# nnm-rss (сервис «NNM-Club RSS») — роль lampa, публичный фронт https://nnm.0x3654.com
+# Состояние (профили/кэш/торрент-файлы) — в именованном томе, переживает деплои
+services:
+  nnm-rss:
+    image: ghcr.io/0x3654/nnm-rss:latest
+    container_name: lampa
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8356:8356"
+    environment:
+      PUBLIC_URL: https://nnm.0x3654.com
+      TZ_OFFSET: "4"
+    volumes:
+      - lampa-data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+
+volumes:
+  lampa-data:

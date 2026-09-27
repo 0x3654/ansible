@@ -1,0 +1,34 @@
+# defaults file for lampa
+
+# Required system packages
+required_packages:  # noqa: var-naming[no-role-prefix]
+  - docker-ce
+  - docker-compose-plugin
+  - curl
+  - bash
+  - openssl
+  - vim
+  - certbot
+  - python3-setuptools
+  - nginx
+
+# Docker repository installation control
+install_docker_repo: true  # noqa: var-naming[no-role-prefix]
+update_repo: true  # noqa: var-naming[no-role-prefix]
+force_repo_update: true  # noqa: var-naming[no-role-prefix]
+
+# Paths (es layout: services under /server)
+path: "/server/lampa"  # noqa: var-naming[no-role-prefix]
+lampa_cert_path: "/server/certbot"
+
+# Domain and service
+lampa_domain_name: "nnm.0x3654.com"
+lampa_image: "ghcr.io/0x3654/nnm-rss:latest"
+lampa_backend_port: 8356
+
+# nnm-rss env (public values, не секреты)
+lampa_public_url: "https://nnm.0x3654.com"
+lampa_tz_offset: 4
+
+# Telegram notifications (disabled by default)
+common_telegram_notify_enabled: false

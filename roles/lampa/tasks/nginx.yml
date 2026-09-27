@@ -1,0 +1,13 @@
+---
+- name: Configure nginx for lampa (nnm-rss)
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ lampa_domain_name }}"
+    common_nginx_site_name: "lampa"
+    common_nginx_ssl_enabled: true
+    common_nginx_ssl_cert: "{{ lampa_cert_path }}/live/{{ lampa_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ lampa_cert_path }}/live/{{ lampa_domain_name }}/privkey.pem"
+    common_nginx_backend_port: "{{ lampa_backend_port }}"
+  tags: [nginx]

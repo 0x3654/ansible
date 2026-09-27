@@ -1,0 +1,30 @@
+---
+# Routine redeploy of lampa (nnm-rss): pull fresh image + health-check.
+# Первоначальная настройка (пакеты/серт/nginx) — setup-lampa.yml.
+- name: Deploy lampa (nnm-rss) with health-check
+  hosts: lampa_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include lampa role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/lampa/vars/main.yml"
+        - "{{ ansible_roles_path }}/lampa/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/lampa/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run lampa deployment
+      ansible.builtin.include_role:
+        name: lampa
+        tasks_from: deploy.yml
+      tags: [deploy]

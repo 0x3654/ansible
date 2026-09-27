@@ -1,0 +1,14 @@
+---
+- name: Ensure base directory exists
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    mode: "0755"
+  tags: [filescopy]
+
+- name: Copy docker compose file from role files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/lampa/files/lampa/compose.yaml"
+    dest: "{{ path }}/docker-compose.yaml"
+    mode: "0644"
+  tags: [filescopy]
