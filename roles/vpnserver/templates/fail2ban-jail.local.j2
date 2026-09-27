@@ -7,6 +7,9 @@ ignoreip = 127.0.0.1/8 ::1
 bantime = 1h
 findtime = 10m
 maxretry = 5
+# fail2ban 1.1.0 jail.conf ships no default banaction, and jail.d actions
+# interpolate %(banaction)s — without this the config fails to load
+banaction = iptables-allports
 
 [sshd]
 enabled = true
