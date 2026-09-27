@@ -3,25 +3,23 @@
 # handlers file for vpn_servers
 
 - name: Restart docker amneziawg
-  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart amnezia-wg-easy"
   args:
-    chdir: "{{ vpnserver_amneziawg_path }}"
+    chdir: "{{ path }}"
   register: vpnserver_compose_result
   changed_when: >-
-    vpnserver_compose_result.stdout is search('Creating')
-    or vpnserver_compose_result.stdout is search('Recreating')
-    or vpnserver_compose_result.stdout is search('Starting')
-  when: ansible_facts['architecture'] != 'aarch64'
+    (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
+  when:
+    - ansible_facts['architecture'] != 'aarch64'
+    - vpnserver_amneziawg_enabled | default(true)
 
 - name: Restart docker fail2ban
-  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} down && {{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart fail2ban"
   args:
-    chdir: "{{ vpnserver_fail2ban_path }}"
+    chdir: "{{ path }}"
   register: vpnserver_compose_result
   changed_when: >-
-    vpnserver_compose_result.stdout is search('Creating')
-    or vpnserver_compose_result.stdout is search('Recreating')
-    or vpnserver_compose_result.stdout is search('Starting')
+    (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
 
 - name: Docker down vpnserver
   ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
