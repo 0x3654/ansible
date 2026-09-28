@@ -1,0 +1,30 @@
+---
+# handlers file for trackertop
+
+- name: Docker down trackertop
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ path }}"
+  register: trackertop_compose_down_result
+  changed_when: >-
+    trackertop_compose_down_result.stdout is search('Removing')
+    or trackertop_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down trackertop
+
+- name: Docker up trackertop
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: trackertop_compose_up_result
+  changed_when: >-
+    trackertop_compose_up_result.stdout is search('Creating')
+    or trackertop_compose_up_result.stdout is search('Recreating')
+    or trackertop_compose_up_result.stdout is search('Starting')
+  listen: docker up trackertop
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

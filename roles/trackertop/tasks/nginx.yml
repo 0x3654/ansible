@@ -1,0 +1,13 @@
+---
+- name: Configure nginx for tracker-top
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ trackertop_domain_name }}"
+    common_nginx_site_name: "trackertop"
+    common_nginx_ssl_enabled: true
+    common_nginx_ssl_cert: "{{ trackertop_cert_path }}/live/{{ trackertop_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ trackertop_cert_path }}/live/{{ trackertop_domain_name }}/privkey.pem"
+    common_nginx_backend_port: "{{ trackertop_backend_port }}"
+  tags: [nginx]

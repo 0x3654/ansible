@@ -1,0 +1,30 @@
+---
+# Routine redeploy of tracker-top: pull fresh image + health-check.
+# Первоначальная настройка (серт/nginx) — setup-trackertop.yml.
+- name: Deploy tracker-top with health-check
+  hosts: trackertop_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include trackertop role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/trackertop/vars/main.yml"
+        - "{{ ansible_roles_path }}/trackertop/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/trackertop/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run trackertop deployment
+      ansible.builtin.include_role:
+        name: trackertop
+        tasks_from: deploy.yml
+      tags: [deploy]

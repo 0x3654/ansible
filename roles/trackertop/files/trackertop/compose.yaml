@@ -1,0 +1,19 @@
+# tracker-top — топ раздач NNMClub/RUTOR + «Топ · TMDB» (/feed), публичный https://top.0x3654.com
+services:
+  tracker-top:
+    image: ghcr.io/0x3654/tracker-top:latest
+    container_name: tracker-top
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8355:8355"
+    environment:
+      TTL: "600"
+    volumes:
+      - trackertop-data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+
+volumes:
+  trackertop-data:

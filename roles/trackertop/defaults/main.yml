@@ -1,0 +1,9 @@
+# tracker-top (сервис «Топ · трекеры» для Lampa) — публичный фронт https://top.0x3654.com
+# Кэш (топы/find 12ч) — в именованном томе, переживает деплои
+
+path: "/server/trackertop"  # noqa: var-naming[no-role-prefix]
+trackertop_cert_path: "/server/certbot"
+
+trackertop_domain_name: "top.0x3654.com"
+trackertop_image: "ghcr.io/0x3654/tracker-top:latest"
+trackertop_backend_port: 8355
