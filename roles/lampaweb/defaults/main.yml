@@ -22,8 +22,9 @@ lampaweb_domain_name: "lampa.0x3654.com"  # noqa: var-naming[no-role-prefix]
 lampaweb_upstream: "https://github.com/yumata/lampa.git"  # noqa: var-naming[no-role-prefix]
 
 # Наши файлы в корень клона. t.js (bootstrap) живёт в user-site — там
-# источник правок; плагины — в репо transmission-send (GitHub Pages)
+# источник правок; плагины — в репо lampa-plugins (GitHub Pages).
+# ВАЖНО: Pages после переименования репо НЕ редиректит старые URL (404)
 lampaweb_tjs_url: "https://0x3654.github.io/t.js"  # noqa: var-naming[no-role-prefix]
 lampaweb_plugins:  # noqa: var-naming[no-role-prefix]
-  - https://0x3654.github.io/transmission-send/top.js
-  - https://0x3654.github.io/transmission-send/transmission-send.js
+  - https://0x3654.github.io/lampa-plugins/top.js
+  - https://0x3654.github.io/lampa-plugins/transmission-send.js
