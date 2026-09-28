@@ -37,7 +37,7 @@ server {
 
     # наши плагины/bootstrap меняются — не кэшировать надолго
     # (регекс-локация стоит раньше общей статики и перехватывает её)
-    location ~* ^/(t|lampainit|top|transmission-send|nnm-auto|plex-sync)\.js$ {
+    location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
         add_header Cache-Control "no-cache";
         add_header X-Robots-Tag "noindex, nofollow" always;
         try_files $uri =404;
