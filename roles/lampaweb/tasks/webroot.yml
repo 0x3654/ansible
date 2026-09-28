@@ -19,7 +19,14 @@
     force: true
   tags: [webroot]
 
-- name: Put our files into webroot (source of truth — GitHub Pages)
+- name: Put bootstrap t.js into webroot (user-site)
+  ansible.builtin.get_url:
+    url: "{{ lampaweb_tjs_url }}"
+    dest: "{{ path }}/webroot/t.js"
+    mode: "0644"
+  tags: [webroot]
+
+- name: Put our plugins into webroot (GitHub Pages)
   ansible.builtin.get_url:
     url: "{{ item }}"
     dest: "{{ path }}/webroot/{{ item.split('/')[-1] }}"
