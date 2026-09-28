@@ -4,7 +4,11 @@
 server {
     listen 80;
     server_name {{ lampaweb_domain_name }};
-    return 301 https://$server_name$request_uri;
+
+    # http закрыт наглухо: соединение обрывается без ответа.
+    # На выпуск сертификата не влияет — certbot standalone работает при
+    # остановленном nginx и сам открывает 80-й порт.
+    return 444;
 }
 
 server {
