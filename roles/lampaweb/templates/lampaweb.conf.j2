@@ -35,6 +35,14 @@ server {
         try_files $uri $uri/ =404;
     }
 
+    # наши плагины/bootstrap меняются — не кэшировать надолго
+    # (регекс-локация стоит раньше общей статики и перехватывает её)
+    location ~* ^/(t|lampainit|top|transmission-send|nnm-auto|plex-sync)\.js$ {
+        add_header Cache-Control "no-cache";
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri =404;
+    }
+
     # статика кэшируется; заголовок повторён — location перекрывает server
     location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|ogg|mp4)$ {
         expires 7d;
