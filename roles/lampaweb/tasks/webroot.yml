@@ -24,6 +24,7 @@
     url: "{{ lampaweb_tjs_url }}"
     dest: "{{ path }}/webroot/t.js"
     mode: "0644"
+    force: true # Pages CDN + If-Modified-Since ловят вечный 304
   tags: [webroot]
 
 - name: Put our plugins into webroot (GitHub Pages)
@@ -31,6 +32,7 @@
     url: "{{ item }}"
     dest: "{{ path }}/webroot/{{ item.split('/')[-1] }}"
     mode: "0644"
+    force: true
   loop: "{{ lampaweb_plugins }}"
   tags: [webroot]
 
