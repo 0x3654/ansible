@@ -48,7 +48,6 @@
         loop_var: directory
 
       notify:
-        - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'
 
     - name: Copy files with standard ownership
@@ -74,7 +73,6 @@
         loop_var: file
       with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       notify:
-        - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'
 
     - name: Copy files with special ownership
@@ -103,7 +101,6 @@
         loop_var: file
       with_community.general.filetree: '{{ common_files_source_dir | default("files/") }}'
       notify:
-        - '{{ common_down_handler_name }}'
         - '{{ common_up_handler_name }}'
 
 - name: Force handlers to run
