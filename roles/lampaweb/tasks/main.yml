@@ -1,0 +1,22 @@
+---
+# lampaweb: полная роль — пакеты, вебрут, сертификат, nginx
+
+- name: APT Management
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: apt.yml
+  tags: [apt, upgrade]
+  vars:
+    common_required_packages: "{{ required_packages }}"
+
+- name: Prepare webroot (upstream + plugins + bootstrap embed)
+  ansible.builtin.include_tasks: webroot.yml
+  tags: [webroot]
+
+- name: Obtain TLS certificate
+  ansible.builtin.include_tasks: certbot.yml
+  tags: [ssl]
+
+- name: Configure nginx site
+  ansible.builtin.include_tasks: nginx.yml
+  tags: [nginx]

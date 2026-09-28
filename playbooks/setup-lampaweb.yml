@@ -1,0 +1,51 @@
+---
+# One-time provisioning of the Lampa web clone on es: webroot + cert + nginx.
+# Docker не нужен — чистая статика. Требует A-запись lampa.0x3654.com → es.
+- name: Provision Lampa web clone on a fresh host
+  hosts: lampaweb_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include lampaweb role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/lampaweb/vars/main.yml"
+        - "{{ ansible_roles_path }}/lampaweb/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Prepare webroot (upstream + plugins + bootstrap embed)
+      ansible.builtin.include_role:
+        name: lampaweb
+        tasks_from: webroot.yml
+
+    - name: Obtain TLS certificate
+      ansible.builtin.include_role:
+        name: lampaweb
+        tasks_from: certbot.yml
+
+    - name: Configure system nginx site
+      ansible.builtin.include_role:
+        name: lampaweb
+        tasks_from: nginx.yml
+
+    - name: Flush handlers so nginx serves the new site
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify the clone responds over HTTPS
+      ansible.builtin.uri:
+        url: "https://{{ lampaweb_domain_name }}/"
+        status_code: 200
+        validate_certs: true
+      register: lampaweb_verify
+      retries: 3
+      delay: 5
+      until: lampaweb_verify.status == 200

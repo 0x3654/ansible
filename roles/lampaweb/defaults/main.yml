@@ -1,0 +1,29 @@
+# lampaweb (клон веб-приложения Lampa) — публичный фронт https://lampa.0x3654.com
+# Чистая статика из официального апстрима (github.com/yumata/lampa, тот же бандл
+# что lampa.mx) + наши плагины и вшитый bootstrap — клон настроен «из коробки».
+# Второй режим: адрес клона указывается в подмене адреса приложения (нативное
+# меню / lampa_url) — тогда грузятся наш app.min.js и lampainit.js.
+
+required_packages:  # noqa: var-naming[no-role-prefix]
+  - nginx
+  - certbot
+  - git
+
+install_docker_repo: false  # noqa: var-naming[no-role-prefix]
+update_repo: false  # noqa: var-naming[no-role-prefix]
+force_repo_update: false  # noqa: var-naming[no-role-prefix]
+
+# Paths (es layout: services under /server)
+path: "/server/lampaweb"  # noqa: var-naming[no-role-prefix]
+lampaweb_cert_path: "/server/certbot"  # noqa: var-naming[no-role-prefix]
+
+# Domain and upstream
+lampaweb_domain_name: "lampa.0x3654.com"  # noqa: var-naming[no-role-prefix]
+lampaweb_upstream: "https://github.com/yumata/lampa.git"  # noqa: var-naming[no-role-prefix]
+
+# Наши файлы в корень клона (источник правок — GitHub Pages lampa-plugins);
+# t.js — bootstrap (ставит остальное и применяет настройки)
+lampaweb_plugins:  # noqa: var-naming[no-role-prefix]
+  - https://0x3654.github.io/transmission-send/t.js
+  - https://0x3654.github.io/transmission-send/top.js
+  - https://0x3654.github.io/transmission-send/transmission-send.js

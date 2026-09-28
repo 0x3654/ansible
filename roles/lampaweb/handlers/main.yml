@@ -1,0 +1,21 @@
+---
+# handlers file for lampaweb (чистая статика — контейнеров нет)
+
+- name: Stop nginx
+  ansible.builtin.service:
+    name: nginx
+    state: stopped
+  failed_when: false
+  listen: stop nginx
+
+- name: Start nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+  listen: start nginx
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

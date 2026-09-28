@@ -1,0 +1,32 @@
+/*
+    lampainit.js — официальный хук загрузчика Lampa.
+
+    В режиме «подмена адреса» оболочка сама грузит этот файл с нашего клона
+    ДО app.min.js; при прямом открытии клона он подключён в index.html.
+    Ждёт появления Lampa и подключает bootstrap t.js (ставит плагины
+    и применяет настройки). Абсолютный адрес — файл исполняется и в чужой
+    странице (оболочка), где относительный путь разрешился бы неверно.
+*/
+;(function(){
+    'use strict'
+
+    var FLAG = '__lampa_lampainit'
+
+    if (window[FLAG]) return
+    window[FLAG] = true
+
+    var BASE = 'https://{{ lampaweb_domain_name }}'
+
+    function boot(){
+        if (!window.Lampa) return setTimeout(boot, 100)
+
+        var s = document.createElement('script')
+
+        s.src = BASE + '/t.js'
+        s.onerror = function(){ /* клон недоступен — лампа работает без bootstrap */ }
+
+        document.head.appendChild(s)
+    }
+
+    boot()
+})()

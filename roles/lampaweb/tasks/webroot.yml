@@ -1,0 +1,44 @@
+---
+# Вебрут клона: официальный бандл + наши плагины + lampainit с bootstrap.
+# git с force:true отбрасывает локальные правки index.html — поэтому патч
+# index.html и lampainit применяются ПОСЛЕ git на каждом прогоне.
+
+- name: Ensure base directory exists
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    mode: "0755"
+  tags: [webroot]
+
+- name: Clone/update official Lampa bundle
+  ansible.builtin.git:
+    repo: "{{ lampaweb_upstream }}"
+    dest: "{{ path }}/webroot"
+    version: main
+    update: true
+    force: true
+  tags: [webroot]
+
+- name: Put our files into webroot (source of truth — GitHub Pages)
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: "{{ path }}/webroot/{{ item.split('/')[-1] }}"
+    mode: "0644"
+  loop: "{{ lampaweb_plugins }}"
+  tags: [webroot]
+
+- name: Render lampainit.js (official hook, waits for Lampa and loads t.js)
+  ansible.builtin.template:
+    src: lampainit.js.j2
+    dest: "{{ path }}/webroot/lampainit.js"
+    mode: "0644"
+  tags: [webroot]
+
+# Прямое открытие клона: lampainit подключается к index.html;
+# в режиме «подмены адреса» (lampa_url) оболочка грузит lampainit.js сама
+- name: Embed lampainit into index.html
+  ansible.builtin.lineinfile:
+    path: "{{ path }}/webroot/index.html"
+    line: '    <script src="./lampainit.js"></script>'
+    insertbefore: "</head>"
+  tags: [webroot]
