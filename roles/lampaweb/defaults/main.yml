@@ -28,3 +28,4 @@ lampaweb_tjs_url: "https://0x3654.github.io/t.js"  # noqa: var-naming[no-role-pr
 lampaweb_plugins:  # noqa: var-naming[no-role-prefix]
   - https://0x3654.github.io/lampa-plugins/top.js
   - https://0x3654.github.io/lampa-plugins/transmission-send.js
+  - https://0x3654.github.io/lampa-plugins/plex-sync.js
