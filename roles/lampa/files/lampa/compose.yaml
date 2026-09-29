@@ -1,8 +1,8 @@
-# nnm-rss (сервис «NNM-Club RSS») — роль lampa, публичный фронт https://nnm.0x3654.com
+# nnm-rss (сервис «NNM-Club RSS», репо 0x3654/nnm-rss, образ Docker Hub) — https://nnm.0x3654.com
 # Состояние (профили/кэш/торрент-файлы) — в именованном томе, переживает деплои
 services:
   nnm-rss:
-    image: ghcr.io/0x3654/nnm-rss:latest
+    image: docker.io/0x3654/nnm-rss:latest
     container_name: lampa
     security_opt:
       - no-new-privileges:true

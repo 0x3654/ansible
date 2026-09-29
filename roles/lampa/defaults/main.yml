@@ -23,7 +23,7 @@ lampa_cert_path: "/server/certbot"
 
 # Domain and service
 lampa_domain_name: "nnm.0x3654.com"
-lampa_image: "ghcr.io/0x3654/nnm-rss:latest"
+lampa_image: "docker.io/0x3654/nnm-rss:latest"
 lampa_backend_port: 8356
 
 # nnm-rss env (public values, не секреты)
