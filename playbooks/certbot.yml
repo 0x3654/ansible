@@ -38,7 +38,9 @@
       ansible.builtin.include_role:
         name: vpnserver
         tasks_from: certbot.yml
-      when: inventory_hostname in groups['vpnserver_role'] | default([])
+      when:
+        - inventory_hostname in groups['vpnserver_role'] | default([])
+        - inventory_hostname != 'ru2'  # у ru2 свой блок ниже: systemd-nginx и /server/certbot
       tags: [certbot, vpnserver]
 
     - name: Run subnginx3xui certbot tasks
@@ -75,3 +77,19 @@
         tasks_from: certbot.yml
       when: inventory_hostname in groups['trackertop_role'] | default([])
       tags: [certbot, trackertop]
+
+    # ru2: веб-хост (ru2-jwt + прокси /plex/), certbot standalone c
+    # остановкой systemd-nginx; сертификат живёт в /server/certbot
+    # (выпущен вручную до ансибла, путь сохранён)
+    - name: Run ru2 certbot tasks
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: certbot.yml
+      vars:
+        common_domain_name: "ru2.0x3654.com"
+        common_cert_path: "/server/certbot"
+        common_up_handler_name: "Reload nginx"
+        common_down_handler_name: "Reload nginx"
+        common_telegram_notify_enabled: false
+      when: inventory_hostname == 'ru2'
+      tags: [certbot, ru2]
