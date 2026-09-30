@@ -1,0 +1,32 @@
+---
+- name: Bring stack up
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: torrserver_up_result
+  changed_when: >-
+    torrserver_up_result.stdout is search('Creating')
+    or torrserver_up_result.stdout is search('Recreating')
+    or torrserver_up_result.stdout is search('Starting')
+    or torrserver_up_result.stderr is search('Creating')
+    or torrserver_up_result.stderr is search('Started')
+  tags: [deploy]
+
+- name: Wait for container port to be ready
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ torrserver_backend_port }}"
+    delay: 5
+    timeout: 90
+  tags: [deploy]
+
+- name: Health check /echo
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ torrserver_backend_port }}/echo"
+    method: GET
+    status_code: [200]
+  register: torrserver_health_check
+  retries: 5
+  delay: 5
+  until: torrserver_health_check.status == 200
+  tags: [deploy]

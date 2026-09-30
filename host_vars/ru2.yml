@@ -1,0 +1,7 @@
+---
+# ru2 (Ruserv, Королёв) — 1 vCPU / 379 MiB / 9.7 ГБ
+
+# torrserver: секретный путь веб-доступа вместо auth (basic-auth ломает CORS
+# у браузерной лампы; TorrServer отдаёт ACAO: *). URL для Lampa:
+# https://ru2.0x3654.com/torr-<secret>
+torrserver_secret: "torr-31008ae1f60d63973d9ed4cb"

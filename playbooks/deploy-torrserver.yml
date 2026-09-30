@@ -1,0 +1,27 @@
+---
+# Deploy TorrServer (MatriX) на ru2: контейнер + nginx-сайт ru2.0x3654.com
+# (yandex-jwt + /plex/ + TorrServer). Серт уже есть (playbooks/certbot.yml).
+- name: Deploy TorrServer with health-check
+  hosts: torrserver_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include torrserver role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/torrserver/vars/main.yml"
+        - "{{ ansible_roles_path }}/torrserver/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run torrserver role
+      ansible.builtin.include_role:
+        name: torrserver

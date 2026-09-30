@@ -1,0 +1,10 @@
+# torrserver (TorrServer MatriX) — торрент-стриминг для Lampa на ru2
+# Публично: https://ru2.0x3654.com/torr-<secret>/ (секретный путь — basic-auth ломает CORS)
+# Замер RAM (30.09, micro): idle 98 MiB, стрим пик 132, кеш полон 138 → mem_limit 256m
+# Кеш кусков на диск (UseDisk), кап CacheSize — не больше: диск ru2 9.7 ГБ, своп общий
+path: "/server/torrserver"  # noqa: var-naming[no-role-prefix]
+
+torrserver_domain_name: "ru2.0x3654.com"
+torrserver_cert_path: "/server/certbot"
+torrserver_backend_port: 8091   # published на 127.0.0.1, наружу только через nginx
+torrserver_cache_size: 402653184  # 384 МБ

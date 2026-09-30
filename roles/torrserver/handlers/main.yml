@@ -1,0 +1,19 @@
+---
+# handlers file for torrserver
+
+- name: Docker up torrserver
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: torrserver_compose_up_result
+  changed_when: >-
+    torrserver_compose_up_result.stdout is search('Creating')
+    or torrserver_compose_up_result.stdout is search('Recreating')
+    or torrserver_compose_up_result.stdout is search('Starting')
+  listen: docker up torrserver
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

@@ -1,0 +1,35 @@
+---
+# ru2.0x3654.com был ручным конфигом ru2-jwt (yandex-jwt + /plex/);
+# роль забирает сайт под ansible, добавляя TorrServer. Порядок: сначала снять
+# старый symlink (иначе nginx -t падает по duplicate server_name), потом новый.
+- name: Remove legacy manual site link
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/ru2-jwt
+    state: absent
+
+- name: Configure nginx site for ru2 (JWT + Plex + TorrServer)
+  ansible.builtin.template:
+    src: ru2-site.conf.j2
+    dest: /etc/nginx/sites-available/ru2-0x3654
+    mode: "0644"
+    owner: root
+    group: root
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Enable nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/ru2-0x3654
+    dest: /etc/nginx/sites-enabled/ru2-0x3654
+    state: link
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Test nginx configuration
+  ansible.builtin.command: nginx -t
+  register: torrserver_nginx_test
+  changed_when: false
+  tags: [nginx]
+
+- name: Flush nginx reload before container checks
+  ansible.builtin.meta: flush_handlers

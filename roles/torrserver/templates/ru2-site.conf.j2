@@ -1,0 +1,70 @@
+# {{ torrserver_domain_name }} — yandex-jwt / plex (тоннель с micro) / torrserver
+# Управляется ansible (роль torrserver). До 30.09 был ручным конфигом ru2-jwt.
+limit_req_zone $binary_remote_addr zone=yandex_jwt:10m rate=30r/m;
+
+server {
+    listen 80;
+    server_name {{ torrserver_domain_name }};
+    return 301 https://{{ torrserver_domain_name }}$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name {{ torrserver_domain_name }};
+
+    ssl_certificate {{ torrserver_cert_path }}/live/{{ torrserver_domain_name }}/fullchain.pem;
+    ssl_certificate_key {{ torrserver_cert_path }}/live/{{ torrserver_domain_name }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        return 404;
+    }
+
+    location /yandex-jwt/ {
+        limit_req zone=yandex_jwt burst=10 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:9988/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Plex (тоннель с micro) для https-клиентов Lampa — http-URL режется
+    # браузером как mixed content
+    location /plex/ {
+        proxy_pass http://109.196.164.162:32400/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # PMS отдаёт CORS только своим веб-origin — nginx сам эхит
+        proxy_hide_header Access-Control-Allow-Origin;
+        add_header Access-Control-Allow-Origin $http_origin always;
+    }
+
+    # TorrServer — стриминг торрентов для Lampa. Секретный путь вместо auth:
+    # basic-auth ломает CORS-запросы браузерной лампы, TorrServer шлёт ACAO: *
+    location /{{ torrserver_secret }}/ {
+        proxy_pass http://127.0.0.1:{{ torrserver_backend_port }}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # стриминг: без буферизации, долгие чтения, .torrent-загрузки из UI
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_max_body_size 32m;
+    }
+}

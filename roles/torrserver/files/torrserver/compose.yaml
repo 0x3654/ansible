@@ -1,0 +1,29 @@
+# torrserver (TorrServer MatriX) на ru2 — стриминг торрентов для Lampa
+# Кеш кусков на диск (UseDisk в settings.json), RAM-лимит по замеру: пик 138 MiB
+# Образ пинен дайджестом; обновление = docker pull :latest, вписать новый дайджест
+services:
+  torrserver:
+    image: ghcr.io/yourok/torrserver@sha256:9074e148fe2009c5adcdfdcd460f86d17bea1c7a2f77b540c3930241b5ef5b67
+    container_name: torrserver
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8091:8090"
+    volumes:
+      - ./config:/opt/ts/config
+      - ./torrents:/opt/ts/torrents
+    environment:
+      - TZ=Europe/Moscow
+    restart: unless-stopped
+    mem_limit: 256m
+    memswap_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/echo"]
+      interval: 60s
+      timeout: 5s
+      retries: 3

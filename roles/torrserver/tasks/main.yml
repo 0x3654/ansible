@@ -1,0 +1,12 @@
+---
+- name: Import file copy tasks
+  ansible.builtin.import_tasks: filescopy.yml
+  tags: [filescopy]
+
+- name: Import nginx tasks
+  ansible.builtin.import_tasks: nginx.yml
+  tags: [nginx]
+
+- name: Import deploy tasks
+  ansible.builtin.import_tasks: deploy.yml
+  tags: [deploy]
