@@ -10,6 +10,7 @@
       ansible.builtin.include_vars: "{{ item }}"
       loop:
         - "{{ ansible_roles_path }}/torrserver/vars/main.yml"
+        - "{{ ansible_roles_path }}/torrserver/vars/secrets.yml"
         - "{{ ansible_roles_path }}/torrserver/defaults/main.yml"
         - "{{ ansible_roles_path }}/common/vars/main.yml"
       failed_when: false

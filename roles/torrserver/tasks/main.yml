@@ -10,3 +10,7 @@
 - name: Import deploy tasks
   ansible.builtin.import_tasks: deploy.yml
   tags: [deploy]
+
+- name: Import secret-watch tasks
+  ansible.builtin.import_tasks: secret-watch.yml
+  tags: [secret-watch]
