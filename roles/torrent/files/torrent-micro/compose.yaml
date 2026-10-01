@@ -1,0 +1,101 @@
+services:
+  transmission:
+    image: linuxserver/transmission:latest
+    container_name: transmission
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+      - tsdproxy.enable=true
+      - tsdproxy.name=micro-transmission
+      - tsdproxy.container_port=9091
+    #network_mode: host
+      #"service:wireguard"
+    security_opt:
+      - no-new-privileges:true
+   # ports:
+    #  - "9091:9091"
+     # - "51413:51413"
+      #- "51413:51413/udp"
+    extends:
+      file: ../_secrets/media-binds.yaml
+      service: x-media-binds
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./transmission-postprocess.sh:/opt/transmission-postprocess.sh:ro
+      - ./transmission-added.sh:/opt/transmission-added.sh:ro
+      - ../_data/transmission:/config
+    restart: unless-stopped
+    network_mode: host
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
+  transmission-rss:
+    image: nning2/transmission-rss:latest
+    container_name: transmission-rss
+    extra_hosts:
+      - "moro.local:10.0.1.144"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ../_secrets/transmission-rss.conf:/etc/transmission-rss.conf:ro
+      - ./trss-config:/home/ruby/.config/transmission
+    ports:
+      - "444:443"
+    restart: unless-stopped
+    depends_on:
+      - transmission
+  torrserver:
+    image: ghcr.io/yourok/torrserver:latest
+    container_name: torrserver
+    security_opt:
+      - no-new-privileges:true
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - torrserver:/opt/ts
+    ports:
+      - "8092:8090"
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "torrserver"
+      tsdproxy.container_port: 8090
+      com.centurylinklabs.watchtower.enable: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8090 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  proxy_network:
+    driver: bridge
+  bridge:
+    external: true
+
+volumes:
+  torrserver:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../_data/torrserver
+  transmission-rss:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../_data/transmission-rss
+ # amnesia-client:
+ #   driver: local
+ #   driver_opts:
+ #     type: none
+ #     o: bind
+ #    device: ../_data/awg

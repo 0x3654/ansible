@@ -1,0 +1,4 @@
+---
+# micro torrent stack (/git/docker/torrent): transmission + transmission-rss + torrserver
+torrent_path: "/git/docker/torrent"
+torrent_transmission_container: "transmission"

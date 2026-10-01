@@ -1,0 +1,11 @@
+---
+# Playbook to deploy torrent role (transmission stack files on micro, /git/docker/torrent)
+- name: Deploy torrent stack
+  hosts: torrent_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  tasks:
+    - name: Run torrent role tasks
+      ansible.builtin.include_role:
+        name: torrent
+      tags: [torrent]

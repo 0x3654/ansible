@@ -1,0 +1,30 @@
+---
+- name: Ensure torrent stack directory exists
+  ansible.builtin.file:
+    path: "{{ torrent_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy torrent stack compose
+  ansible.builtin.copy:
+    src: "torrent-micro/compose.yaml"
+    dest: "{{ torrent_path }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Recreate torrent stack
+
+- name: Deploy transmission hook scripts
+  ansible.builtin.copy:
+    src: "torrent-micro/{{ item }}"
+    dest: "{{ torrent_path }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - transmission-postprocess.sh
+    - transmission-added.sh
+    - transmission-healthchek.sh
+  notify: Restart transmission container

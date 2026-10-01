@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: "0x3654"
+  description: Torrent stack files on micro (transmission hooks + compose, /git/docker/torrent)
+  company: "0x3654"
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+  galaxy_tags:
+    - transmission
+    - torrent
+
+dependencies: []

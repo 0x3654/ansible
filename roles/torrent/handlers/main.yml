@@ -1,0 +1,17 @@
+---
+# Hook scripts are bind-mounted single files: a copy replaces the inode and the
+# running container keeps serving the old one until it is restarted
+- name: Restart transmission container
+  ansible.builtin.command: docker restart {{ torrent_transmission_container }}
+  register: torrent_restart_result
+  changed_when: true
+
+- name: Recreate torrent stack
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ torrent_path }}"
+  register: torrent_compose_up_result
+  changed_when: >-
+    torrent_compose_up_result.stdout is search('Creating')
+    or torrent_compose_up_result.stdout is search('Recreating')
+    or torrent_compose_up_result.stdout is search('Starting')
