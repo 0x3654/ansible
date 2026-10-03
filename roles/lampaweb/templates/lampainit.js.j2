@@ -15,6 +15,30 @@
     if (window[FLAG]) return
     window[FLAG] = true
 
+    // apple_tv без привязки к точным пикселям: детект лампы требует
+    // РОВНО innerWidth==1920 && innerHeight==1080 — ломается на
+    // оверсканах (safe-area ужимает до 1760×960), 4K, чужих оболочках.
+    // TV-оболочка = ipad-UA без тача: ей отдаём метрики 1920×1080,
+    // на которые рассчитан TV-дизайн лампы (WebKit сам масштабирует).
+    // Настоящие iPad (с тачем) и десктоп-браузеры не трогаем
+    ;(function(){
+        var ua = (navigator.userAgent || '').toLowerCase()
+
+        if (ua.indexOf('ipad') === -1 || 'ontouchstart' in window) return
+
+        try{
+            Object.defineProperty(window, 'innerWidth', {
+                configurable: true,
+                get: function(){ return 1920 }
+            })
+
+            Object.defineProperty(window, 'innerHeight', {
+                configurable: true,
+                get: function(){ return 1080 }
+            })
+        }catch(e){}
+    })()
+
     // вырезать всё чужое, что не нужно для работы: рекламу cub (преролл
     // перед просмотром и баннеры), аналитику (/api/metric — uid, платформа,
     // premium, гео; каждый запуск плеера), гео-детект (geo.*) и метки
@@ -29,8 +53,9 @@
         function clean(url){
             probe.href = url
 
-            // аналитика, гео, реклама
+            // аналитика, гео, реклама, Shots, tsarea
             if(/\/api\/(ad\/get|metric)\//.test(probe.pathname)) return null
+            if(CUB_JUNK.test(probe.pathname)) return null
             if(/^geo\./.test(probe.hostname)) return null
 
             // logged/email — только своему origin, чужим не сообщаем
@@ -43,6 +68,16 @@
             }
 
             return probe.href
+        }
+
+        // плагины cub, подтягиваемые бандлом с зеркал при каждом старте,
+        // которых на клоне быть не должно: Shots (кадры в карточке/плеере),
+        // tsarea (реклама аренды TorrServer с QR в настройках сервера) —
+        // скрипты не грузятся вовсе, функционала и рекламы нет
+        var CUB_JUNK = /\/plugin\/(shots|tsarea)\//
+
+        function noJunk(url){
+            return CUB_JUNK.test(url) ? 'about:blank' : url
         }
 
         var open = XMLHttpRequest.prototype.open
@@ -95,7 +130,7 @@
 
             Object.defineProperty(proto.prototype, 'src', {
                 get: d.get,
-                set: function(v){ d.set.call(this, strip(String(v))) },
+                set: function(v){ d.set.call(this, noJunk(strip(String(v)))) },
                 configurable: true
             })
         })
@@ -104,7 +139,7 @@
 
         Element.prototype.setAttribute = function(name, value){
             if((name === 'src' || name === 'href') && typeof value === 'string')
-                value = strip(value)
+                value = noJunk(strip(value))
 
             return setAttr.call(this, name, value)
         }
