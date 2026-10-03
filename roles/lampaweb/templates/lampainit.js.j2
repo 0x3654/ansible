@@ -15,7 +15,36 @@
     if (window[FLAG]) return
     window[FLAG] = true
 
-    var BASE = 'https://{{ lampaweb_domain_name }}'
+    // вырезать рекламу cub (преролл перед просмотром и баннеры): бандл
+    // тянет /api/ad/get/preroll|banner с зеркал cub и играет перед
+    // стартом видео. Мы грузимся ДО app.min.js — рвём эти запросы до
+    // выхода в сеть: менеджер рекламы обходит зеркала, получает пустой
+    // список, видео стартует сразу
+    ;(function(){
+        var open = XMLHttpRequest.prototype.open
+        var send = XMLHttpRequest.prototype.send
+
+        XMLHttpRequest.prototype.open = function(method, url){
+            this.__noad = /\/api\/ad\/get\//.test(String(url))
+            return open.apply(this, arguments)
+        }
+
+        XMLHttpRequest.prototype.send = function(){
+            if(!this.__noad) return send.apply(this, arguments)
+
+            var self = this
+
+            setTimeout(function(){
+                if(typeof self.onerror === 'function') self.onerror(new ProgressEvent('error'))
+                else self.dispatchEvent(new ProgressEvent('error'))
+            }, 0)
+        }
+    })()
+
+    // протокол страницы: клон открывают и по http (нативные приложения —
+    // иначе UIWebView режет http://127.0.0.1:8090 как mixed content),
+    // bootstrap грузим тем же протоколом, что и страница
+    var BASE = window.location.protocol + '//' + '{{ lampaweb_domain_name }}'
 
     function boot(){
         if (!window.Lampa) return setTimeout(boot, 100)

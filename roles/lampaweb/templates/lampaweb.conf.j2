@@ -1,14 +1,47 @@
-# Lampa web clone (static) — https://{{ lampaweb_domain_name }}
+# Lampa web clone (static) — https://{{ lampaweb_domain_name }} (+ http для нативных приложений)
 # Managed by Ansible
 
 server {
     listen 80;
     server_name {{ lampaweb_domain_name }};
 
-    # http закрыт наглухо: соединение обрывается без ответа.
-    # На выпуск сертификата не влияет — certbot standalone работает при
-    # остановленном nginx и сам открывает 80-й порт.
-    return 444;
+    # http для нативных приложений (Apple TV): webview UIWebView режет
+    # http://127.0.0.1:8090 (встроенный TorrServer) с https-страницы как
+    # mixed content — встроенная file://-страница не подпадает, https-клон
+    # подпадает; потому клон отдаём и по http, БЕЗ редиректа на https.
+    # Certbot не страдает: standalone работает при остановленном nginx
+    # (common/certbot.yml останавливает целиком).
+    root {{ path }}/webroot;
+    index index.html;
+
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    location = /robots.txt {
+        default_type text/plain;
+        return 200 "User-agent: *\nDisallow: /\n";
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
+        add_header Cache-Control "no-cache";
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri =404;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|ogg|mp4)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri =404;
+    }
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 }
 
 server {
