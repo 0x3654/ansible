@@ -65,11 +65,23 @@ msg=""
 [ -n "$alarms" ] && msg+="🚨 torrserver ru2: подозрение на утечку секрета"$'\n'"$alarms"
 [ -n "$infos" ]  && msg+="ℹ️ torrserver ru2: новые IP на секретном пути"$'\n'"$infos"
 
+# api.telegram.org с сети ru2 недоступен (хостер дропает A-запись, IPv6 не
+# маршрутизируется) — шлём релеем через ae2 по ssh; токен и chat уходят
+# по stdin, в argv удалённого curl попадает только при его запуске
+tg_send() {
+  {
+    printf '%s\n%s\n' "${BOT_TOKEN}" "${CHAT_ID}"
+    printf '%s' "$1"
+  } | ssh -i "${TG_RELAY_KEY:-/root/.ssh/torrserver_tg_relay}" \
+      -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
+      "root@${TG_RELAY_HOST:-ae2.0x3654.com}" \
+      'read -r BT; read -r CI; curl -sf --max-time 15 -X POST "https://api.telegram.org/bot${BT}/sendMessage" -d chat_id="${CI}" --data-urlencode "text=$(cat)"' \
+      >/dev/null 2>&1
+}
+
 if [ -n "$msg" ]; then
   if [ -n "${BOT_TOKEN:-}" ] && [ -n "${CHAT_ID:-}" ]; then
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-      -d chat_id="${CHAT_ID}" \
-      --data-urlencode "text=${msg}" >/dev/null 2>&1 || true
+    tg_send "$msg" || echo "[ERROR] не удалось отправить в TG оба IP" >&2
   else
     echo "[WARN] TG не настроен, событие не отправлено:" >&2
     printf '%s' "$msg" >&2

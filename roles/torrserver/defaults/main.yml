@@ -8,3 +8,4 @@ torrserver_domain_name: "ru2.0x3654.com"
 torrserver_cert_path: "/server/certbot"
 torrserver_backend_port: 8091   # published на 127.0.0.1, наружу только через nginx
 torrserver_cache_size: 402653184  # 384 МБ
+torrserver_tg_relay_host: "ae2.0x3654.com"  # api.telegram.org с ru2 недоступен
