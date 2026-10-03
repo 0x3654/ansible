@@ -66,17 +66,27 @@ msg=""
 [ -n "$infos" ]  && msg+="ℹ️ torrserver ru2: новые IP на секретном пути"$'\n'"$infos"
 
 # api.telegram.org с сети ru2 недоступен (хостер дропает A-запись, IPv6 не
-# маршрутизируется) — шлём релеем через ae2 по ssh; токен и chat уходят
-# по stdin, в argv удалённого curl попадает только при его запуске
+# маршрутизируется). Два независимых пути, чтобы алерт не зависел от одного
+# VPS: основной — релей через ae2 по ssh (токен и chat уходят по stdin),
+# запасной — прямое TLS по фиксированному IPv4 (блок только DNS-уровня).
 tg_send() {
-  {
+  local ip
+  if {
     printf '%s\n%s\n' "${BOT_TOKEN}" "${CHAT_ID}"
     printf '%s' "$1"
   } | ssh -i "${TG_RELAY_KEY:-/root/.ssh/torrserver_tg_relay}" \
       -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
       "root@${TG_RELAY_HOST:-ae2.0x3654.com}" \
       'read -r BT; read -r CI; curl -sf --max-time 15 -X POST "https://api.telegram.org/bot${BT}/sendMessage" -d chat_id="${CI}" --data-urlencode "text=$(cat)"' \
-      >/dev/null 2>&1
+      >/dev/null 2>&1; then
+    return 0
+  fi
+  for ip in 149.154.167.220 149.154.166.110; do
+    curl -sf --max-time 15 --resolve "api.telegram.org:443:${ip}" \
+      -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+      -d chat_id="${CHAT_ID}" --data-urlencode "text=${1}" >/dev/null 2>&1 && return 0
+  done
+  return 1
 }
 
 if [ -n "$msg" ]; then
