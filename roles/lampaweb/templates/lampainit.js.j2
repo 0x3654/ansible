@@ -15,22 +15,52 @@
     if (window[FLAG]) return
     window[FLAG] = true
 
-    // вырезать рекламу cub (преролл перед просмотром и баннеры): бандл
-    // тянет /api/ad/get/preroll|banner с зеркал cub и играет перед
-    // стартом видео. Мы грузимся ДО app.min.js — рвём эти запросы до
-    // выхода в сеть: менеджер рекламы обходит зеркала, получает пустой
-    // список, видео стартует сразу
+    // вырезать всё чужое, что не нужно для работы: рекламу cub (преролл
+    // перед просмотром и баннеры), аналитику (/api/metric — uid, платформа,
+    // premium, гео; каждый запуск плеера), гео-детект (geo.*) и метки
+    // logged=/email= — ими бандл сообщает cub-серверам статус и email
+    // юзера при каждом запросе. Мы грузимся ДО app.min.js — рвём запросы
+    // до выхода в сеть; счётчики молча тихнут, реклама получает пустой
+    // список и видео стартует сразу. Синхронизация аккаунта (api/account,
+    // сокет) и прокси TMDB не трогаются
     ;(function(){
+        var probe = document.createElement('a')
+
+        function clean(url){
+            probe.href = url
+
+            // аналитика, гео, реклама
+            if(/\/api\/(ad\/get|metric)\//.test(probe.pathname)) return null
+            if(/^geo\./.test(probe.hostname)) return null
+
+            // logged/email — только своему origin, чужим не сообщаем
+            if(probe.hostname !== window.location.hostname && probe.search){
+                var q = probe.search.slice(1).split('&').filter(function(p){
+                    return p && p.indexOf('logged=') !== 0 && p.indexOf('email=') !== 0
+                })
+
+                probe.search = q.length ? '?' + q.join('&') : ''
+            }
+
+            return probe.href
+        }
+
         var open = XMLHttpRequest.prototype.open
         var send = XMLHttpRequest.prototype.send
 
-        XMLHttpRequest.prototype.open = function(method, url){
-            this.__noad = /\/api\/ad\/get\//.test(String(url))
-            return open.apply(this, arguments)
+        XMLHttpRequest.prototype.open = function(){
+            var url   = clean(String(arguments[1]))
+            var args  = Array.prototype.slice.call(arguments)
+
+            this.__drop = url === null
+
+            if(!this.__drop && url !== args[1]) args[1] = url
+
+            return open.apply(this, args)
         }
 
         XMLHttpRequest.prototype.send = function(){
-            if(!this.__noad) return send.apply(this, arguments)
+            if(!this.__drop) return send.apply(this, arguments)
 
             var self = this
 
@@ -38,6 +68,45 @@
                 if(typeof self.onerror === 'function') self.onerror(new ProgressEvent('error'))
                 else self.dispatchEvent(new ProgressEvent('error'))
             }, 0)
+        }
+
+        // метки едут не только в XHR: плагины грузятся <script src>,
+        // постеры — <img src> через их зеркала; вырезаем logged/email из
+        // src/href ЛЮБЫХ чужих доменов на уровне DOM (fetch при этом не
+        // трогаем — загрузить надо, меняется только URL)
+        function strip(url){
+            try{
+                probe.href = url
+                if(probe.hostname === window.location.hostname || !probe.search) return url
+
+                var q = probe.search.slice(1).split('&').filter(function(p){
+                    return p && p.indexOf('logged=') !== 0 && p.indexOf('email=') !== 0
+                })
+
+                probe.search = q.length ? '?' + q.join('&') : ''
+                return probe.href
+            }
+            catch(e){ return url }
+        }
+
+        [window.HTMLScriptElement, window.HTMLImageElement].forEach(function(proto){
+            var d = Object.getOwnPropertyDescriptor(proto.prototype, 'src')
+            if(!d || !d.set) return
+
+            Object.defineProperty(proto.prototype, 'src', {
+                get: d.get,
+                set: function(v){ d.set.call(this, strip(String(v))) },
+                configurable: true
+            })
+        })
+
+        var setAttr = Element.prototype.setAttribute
+
+        Element.prototype.setAttribute = function(name, value){
+            if((name === 'src' || name === 'href') && typeof value === 'string')
+                value = strip(value)
+
+            return setAttr.call(this, name, value)
         }
     })()
 

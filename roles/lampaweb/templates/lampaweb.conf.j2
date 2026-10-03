@@ -15,6 +15,8 @@ server {
     index index.html;
 
     add_header X-Robots-Tag "noindex, nofollow" always;
+    # наш домен не светится в логах чужих сервисов (cub-зеркала и пр.)
+    add_header Referrer-Policy "no-referrer" always;
 
     location = /robots.txt {
         default_type text/plain;
@@ -28,6 +30,7 @@ server {
     location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
         add_header Cache-Control "no-cache";
         add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
 
@@ -35,6 +38,7 @@ server {
         expires 7d;
         add_header Cache-Control "public";
         add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
 
@@ -56,8 +60,9 @@ server {
     root {{ path }}/webroot;
     index index.html;
 
-    # клон личный: в индекс не отдаём
+    # клон личный: в индекс не отдаём; домен не светится в чужих логах
     add_header X-Robots-Tag "noindex, nofollow" always;
+    add_header Referrer-Policy "no-referrer" always;
 
     location = /robots.txt {
         default_type text/plain;
@@ -73,14 +78,16 @@ server {
     location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
         add_header Cache-Control "no-cache";
         add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
 
-    # статика кэшируется; заголовок повторён — location перекрывает server
+    # статика кэшируется; заголовки повторены — location перекрывает server
     location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|ogg|mp4)$ {
         expires 7d;
         add_header Cache-Control "public";
         add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
 
