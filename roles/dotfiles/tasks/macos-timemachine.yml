@@ -46,3 +46,56 @@
     cmd: launchctl bootstrap system /Library/LaunchDaemons/com.user.timemachine-nightly.plist
   when: _tm_loaded.rc != 0
   become: true
+
+# ── Docker.raw: не бэкапим VM-диск файлом, данные томов вынимаем архивами ──────
+# Docker Desktop на macOS = один sparse-файл 1.8T логических, грязнится от любого
+# чиха контейнеров; TM в сетевой бандл sparse не умеет → ночные копии ползли
+# часами. Вместо него: pg1c уже дампится в ~/code/_bd_backup, остальные
+# именованные тома экспортируются launchd-агентом 00:30 (до слота TM 01:00).
+
+- name: Time Machine | Docker.raw | проверка наличия
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw"
+  register: _docker_raw
+
+- name: Time Machine | Docker.raw | текущий статус исключения
+  ansible.builtin.command:
+    cmd: tmutil isexcluded {{ ansible_env.HOME }}/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw
+  register: _tm_raw_excl
+  changed_when: false
+  failed_when: false
+  when: _docker_raw.stat.exists
+
+- name: Time Machine | Docker.raw | исключить из TM
+  ansible.builtin.command:
+    cmd: tmutil addexclusion -p {{ ansible_env.HOME }}/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw
+  when:
+    - _docker_raw.stat.exists
+    - "'[Excluded]' not in _tm_raw_excl.stdout"
+  become: true
+
+- name: Time Machine | Docker volumes | каталог ~/.local/bin
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/bin"
+    state: directory
+    mode: "0755"
+
+- name: Time Machine | Docker volumes | скрипт экспорта томов
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/dotfiles/macos/timemachine/backup-docker-volumes.sh"
+    dest: "{{ ansible_env.HOME }}/.local/bin/backup-docker-volumes.sh"
+    mode: "0755"
+
+- name: Time Machine | Docker volumes | LaunchAgent 00:30
+  ansible.builtin.template:
+    src: com.user.backup-docker-volumes.plist.j2
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.user.backup-docker-volumes.plist"
+    mode: "0644"
+  register: _dvl_plist
+
+- name: Time Machine | Docker volumes | перезагрузить агента
+  ansible.builtin.shell: |
+    launchctl bootout gui/$(id -u)/com.user.backup-docker-volumes 2>/dev/null || true
+    launchctl bootstrap gui/$(id -u) {{ ansible_env.HOME }}/Library/LaunchAgents/com.user.backup-docker-volumes.plist
+  when: _dvl_plist.changed
+  changed_when: true

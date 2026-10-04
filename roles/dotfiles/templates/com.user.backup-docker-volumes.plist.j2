@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Экспорт docker-томов в файлы ДО ночного слота Time Machine (01:00):
+         Docker.raw исключён из TM (один файл VM-диска, 1.8T логических),
+         данные томов уезжают архивами как обычные файлы. См. backup-docker-volumes.sh -->
+    <key>Label</key>
+    <string>com.user.backup-docker-volumes</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>{{ansible_env.HOME}}/.local/bin/backup-docker-volumes.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>{{ansible_env.HOME}}/backups/docker-volumes/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ansible_env.HOME}}/backups/docker-volumes/launchd.log</string>
+</dict>
+</plist>
