@@ -1,0 +1,29 @@
+---
+# Рутинный redeploy vdl: свежие образы + health-check.
+# Первичная настройка — setup-vdl.yml.
+- name: Deploy vdl with health-check
+  hosts: vdl_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include vdl role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/vdl/vars/main.yml"
+        - "{{ ansible_roles_path }}/vdl/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/vdl/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run vdl deployment
+      ansible.builtin.include_role:
+        name: vdl
+        tasks_from: deploy.yml
+      tags: [deploy]

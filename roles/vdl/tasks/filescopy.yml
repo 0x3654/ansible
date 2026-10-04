@@ -1,0 +1,25 @@
+---
+- name: Ensure base and cookies directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ path }}"
+    - "{{ vdl_cookies_dir }}"
+  tags: [filescopy]
+
+- name: Seed empty cookies.json if absent
+  ansible.builtin.copy:
+    content: "{}"
+    dest: "{{ vdl_cookies_dir }}/cookies.json"
+    mode: "0600"
+    force: false
+  tags: [filescopy]
+
+- name: Render docker compose from template
+  ansible.builtin.template:
+    src: vdl-compose.yaml.j2
+    dest: "{{ path }}/docker-compose.yaml"
+    mode: "0640"
+  tags: [filescopy]

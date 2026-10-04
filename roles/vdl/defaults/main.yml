@@ -1,0 +1,16 @@
+# vdl — универсальный видео-загрузчик (cobalt + keeper) на https://vdl.0x3654.com
+# Шорткат айфона → GET /dl?token&url → 302 на CDN/tunnel.
+# Куки-менеджер — TG-бот (RockyClawdBot, служебная супергруппа).
+
+path: "/server/vdl"  # noqa: var-naming[no-role-prefix]
+vdl_cert_path: "/server/certbot"
+
+vdl_domain_name: "vdl.0x3654.com"
+vdl_image: "ghcr.io/0x3654/vdl:latest"
+vdl_backend_port: 8360
+vdl_cobalt_port: 9000
+vdl_cobalt_container: "vdl-cobalt"
+# каталог общих кук: keeper пишет cookies.json, cobalt монтирует rw
+vdl_cookies_dir: "{{ path }}/cookies"
+# SOCKS-порт туннеля micro→ae2 (reverse ssh), см. playbooks/vdl-egress.yml
+vdl_socks_port: 1081

@@ -1,0 +1,28 @@
+---
+- name: Docker down vdl
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ path }}"
+  register: vdl_compose_down_result
+  changed_when: >-
+    vdl_compose_down_result.stdout is search('Removing')
+    or vdl_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down vdl
+
+- name: Docker up vdl
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: vdl_compose_up_result
+  changed_when: >-
+    vdl_compose_up_result.stdout is search('Creating')
+    or vdl_compose_up_result.stdout is search('Recreating')
+    or vdl_compose_up_result.stdout is search('Starting')
+  listen: docker up vdl
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

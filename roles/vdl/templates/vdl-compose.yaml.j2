@@ -1,0 +1,54 @@
+# vdl: keeper (Go) + cobalt. Управляется ansible (roles/vdl).
+services:
+  vdl:
+    image: {{ vdl_image }}
+    container_name: vdl
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - cobalt
+    ports:
+      - "127.0.0.1:{{ vdl_backend_port }}:8360"
+    environment:
+      TOKEN: "{{ vdl_token }}"
+      COBALT_URL: "http://cobalt:9000"
+      TG_BOT_TOKEN: "{{ vdl_tg_bot_token }}"
+      TG_ADMIN_CHATS: "{{ vdl_tg_admin_chats }}"
+      COOKIES_OUT: "/out/cookies.json"
+      # реверс-туннель с micro (playbooks/vdl-egress.yml), слушает на хосте
+      TWITTER_SOCKS: "socks5://host.docker.internal:{{ vdl_socks_port }}"
+      CHECK_INTERVAL: "12h"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - vdl-data:/data
+      - {{ vdl_cookies_dir }}:/out
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    security_opt:
+      - no-new-privileges:true
+
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:11
+    container_name: {{ vdl_cobalt_container }}
+    init: true
+    read_only: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ vdl_cobalt_port }}:9000"
+    environment:
+      # обязательно публичный URL — от него строятся /tunnel-ссылки
+      API_URL: "https://{{ vdl_domain_name }}/"
+      COOKIE_PATH: "/cookies.json"
+    volumes:
+      # rw: cobalt сам обновляет куки (refresh ct0) в файле
+      - {{ vdl_cookies_dir }}/cookies.json:/cookies.json
+    tmpfs:
+      - /tmp
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  vdl-data:

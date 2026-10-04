@@ -1,0 +1,29 @@
+---
+# Первоначальная настройка vdl на ae2: каталоги, compose, сертификат,
+# nginx, cron рестарта cobalt, деплой с health-check.
+# Туннель домашнего egress — отдельный плейбук vdl-egress.yml.
+- name: Setup vdl (keeper + cobalt)
+  hosts: vdl_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Include vdl role vars
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - "{{ ansible_roles_path }}/vdl/vars/main.yml"
+        - "{{ ansible_roles_path }}/vdl/vars/secrets.yml"
+        - "{{ ansible_roles_path }}/vdl/defaults/main.yml"
+        - "{{ ansible_roles_path }}/common/vars/main.yml"
+      failed_when: false
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run vdl role
+      ansible.builtin.include_role:
+        name: vdl
+      tags: [always]

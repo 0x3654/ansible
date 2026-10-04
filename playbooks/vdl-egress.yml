@@ -1,0 +1,119 @@
+---
+# Реверс-туннель домашнего egress для vdl: X/instagram банят датацентровые
+# IP, домашний грузинский IP (micro, Тбилиси) «верит что ты смотришь».
+#
+# micro: microsocks на 127.0.0.1:1080 + autossh -R 127.0.0.1:1081 → ae2
+# ae2:   pubkey с restrict (только этот listen), keeper ходит через
+#        socks5://host.docker.internal:1081.
+#
+# Запуск: ansible-playbook playbooks/vdl-egress.yml
+- name: vdl egress — SOCKS с micro на ae2
+  hosts: micro ae2
+  vars:
+    vdl_egress_key: "/root/.ssh/vdl_egress"
+    vdl_socks_local_port: 1080
+    vdl_socks_ae2_port: 1081
+    vdl_egress_target: "ae2.0x3654.com"
+  tasks:
+    - name: micro — установить пакеты
+      ansible.builtin.apt:
+        name: [microsocks, autossh]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      when: inventory_hostname == 'micro'
+      tags: [egress]
+
+    - name: micro — сгенерировать ключ туннеля, если нет
+      ansible.builtin.command:
+        cmd: "ssh-keygen -t ed25519 -N '' -C vdl-egress@micro -f {{ vdl_egress_key }}"
+        creates: "{{ vdl_egress_key }}"
+      when: inventory_hostname == 'micro'
+      tags: [egress]
+
+    - name: micro — прочитать pubkey
+      ansible.builtin.slurp:
+        src: "{{ vdl_egress_key }}.pub"
+      when: inventory_hostname == 'micro'
+      register: vdl_pubkey_file
+      tags: [egress]
+
+    - name: micro — unit microsocks
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/microsocks-vdl.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=microsocks for vdl egress (localhost only)
+          After=network-online.target
+
+          [Service]
+          ExecStart=/usr/bin/microsocks -i 127.0.0.1 -p {{ vdl_socks_local_port }}
+          Restart=always
+          RestartSec=5
+          DynamicUser=yes
+
+          [Install]
+          WantedBy=multi-user.target
+      when: inventory_hostname == 'micro'
+      notify: restart microsocks-vdl
+      tags: [egress]
+
+    - name: micro — unit реверс-туннеля на ae2
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/vdl-egress-tunnel.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=vdl egress reverse tunnel to ae2
+          After=network-online.target microsocks-vdl.service
+
+          [Service]
+          ExecStart=/usr/bin/autossh -M 0 -N \
+            -R 127.0.0.1:{{ vdl_socks_ae2_port }}:127.0.0.1:{{ vdl_socks_local_port }} \
+            -i {{ vdl_egress_key }} \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
+            -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new \
+            root@{{ vdl_egress_target }}
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+      when: inventory_hostname == 'micro'
+      notify: restart vdl-egress-tunnel
+      tags: [egress]
+
+    - name: micro — запустить и включить сервисы
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+      loop: [microsocks-vdl, vdl-egress-tunnel]
+      when: inventory_hostname == 'micro'
+      tags: [egress]
+
+    - name: ae2 — авторизовать ключ туннеля (только этот listen)
+      ansible.posix.authorized_key:
+        user: root
+        state: present
+        key: "{{ hostvars['micro']['vdl_pubkey_file']['content'] | b64decode }}"
+        key_options: 'restrict,permitlisten="127.0.0.1:{{ vdl_socks_ae2_port }}"'
+      when: inventory_hostname == 'ae2'
+      tags: [egress]
+
+  handlers:
+    - name: restart microsocks-vdl
+      ansible.builtin.systemd:
+        name: microsocks-vdl
+        state: restarted
+        daemon_reload: true
+      when: inventory_hostname == 'micro'
+
+    - name: restart vdl-egress-tunnel
+      ansible.builtin.systemd:
+        name: vdl-egress-tunnel
+        state: restarted
+        daemon_reload: true
+      when: inventory_hostname == 'micro'

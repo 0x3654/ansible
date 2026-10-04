@@ -1,0 +1,53 @@
+---
+- name: Deploy vdl with health-check
+  block:
+    - name: Pull latest images
+      ansible.builtin.command: "docker pull {{ item }}"
+      loop:
+        - "{{ vdl_image }}"
+        - "ghcr.io/imputnet/cobalt:11"
+      register: vdl_pull_result
+      changed_when: "'Downloaded newer image' in vdl_pull_result.stdout or 'Pull complete' in vdl_pull_result.stdout"
+      notify: docker up vdl
+      tags: [deploy]
+
+    - name: Bring stack up
+      ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+      args:
+        chdir: "{{ path }}"
+      register: vdl_up_result
+      changed_when: >-
+        vdl_up_result.stdout is search('Creating')
+        or vdl_up_result.stdout is search('Recreating')
+        or vdl_up_result.stdout is search('Starting')
+        or vdl_up_result.stderr is search('Creating')
+        or vdl_up_result.stderr is search('Started')
+      tags: [deploy]
+
+    - name: Wait for keeper to be ready
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: "{{ vdl_backend_port }}"
+        delay: 5
+        timeout: 60
+      tags: [deploy]
+
+    - name: Health check keeper
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ vdl_backend_port }}/healthz"
+        method: GET
+        status_code: [200]
+      register: vdl_health_check
+      retries: 5
+      delay: 5
+      until: vdl_health_check.status == 200
+      tags: [deploy]
+
+    # у cobalt нет health-эндпоинта — проверяем, что слушает порт
+    - name: Wait for cobalt to listen
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: "{{ vdl_cobalt_port }}"
+        delay: 3
+        timeout: 60
+      tags: [deploy]

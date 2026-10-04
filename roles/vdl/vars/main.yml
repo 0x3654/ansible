@@ -1,0 +1,2 @@
+# Including the file with secrets
+vdl_include_vars: secrets.yml

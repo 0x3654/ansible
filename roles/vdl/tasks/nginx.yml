@@ -1,0 +1,31 @@
+---
+# Свой nginx-конфиг вместо common: сплит-локации — /dl,/ → keeper,
+# /tunnel/ → cobalt (туннель стримит большие файлы без буферизации).
+- name: Render vdl nginx site config
+  ansible.builtin.template:
+    src: vdl-nginx.conf.j2
+    dest: "/etc/nginx/sites-available/{{ vdl_domain_name }}"
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Enable vdl site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ vdl_domain_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ vdl_domain_name }}"
+    state: link
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Test nginx configuration
+  ansible.builtin.command: nginx -t
+  register: vdl_nginx_test
+  changed_when: false
+  tags: [nginx]
+
+- name: Ensure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  tags: [nginx]
