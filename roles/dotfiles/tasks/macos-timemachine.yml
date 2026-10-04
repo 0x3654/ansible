@@ -79,23 +79,38 @@
     path: "{{ ansible_env.HOME }}/.local/bin"
     state: directory
     mode: "0755"
+  when: _docker_raw.stat.exists
 
 - name: Time Machine | Docker volumes | скрипт экспорта томов
   ansible.builtin.copy:
     src: "{{ role_path }}/files/dotfiles/macos/timemachine/backup-docker-volumes.sh"
     dest: "{{ ansible_env.HOME }}/.local/bin/backup-docker-volumes.sh"
     mode: "0755"
+  when: _docker_raw.stat.exists
 
 - name: Time Machine | Docker volumes | LaunchAgent 00:30
   ansible.builtin.template:
     src: com.user.backup-docker-volumes.plist.j2
     dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.user.backup-docker-volumes.plist"
     mode: "0644"
+  when: _docker_raw.stat.exists
   register: _dvl_plist
 
 - name: Time Machine | Docker volumes | перезагрузить агента
   ansible.builtin.shell: |
     launchctl bootout gui/$(id -u)/com.user.backup-docker-volumes 2>/dev/null || true
     launchctl bootstrap gui/$(id -u) {{ ansible_env.HOME }}/Library/LaunchAgents/com.user.backup-docker-volumes.plist
-  when: _dvl_plist.changed
+  when:
+    - _docker_raw.stat.exists
+    - _dvl_plist.changed
+  changed_when: true
+
+# citrus и прочие мак-без-докера: вычистить агент, если стоял до guard'а
+- name: Time Machine | Docker volumes | выгрузить агента там, где докера нет
+  ansible.builtin.shell: |
+    launchctl bootout gui/$(id -u)/com.user.backup-docker-volumes 2>/dev/null || true
+    rm -f {{ ansible_env.HOME }}/Library/LaunchAgents/com.user.backup-docker-volumes.plist \
+          {{ ansible_env.HOME }}/.local/bin/backup-docker-volumes.sh
+    exit 0
+  when: not _docker_raw.stat.exists
   changed_when: true
