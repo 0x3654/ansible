@@ -21,7 +21,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - vdl-data:/data
+      - {{ path }}/data:/data
       - {{ vdl_cookies_dir }}:/out
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -49,6 +49,3 @@ services:
       - com.centurylinklabs.watchtower.enable=true
     security_opt:
       - no-new-privileges:true
-
-volumes:
-  vdl-data:

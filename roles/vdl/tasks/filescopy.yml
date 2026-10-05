@@ -9,6 +9,27 @@
     - "{{ vdl_cookies_dir }}"
   tags: [filescopy]
 
+# /data — состояние keeper (accounts.json, query-ids); keeper в контейнере
+# работает как 65534, seed-аккаунты кладём до первого старта
+- name: Ensure data dir exists for keeper (uid 65534)
+  ansible.builtin.file:
+    path: "{{ path }}/data"
+    state: directory
+    mode: "0700"
+    owner: "65534"
+    group: "65534"
+  tags: [filescopy]
+
+# cookies-каталог пишет keeper (65534, tmp+rename); cobalt и cron — root
+- name: Ensure cookies dir writable by keeper
+  ansible.builtin.file:
+    path: "{{ vdl_cookies_dir }}"
+    state: directory
+    mode: "0700"
+    owner: "65534"
+    group: "65534"
+  tags: [filescopy]
+
 - name: Seed empty cookies.json if absent
   ansible.builtin.copy:
     content: "{}"
