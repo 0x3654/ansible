@@ -73,8 +73,9 @@
         // плагины cub, подтягиваемые бандлом с зеркал при каждом старте,
         // которых на клоне быть не должно: Shots (кадры в карточке/плеере),
         // tsarea (реклама аренды TorrServer с QR в настройках сервера) —
-        // скрипты не грузятся вовсе, функционала и рекламы нет
-        var CUB_JUNK = /\/plugin\/(shots|tsarea)\//
+        // скрипты не грузятся вовсе, функционала и рекламы нет.
+        // Хвост НЕ обязательно слэш: реальные адреса /plugin/shots?logged=
+        var CUB_JUNK = /\/plugin\/(shots|tsarea)(\/|\?|$)/
 
         function noJunk(url){
             return CUB_JUNK.test(url) ? 'about:blank' : url
@@ -103,6 +104,28 @@
                 if(typeof self.onerror === 'function') self.onerror(new ProgressEvent('error'))
                 else self.dispatchEvent(new ProgressEvent('error'))
             }, 0)
+        }
+
+        // свежие бандлы грузят куб-плагины и рекламные списки через
+        // fetch() — режем теми же правилами: мусор получает пустой
+        // 404-ответ (зеркала обходятся молча), URL чистятся от меток
+        var nativeFetch = window.fetch && window.fetch.bind(window)
+
+        if(nativeFetch){
+            window.fetch = function(input){
+                var url = typeof input === 'string' ? input : (input && input.url) || String(input)
+                var ok  = clean(url)
+
+                if(ok === null) return Promise.resolve(new Response('', { status: 404 }))
+
+                if(ok !== url && typeof input === 'string'){
+                    var args = Array.prototype.slice.call(arguments)
+                    args[0] = ok
+                    return nativeFetch.apply(null, args)
+                }
+
+                return nativeFetch.apply(null, arguments)
+            }
         }
 
         // метки едут не только в XHR: плагины грузятся <script src>,
