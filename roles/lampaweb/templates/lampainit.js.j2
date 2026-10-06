@@ -58,6 +58,12 @@
             if(CUB_JUNK.test(probe.pathname)) return null
             if(/^geo\./.test(probe.hostname)) return null
 
+            // цензорские списки cub (dmca/lgbt-блокировки контента и чёрный
+            // список плагинов) — частному клону чужая цензура не нужна;
+            // api/checker НЕ трогаем: здоровье зеркал нужно аккаунт-синку
+            if(/\/(lgbt|blocked)\.json$/.test(probe.pathname)) return null
+            if(/\/api\/plugins\/blacklist$/.test(probe.pathname)) return null
+
             // logged/email — только своему origin, чужим не сообщаем
             if(probe.hostname !== window.location.hostname && probe.search){
                 var q = probe.search.slice(1).split('&').filter(function(p){
