@@ -1,0 +1,199 @@
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+      - tsdproxy.enable=true
+      - tsdproxy.name=micro-plex
+      - tsdproxy.container_port=32400
+    security_opt:
+      - no-new-privileges:true
+    #healthcheck:
+    #  test: ["CMD", "curl", "-f", "http://localhost:32400/web/index.html"]
+    #  interval: 30s
+    #  timeout: 10s
+    #  retries: 3
+    env_file:
+      - ../_secrets/plex.env
+    environment:
+      - PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR=/config/
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - VERSION=docker
+      - CHANGE_CONFIG_DIR_OWNERSHIP=true
+      - HOME=/config
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+      - NVIDIA_VISIBLE_DEVICES=ALL
+      - _GL_SHADER_DISK_CACHE_PATH=/config
+    extends:
+      file: ../_secrets/media-binds.yaml
+      service: x-media-binds
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - plex:/config
+      - type: tmpfs
+        target: /transcode
+        tmpfs:
+          size: "2G"
+    network_mode: host
+    dns:
+      - 10.0.1.10
+      - 1.1.1.1
+      - 8.8.8.8
+    #labels:
+    #  tsdproxy.enable: "true"
+    #  tsdproxy.name: "plex"
+    #  tsdproxy.container_port: 32400
+
+  ## passthrough nvidia gpu. delete if not needed. Must install nvidia-container-toolkit on host [
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, compute, utility, video]
+   ## ]
+    restart: unless-stopped
+
+  tautulli:
+    image: ghcr.io/tautulli/tautulli:latest
+    container_name: tautulli
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "0.0.0.0:8381:8181/tcp"
+      - "[::]:8381:8181/tcp"
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "tautulli"
+      tsdproxy.container_port: 8181
+      com.centurylinklabs.watchtower.enable: true
+    env_file:
+      - ../_secrets/plex.env
+    environment:
+      - TAUTULLI_DOCKER=True
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - tautulli:/config
+    restart: unless-stopped
+
+  frpc:
+    image: fatedier/frpc:v0.71.0
+    container_name: frpc
+    command: ["-c", "/etc/frp/frpc.toml"]
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - tunnel
+    restart: unless-stopped
+    volumes:
+      - ./frpc/frpc.toml:/etc/frp/frpc.toml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7400/api/status >/dev/null 2>&1 || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  tunnel-watch:
+    # детектор Plex-туннеля + уведомления в TG (из Тбилиси: из ru2-ДЦ api.telegram.org недоступен)
+    image: alpine:3.20
+    container_name: tunnel-watch
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - tunnel
+    restart: unless-stopped
+    env_file:
+      - ../_secrets/frp-watch.env
+    command: >
+      sh -c 'apk add -q --no-cache curl &&
+        F=0; NOTIFIED=0;
+        while :; do
+          if curl -fsS --max-time 10 http://109.196.164.162:32400/identity 2>/dev/null | grep -q machineIdentifier; then
+            if [ "$$NOTIFIED" -eq 1 ]; then
+              curl -s --max-time 10 "https://api.telegram.org/bot$$TG_TOKEN/sendMessage" -d chat_id="$$TG_CHAT" -d text="✅ Plex-туннель ru2↔micro снова жив" >/dev/null;
+              NOTIFIED=0;
+            fi;
+            F=0;
+          else
+            F=$$((F+1));
+            if [ $$F -ge 3 ] && [ "$$NOTIFIED" -eq 0 ]; then
+              NOTIFIED=1;
+              curl -s --max-time 10 "https://api.telegram.org/bot$$TG_TOKEN/sendMessage" -d chat_id="$$TG_CHAT" -d text="🔴 Plex-туннель ru2↔micro мёртв ~3 мин (3 проверки подряд), http://109.196.164.162:32400 недоступен. frps на ru2 перезапускает check.sh, frpc — restart-политика; не ожило — docker logs frpc и /opt/frp/check.log" >/dev/null;
+            fi;
+          fi;
+          sleep 60;
+        done'
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  frpc-guard:
+    # firewall: из сети tunnel на хосте micro открыт только plex:32400
+    # healthcheck = маркер: unhealthy ~60с после любого перезапуска frpc (StartedAt через docker.sock, только чтение)
+    image: alpine:3.20
+    container_name: frpc-guard
+    security_opt:
+      - no-new-privileges:true
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          ST=$$(curl -s --unix-socket /var/run/docker.sock http://localhost/containers/frpc/json
+          | grep -o '"StartedAt":"[^"]*"' | cut -d'"' -f4 | cut -c1-19);
+          [ -n "$$ST" ] || exit 1;
+          [ "$$ST" \< "$$(date -u -d "@$$(( $$(date -u +%s) - 60 ))" +%FT%T)" ]
+      interval: 15s
+      timeout: 5s
+      retries: 1
+    command: >
+      sh -c 'apk add -q --no-cache iptables curl &&
+        while :; do
+          iptables -C INPUT -s 172.31.99.0/24 -p tcp --dport 32400 -j ACCEPT 2>/dev/null ||
+          iptables -I INPUT 1 -s 172.31.99.0/24 -p tcp --dport 32400 -j ACCEPT;
+          iptables -C INPUT -s 172.31.99.0/24 -j DROP 2>/dev/null ||
+          iptables -I INPUT 2 -s 172.31.99.0/24 -j DROP;
+          sleep 30;
+        done'
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+networks:
+  bridge:
+    external: true
+  tunnel:
+    name: tunnel
+    ipam:
+      config:
+        - subnet: 172.31.99.0/24
+
+volumes:
+  plex:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../_data/plex
+  tautulli:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../_data/tautulli

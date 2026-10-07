@@ -1,0 +1,35 @@
+---
+- name: Ensure mediaserver stack directory exists
+  ansible.builtin.file:
+    path: "{{ mediaserver_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure frpc config directory exists
+  ansible.builtin.file:
+    path: "{{ mediaserver_path }}/frpc"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy mediaserver stack compose
+  ansible.builtin.copy:
+    src: "mediaserver-micro/compose.yaml"
+    dest: "{{ mediaserver_path }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Recreate mediaserver stack
+
+- name: Deploy frpc tunnel config
+  ansible.builtin.template:
+    src: frpc.toml.j2
+    dest: "{{ mediaserver_path }}/frpc/frpc.toml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart frpc container
+  no_log: true

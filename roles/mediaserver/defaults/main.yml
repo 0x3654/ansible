@@ -1,0 +1,9 @@
+---
+# micro mediaserver stack (/git/docker/mediaserver): plex + tautulli + frpc tunnel + guards
+# Data safety: named volumes mediaserver_plex/mediaserver_tautulli are bind-backed to
+# ../_data/{plex,tautulli}; they resolve by compose PROJECT NAME (= directory name).
+# Never rename the role path or the directory - that would orphan the volumes.
+mediaserver_path: "/git/docker/mediaserver"
+mediaserver_frpc_container: "frpc"
+mediaserver_frpc_server_addr: "109.196.164.162"
+mediaserver_frpc_server_port: 7000

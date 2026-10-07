@@ -1,0 +1,17 @@
+---
+# Playbook to deploy mediaserver role (plex stack files on micro, /git/docker/mediaserver)
+- name: Deploy mediaserver stack
+  hosts: mediaserver_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include secrets for the mediaserver role (frpc token)
+    - name: Include mediaserver role secrets
+      ansible.builtin.include_vars:
+        file: "{{ ansible_roles_path }}/mediaserver/vars/secrets.yml"
+      tags: [always]
+  tasks:
+    - name: Run mediaserver role tasks
+      ansible.builtin.include_role:
+        name: mediaserver
+      tags: [mediaserver]

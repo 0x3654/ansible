@@ -1,0 +1,16 @@
+serverAddr = "109.196.164.162"
+serverPort = 7000
+auth.token = "{{ mediaserver_frpc_token }}"
+loginFailExit = false
+transport.tcpMux = false
+
+webServer.addr = "127.0.0.1"
+webServer.port = 7400
+
+[[proxies]]
+name = "plex"
+type = "tcp"
+localIP = "172.31.99.1"
+localPort = 32400
+remotePort = 32400
+
