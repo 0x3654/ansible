@@ -57,18 +57,14 @@
         mode: "0644"
       notify: docker up 3xuiproxy
 
-    - name: Import file copy tasks
-      ansible.builtin.import_tasks: filescopy.yml
-
-    - name: Force handlers to run after file copy
-      ansible.builtin.meta: flush_handlers
-
     - name: Remove stale nested copy from pre-submodule layout
       ansible.builtin.file:
         path: "{{ path }}/3x-ui-sub"
         state: absent
 
-    - name: Remove build-context files from the local-build era
+    - name: Remove build-context files and rollback overrides from earlier eras
+      # docker-compose.override.yml уходит ДО вызова up-хендлера, иначе
+      # откат (rollback-образ) переживает деплой
       ansible.builtin.file:
         path: "{{ path }}/{{ item }}"
         state: absent
@@ -82,6 +78,13 @@
         - generate-env.sh
         - .env.template
         - tests
+        - docker-compose.override.yml
+
+    - name: Import file copy tasks
+      ansible.builtin.import_tasks: filescopy.yml
+
+    - name: Force handlers to run after file copy
+      ansible.builtin.meta: flush_handlers
 
     - name: Read .env file
       ansible.builtin.slurp:
