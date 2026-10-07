@@ -1,0 +1,30 @@
+---
+# Ensure plex library sections match mediaserver_libraries (idempotent):
+# creates missing sections, rewrites location lists that drifted, refreshes.
+# Empty locations are fine - plex shows nothing until a disk is plugged in.
+- name: Flush handlers so plex is (re)started before we talk to it
+  ansible.builtin.meta: flush_handlers
+
+- name: Install the plex library management helper
+  ansible.builtin.copy:
+    src: plex-libraries.py
+    dest: "{{ mediaserver_path }}/plex-libraries.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Manage plex library sections
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ mediaserver_path }}/plex-libraries.py"
+      - "{{ mediaserver_path }}/{{ mediaserver_data_root }}/plex/Plex Media Server/Preferences.xml"
+      - "http://127.0.0.1:32400"
+      - "{{ mediaserver_libraries | to_json }}"
+  register: mediaserver_libraries_result
+  changed_when: >-
+    mediaserver_libraries_result.stdout is search('"changed": \[')
+    and (mediaserver_libraries_result.stdout | from_json).changed | length > 0
+  failed_when: >-
+    mediaserver_libraries_result.stdout is search('"failed"')
+    or mediaserver_libraries_result.rc != 0

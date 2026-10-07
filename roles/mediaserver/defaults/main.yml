@@ -24,3 +24,9 @@ mediaserver_frpc_container: "frpc"
 mediaserver_frp_server_addr: "109.196.164.162"
 mediaserver_frp_server_port: 7000
 # per-host frps tokens live in vars/secrets.yml: mediaserver_frp_tokens[inventory_hostname]
+
+# Library management at deploy time: ensure sections with exact location lists
+# (empty locations are fine - plex shows nothing until a disk is plugged in).
+# Entry: {name, type: movie|show, agent, scanner, language, locations: [...]}
+mediaserver_manage_libraries: false
+mediaserver_libraries: []

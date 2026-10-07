@@ -69,3 +69,8 @@
     mode: "0644"
   notify: Restart frpc container
   no_log: true
+
+- name: Manage plex library sections
+  ansible.builtin.import_tasks: libraries.yml
+  when: mediaserver_manage_libraries
+  tags: [libraries]
