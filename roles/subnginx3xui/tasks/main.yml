@@ -10,11 +10,13 @@
       ansible.builtin.import_tasks: certbot.yml
 
     - name: Find all 3x-ui config files
+      # Конфиги 3x-ui живут в эталонном репо на moro (gitignored, в чекауте
+      # Semaphore их нет) — читаем по абсолютному пути с делегированием.
       ansible.builtin.find:
-        paths: "{{ playbook_dir }}/../configs"
+        paths: "{{ subnginx3xui_configs_dir }}"
         patterns: "3x-ui_*.yml"
       register: subnginx3xui_config_files
-      delegate_to: localhost
+      delegate_to: moro
 
     - name: Extract suburls from config files
       no_log: true
@@ -24,7 +26,7 @@
       loop: "{{ subnginx3xui_config_files.files }}"
       loop_control:
         loop_var: subnginx3xui_current_config_file
-      delegate_to: localhost
+      delegate_to: moro
 
     - name: Set vpn_servers_sub variable
       ansible.builtin.set_fact:
@@ -42,6 +44,18 @@
             {%- endif -%}
           {%- endfor -%}
           {{ suburls | join(' ') }}
+
+    - name: Sync SERVERS in .env from ansible configs
+      # Единственный автоматически управляемый ключ .env: список апстримов
+      # собирается из configs/3x-ui_*.yml. Остальные ключи (SUB, SITE_*, TLS_MODE,
+      # PATH_SSL_KEY) задаются вручную при первичной установке — как в README.
+      # restart не перечитывает env_file: пересоздаёт контейнер только up -d.
+      ansible.builtin.lineinfile:
+        path: "{{ path }}/.env"
+        regexp: '^SERVERS='
+        line: 'SERVERS="{{ subnginx3xui_vpn_servers_sub }}"'
+        mode: "0644"
+      notify: docker up 3xuiproxy
 
     - name: Import file copy tasks
       ansible.builtin.import_tasks: filescopy.yml
@@ -69,13 +83,6 @@
         - .env.template
         - tests
 
-    - name: Restart nginx proxy to reload .env configuration
-      ansible.builtin.command:
-        cmd: "{{ common_compose_command | default('docker compose') }} restart nginx"
-        chdir: "{{ path }}"
-      register: subnginx3xui_restart_result
-      changed_when: subnginx3xui_restart_result.rc == 0
-
     - name: Read .env file
       ansible.builtin.slurp:
         src: "{{ subnginx3xui_nginx_proxy_sub }}/.env"
@@ -101,8 +108,8 @@
     - name: Create all subs config file
       ansible.builtin.template:
         src: all_subs.yml.j2
-        dest: "{{ playbook_dir }}/../configs/all_3x-ui_sub.yml"
+        dest: "{{ subnginx3xui_configs_dir }}/all_3x-ui_sub.yml"
         mode: "0644"
       vars:
         all_configs: "{{ subnginx3xui_config_contents }}"
-      delegate_to: localhost
+      delegate_to: moro

@@ -19,6 +19,10 @@ path: "{{ pwd }}/3x-ui-sub"  # noqa: var-naming[no-role-prefix]
 subnginx3xui_nginx_proxy_sub: "{{ path }}"
 subnginx3xui_cert_path: "{{ pwd }}/certbot"
 
+# Эталонный каталог конфигов 3x-ui (gitignored, живёт в репо на moro);
+# из него собирается SERVERS для .env прокси
+subnginx3xui_configs_dir: /Users/m/code/ansible/configs
+
 # File permissions
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0644"  # noqa: var-naming[no-role-prefix]
