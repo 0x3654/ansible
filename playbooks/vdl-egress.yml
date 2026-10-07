@@ -99,7 +99,8 @@
         user: root
         state: present
         key: "{{ hostvars['micro']['vdl_pubkey_file']['content'] | b64decode }}"
-        key_options: 'restrict,permitlisten="127.0.0.1:{{ vdl_socks_ae2_port }}"'
+        # restrict/no-port-forwarding блокируют даже с permitlisten (проверено живьём)
+        key_options: 'no-pty,permitlisten="127.0.0.1:{{ vdl_socks_ae2_port }}"'
       when: inventory_hostname == 'ae2'
       tags: [egress]
 
