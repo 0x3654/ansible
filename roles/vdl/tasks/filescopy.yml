@@ -38,6 +38,12 @@
     force: false
   tags: [filescopy]
 
+- name: Resolve docker group gid (для монтирования сокета в keeper)
+  ansible.builtin.getent:
+    database: group
+    key: docker
+  tags: [filescopy]
+
 - name: Render docker compose from template
   ansible.builtin.template:
     src: vdl-compose.yaml.j2
