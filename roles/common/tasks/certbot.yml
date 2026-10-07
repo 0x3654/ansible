@@ -72,7 +72,11 @@
         common_cert_days_until: "{{ common_cert_days_diff | int }}"
 
     - name: Debug certificate renewal status
+      # гард зеркалит Set renewal flag: common_cert_days_diff протухает с
+      # предыдущего домена (facts живут на хосте всю пьесу), а без
+      # per-domain переменной lookup('vars') валит задачу наглухо
       when:
+        - common_ssl_cert_valid
         - common_cert_days_diff is defined
       ansible.builtin.debug:
         msg:
