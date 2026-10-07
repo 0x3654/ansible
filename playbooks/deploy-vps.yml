@@ -13,6 +13,18 @@
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:
 
+    # Guard: every committed submodule pointer must exist on its remote,
+    # otherwise the Semaphore checkout dies with "upload-pack: not our ref"
+    # and takes down every task of the project.
+    - name: Verify submodule pointers are published
+      ansible.builtin.command: bash ../scripts/check-submodules.sh
+      args:
+        chdir: "{{ playbook_dir }}"
+      delegate_to: localhost
+      run_once: true
+      changed_when: false
+      tags: [always]
+
     # Load host_vars if exists
     - name: Load host_vars
       ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"

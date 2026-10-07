@@ -33,7 +33,7 @@
   listen: docker down vpnserver
 
 - name: Docker up vpnserver
-  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d --build"
   args:
     chdir: "{{ path }}"
   register: vpnserver_compose_up_result
