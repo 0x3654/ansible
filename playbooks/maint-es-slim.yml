@@ -35,12 +35,18 @@
         - /server/3x-ui
         - /server/fail2ban
 
+    - name: Check for legacy fail2ban config mount
+      ansible.builtin.stat:
+        path: /path/to/fail2ban/config
+      register: es_slim_f2b_legacy
+
     - name: Migrate fail2ban config from /path/to mount to role path
       ansible.builtin.copy:
         src: /path/to/fail2ban/config
         dest: "{{ vpnserver_fail2ban_path }}/config"
         remote_src: true
         mode: preserve
+      when: es_slim_f2b_legacy.stat.exists
 
     - name: Fix ownership of migrated fail2ban config (LSIO PUID)
       ansible.builtin.file:
@@ -48,6 +54,7 @@
         owner: "1000"
         group: "1000"
         recurse: true
+      when: es_slim_f2b_legacy.stat.exists
 
     - name: Render main compose without dead channels
       ansible.builtin.template:
