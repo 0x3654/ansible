@@ -11,7 +11,7 @@
   listen: docker down 3xuiproxy
 
 - name: Docker up 3xuiproxy
-  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d --build"
   args:
     chdir: "{{ path }}"
   register: subnginx3xui_compose_up_result
