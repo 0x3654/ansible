@@ -1,4 +1,27 @@
 ---
+- name: Build the list of required host secret files
+  ansible.builtin.set_fact:
+    mediaserver_required_secrets: >-
+      {{ ['plex.env']
+         + (['media-binds.yaml'] if mediaserver_media_binds_extends else [])
+         + (['frp-watch.env'] if mediaserver_frp_tunnel else []) }}
+
+- name: Verify required host secret files exist
+  ansible.builtin.stat:
+    path: "{{ mediaserver_path }}/{{ mediaserver_secrets_dir }}/{{ item }}"
+  loop: "{{ mediaserver_required_secrets }}"
+  register: mediaserver_secret_stats
+
+- name: Fail with guidance when a required secret file is missing
+  ansible.builtin.assert:
+    that: mediaserver_secret_stats.results | selectattr('stat.exists') | list | length == mediaserver_required_secrets | length
+    fail_msg: >-
+      Missing secret file(s) on {{ inventory_hostname }}:
+      {{ mediaserver_required_secrets | difference(mediaserver_secret_stats.results | selectattr('stat.exists') | map(attribute='item') | list) }}.
+      Create them under {{ mediaserver_path }}/{{ mediaserver_secrets_dir }}/ on the host
+      (see roles/mediaserver/README.md) - secret files live on hosts, not in git.
+    quiet: true
+
 - name: Ensure mediaserver stack directory exists
   ansible.builtin.file:
     path: "{{ mediaserver_path }}"
