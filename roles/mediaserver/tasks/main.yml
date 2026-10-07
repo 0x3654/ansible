@@ -22,6 +22,17 @@
       (see roles/mediaserver/README.md) - secret files live on hosts, not in git.
     quiet: true
 
+- name: Ensure data directories exist
+  ansible.builtin.file:
+    path: "{{ mediaserver_path }}/{{ mediaserver_data_root }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - plex
+    - tautulli
+
 - name: Ensure mediaserver stack directory exists
   ansible.builtin.file:
     path: "{{ mediaserver_path }}"
