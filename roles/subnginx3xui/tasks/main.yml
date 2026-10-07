@@ -54,6 +54,21 @@
         path: "{{ path }}/3x-ui-sub"
         state: absent
 
+    - name: Remove build-context files from the local-build era
+      ansible.builtin.file:
+        path: "{{ path }}/{{ item }}"
+        state: absent
+      loop:
+        - Dockerfile
+        - config_fetcher.lua
+        - nginx.conf.esh
+        - README.md
+        - README_RU.md
+        - LICENSE
+        - generate-env.sh
+        - .env.template
+        - tests
+
     - name: Restart nginx proxy to reload .env configuration
       ansible.builtin.command:
         cmd: "{{ common_compose_command | default('docker compose') }} restart nginx"

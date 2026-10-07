@@ -4,11 +4,10 @@
   vars:
     common_up_handler_name: "docker up 3xuiproxy"
     common_down_handler_name: "docker down 3xuiproxy"
-    # Copy submodule contents flat: filetree paths are relative to this dir,
-    # so files land in {{ path }}/ directly (compose builds from {{ path }}/Dockerfile).
-    # Pointing at files/ would nest everything under 3x-ui-sub/ and leave the
-    # pre-submodule flat files stale — compose kept rebuilding the old lua.
-    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/subnginx3xui/files/3x-ui-sub"
+    # Prod runs the published ghcr.io image, so the role ships only the
+    # compose file (plus .env generated from ansible configs) — no repo
+    # checkout, no local build.
+    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/subnginx3xui/files/"
     common_folder_user: "{{ folder_user }}"
     common_directory_mode: "{{ directory_mode }}"
     common_file_mode: "{{ file_mode }}"
