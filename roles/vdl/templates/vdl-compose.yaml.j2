@@ -15,11 +15,7 @@ services:
       TG_BOT_TOKEN: "{{ vdl_tg_bot_token }}"
       TG_ADMIN_CHATS: "{{ vdl_tg_admin_chats }}"
       COOKIES_OUT: "/out/cookies.json"
-      # реверс-туннель с micro (playbooks/vdl-egress.yml), слушает на хосте
-      TWITTER_SOCKS: "socks5://host.docker.internal:{{ vdl_socks_port }}"
       CHECK_INTERVAL: "12h"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - {{ path }}/data:/data
       - {{ vdl_cookies_dir }}:/out
