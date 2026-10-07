@@ -1,4 +1,10 @@
 ---
+- name: Resolve docker group gid
+  ansible.builtin.getent:
+    database: group
+    key: docker
+  tags: [deploy]
+
 - name: Deploy vdl with health-check
   block:
     - name: Pull latest images
