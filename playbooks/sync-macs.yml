@@ -733,6 +733,25 @@
       - "Bongo Cat"
 
   tasks:
+    # Взаимная страховка: sync-macs (02:23) чистит чекаут snapshot (tpl17,
+    # стартует 01:53 СЛЕДУЮЩЕЙ ночи). Если snapshot упал из-за битого
+    # git-рефа — к следующему утру чекаут уже пересоздан.
+    - name: Чекаут snapshot в контейнере — пересоздать если битый
+      ansible.builtin.shell: |
+        OUT=$(docker exec semaphore sh -c
+          "ls /tmp/semaphore/project_1/repository_2_template_17/.git 2>/dev/null && cd /tmp/semaphore/project_1/repository_2_template_17 && git fsck --no-progress 2>&1 | head -3" 2>&1)
+        if echo "$OUT" | grep -q "missing\|not our ref\|dangling commit"; then
+          docker exec semaphore rm -rf /tmp/semaphore/project_1/repository_2_template_17
+          echo "CLEANED: tpl17 checkout was broken"
+        else
+          echo "OK: tpl17 checkout healthy"
+        fi
+      delegate_to: "{{ source_host }}"
+      register: _watchdog_tpl17
+      changed_when: "'CLEANED' in _watchdog_tpl17.stdout"
+      failed_when: false
+      tags: [always, watchdog]
+
     - name: TG-креды для оповещений (vault manage — бот watchtower)
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../roles/manage/vars/secrets.yml"

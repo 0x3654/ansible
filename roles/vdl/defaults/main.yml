@@ -12,5 +12,3 @@ vdl_cobalt_port: 9000
 vdl_cobalt_container: "vdl-cobalt"
 # каталог общих кук: keeper пишет cookies.json, cobalt монтирует rw
 vdl_cookies_dir: "{{ path }}/cookies"
-# SOCKS-порт туннеля micro→ae2 (reverse ssh), см. playbooks/vdl-egress.yml
-vdl_socks_port: 1081

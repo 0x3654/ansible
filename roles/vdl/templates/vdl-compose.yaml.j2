@@ -16,8 +16,6 @@ services:
       TG_ADMIN_CHATS: "{{ vdl_tg_admin_chats }}"
       COOKIES_OUT: "/out/cookies.json"
       CHECK_INTERVAL: "12h"
-      # реверс-туннель с micro: домашний IP для X; лежит — идём напрямую
-      TWITTER_SOCKS: "socks5://host.docker.internal:{{ vdl_socks_port }}"
       COBALT_CONTAINER: "{{ vdl_cobalt_container }}"
     volumes:
       - {{ path }}/data:/data
@@ -26,8 +24,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
       - "{{ getent_group['docker'][1] }}"  # группа docker хоста
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     labels:
       - com.centurylinklabs.watchtower.enable=true
     security_opt:
