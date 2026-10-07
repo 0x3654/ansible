@@ -1,6 +1,6 @@
 serverAddr = "109.196.164.162"
 serverPort = 7000
-auth.token = "{{ mediaserver_frpc_token }}"
+auth.token = "{{ mediaserver_frp_tokens[inventory_hostname] }}"
 loginFailExit = false
 transport.tcpMux = false
 

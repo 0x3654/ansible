@@ -1,9 +1,26 @@
 ---
-# micro mediaserver stack (/git/docker/mediaserver): plex + tautulli + frpc tunnel + guards
-# Data safety: named volumes mediaserver_plex/mediaserver_tautulli are bind-backed to
-# ../_data/{plex,tautulli}; they resolve by compose PROJECT NAME (= directory name).
-# Never rename the role path or the directory - that would orphan the volumes.
+# Universal mediaserver role (micro + nano). Host differences come from the
+# mediaserver_role group/host vars in the inventory - see README.md for the
+# per-host checklist. micro: nvidia gpu, tsdproxy labels, ru2 frp tunnel, LAN DNS.
+# nano: everything off by default; images are multi-arch, no GPU -> software transcode.
+
+# Stack directory. Compose PROJECT NAME (= volume prefix mediaserver_plex/…)
+# derives from it - never rename on a live host or the volumes orphan.
 mediaserver_path: "/git/docker/mediaserver"
+mediaserver_data_root: "../_data"       # relative to the compose dir; bind-backed named volumes
+mediaserver_secrets_dir: "../_secrets"  # per-host secret files (plex.env, media-binds.yaml) live on the host
+mediaserver_media_binds_extends: false  # true: extend plex with <secrets>/media-binds.yaml (x-media-binds)
+mediaserver_transcode_size: "2G"        # plex /transcode tmpfs size
+
+# Feature flags (override per host in inventory)
+mediaserver_gpu: false                  # nvidia passthrough (needs nvidia-container-toolkit on the host)
+mediaserver_tsdproxy: false             # tsdproxy labels on plex/tautulli
+mediaserver_plex_tsdproxy_name: "plex"
+mediaserver_dns: []                     # custom resolver list for plex (empty = omit the block)
+mediaserver_frp_tunnel: false           # frpc + tunnel-watch + frpc-guard services + tunnel network
+
+# frp tunnel internals (only used when mediaserver_frp_tunnel is true)
 mediaserver_frpc_container: "frpc"
-mediaserver_frpc_server_addr: "109.196.164.162"
-mediaserver_frpc_server_port: 7000
+mediaserver_frp_server_addr: "109.196.164.162"
+mediaserver_frp_server_port: 7000
+# per-host frps tokens live in vars/secrets.yml: mediaserver_frp_tokens[inventory_hostname]
