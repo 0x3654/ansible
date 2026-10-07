@@ -49,6 +49,11 @@
     - name: Force handlers to run after file copy
       ansible.builtin.meta: flush_handlers
 
+    - name: Remove stale nested copy from pre-submodule layout
+      ansible.builtin.file:
+        path: "{{ path }}/3x-ui-sub"
+        state: absent
+
     - name: Restart nginx proxy to reload .env configuration
       ansible.builtin.command:
         cmd: "{{ common_compose_command | default('docker compose') }} restart nginx"

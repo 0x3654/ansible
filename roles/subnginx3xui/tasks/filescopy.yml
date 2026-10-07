@@ -4,7 +4,11 @@
   vars:
     common_up_handler_name: "docker up 3xuiproxy"
     common_down_handler_name: "docker down 3xuiproxy"
-    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/subnginx3xui/files/"
+    # Copy submodule contents flat: filetree paths are relative to this dir,
+    # so files land in {{ path }}/ directly (compose builds from {{ path }}/Dockerfile).
+    # Pointing at files/ would nest everything under 3x-ui-sub/ and leave the
+    # pre-submodule flat files stale — compose kept rebuilding the old lua.
+    common_files_source_dir: "{{ lookup('env', 'PWD') }}/roles/subnginx3xui/files/3x-ui-sub"
     common_folder_user: "{{ folder_user }}"
     common_directory_mode: "{{ directory_mode }}"
     common_file_mode: "{{ file_mode }}"
