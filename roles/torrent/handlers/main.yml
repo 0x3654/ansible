@@ -6,6 +6,11 @@
   register: torrent_restart_result
   changed_when: true
 
+- name: Restart transmission-rss container
+  ansible.builtin.command: docker restart {{ torrent_rss_container }}
+  register: torrent_rss_restart_result
+  changed_when: true
+
 - name: Recreate torrent stack
   ansible.builtin.command: docker compose up -d
   args:

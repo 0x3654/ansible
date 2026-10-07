@@ -28,3 +28,13 @@
     - transmission-added.sh
     - transmission-healthchek.sh
   notify: Restart transmission container
+
+- name: Deploy transmission-rss config
+  ansible.builtin.template:
+    src: transmission-rss.conf.j2
+    dest: "{{ torrent_rss_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart transmission-rss container
+  no_log: true

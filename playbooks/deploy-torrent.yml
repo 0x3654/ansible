@@ -4,6 +4,12 @@
   hosts: torrent_role
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    # Include secrets for the torrent role (rss feeds + transmission creds)
+    - name: Include torrent role secrets
+      ansible.builtin.include_vars:
+        file: "{{ ansible_roles_path }}/torrent/vars/secrets.yml"
+      tags: [always]
   tasks:
     - name: Run torrent role tasks
       ansible.builtin.include_role:

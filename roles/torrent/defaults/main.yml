@@ -2,3 +2,11 @@
 # micro torrent stack (/git/docker/torrent): transmission + transmission-rss + torrserver
 torrent_path: "/git/docker/torrent"
 torrent_transmission_container: "transmission"
+
+# transmission-rss (feeds + creds live in vars/secrets.yml)
+torrent_rss_conf_path: "/git/docker/_secrets/transmission-rss.conf"
+torrent_rss_container: "transmission-rss"
+torrent_rss_server_host: "10.0.1.51"
+torrent_rss_server_port: 9091
+torrent_rss_update_interval: 600
+torrent_rss_download_path: "/mnt/torrent/disk1/movie"

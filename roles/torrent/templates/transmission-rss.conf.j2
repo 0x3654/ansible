@@ -1,0 +1,19 @@
+feeds:
+{% for feed in torrent_rss_feeds %}
+  - url: "{{ feed.url }}"
+    seen_by_guid: true
+    download_path: "{{ torrent_rss_download_path }}"
+{% endfor %}
+
+server:
+  host: "{{ torrent_rss_server_host }}"
+  port: {{ torrent_rss_server_port }}
+  tls: false
+  rpc_path: "/transmission/rpc"
+  seen_by_guid: true
+{% if torrent_rss_username is defined and torrent_rss_username | length > 0 %}
+login:
+  username: "{{ torrent_rss_username }}"
+  password: "{{ torrent_rss_password }}"
+{% endif %}
+update_interval: {{ torrent_rss_update_interval }}
