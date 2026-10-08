@@ -1,0 +1,2 @@
+FROM ghcr.io/imputnet/yt-session-generator:webserver
+RUN sed -i "s/browser = await nodriver.start(headless=False,/browser = await nodriver.start(headless=False, no_sandbox=True,/" /app/potoken_generator/extractor.py
