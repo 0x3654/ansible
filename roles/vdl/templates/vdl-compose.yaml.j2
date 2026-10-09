@@ -15,6 +15,7 @@ services:
       TG_BOT_TOKEN: "{{ vdl_tg_bot_token }}"
       TG_ADMIN_CHATS: "{{ vdl_tg_admin_chats }}"
       COOKIES_OUT: "/out/cookies.json"
+      COBALT_AGE_URL: "http://172.17.0.1:9002"
       CHECK_INTERVAL: "12h"
       COBALT_CONTAINER: "{{ vdl_cobalt_container }}"
     volumes:
@@ -74,3 +75,21 @@ services:
       - {{ path }}/get_pot_shim.py:/shim.py:ro
     labels:
       - com.centurylinklabs.watchtower.enable=false
+
+  # age-gate youtube: тот же cobalt, исходящий трафик через домашний
+  # egress (реверс-туннель micro → 127.0.0.1:8888), host-сеть до loopback
+  cobalt-age:
+    image: ghcr.io/imputnet/cobalt:11
+    container_name: vdl-cobalt-age
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      API_PORT: "9002"
+      API_URL: "https://ae2.0x3654.com/"
+      HTTP_PROXY: "http://127.0.0.1:8888"
+      NO_PROXY: "localhost,127.0.0.1"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    security_opt:
+      - no-new-privileges:true

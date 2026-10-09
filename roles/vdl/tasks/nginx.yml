@@ -29,3 +29,19 @@
     state: started
     enabled: true
   tags: [nginx]
+
+- name: Render vdl age vhost (cobalt-age tunnels)
+  ansible.builtin.template:
+    src: vdl-age-nginx.conf.j2
+    dest: "/etc/nginx/sites-available/ae2.0x3654.com-vdl"
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Enable vdl age vhost
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/ae2.0x3654.com-vdl"
+    dest: "/etc/nginx/sites-enabled/ae2.0x3654.com-vdl"
+    state: link
+  notify: reload nginx
+  tags: [nginx]
