@@ -41,6 +41,7 @@ services:
       # обязательно публичный URL — от него строятся /tunnel-ссылки
       API_URL: "https://{{ vdl_domain_name }}/"
       COOKIE_PATH: "/cookies.json"
+      YOUTUBE_SESSION_SERVER: "http://potshim:8080/"
     volumes:
       # rw: cobalt сам обновляет куки (refresh ct0) в файле
       - {{ vdl_cookies_dir }}/cookies.json:/cookies.json
@@ -51,4 +52,25 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # PO-токены ютуба (age-gate): bgutil-provider, формат совместим с cobalt /get_pot
+  bgpot:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: vdl-bgpot
+    init: true
+    restart: unless-stopped
+    shm_size: "1g"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    security_opt:
+      - no-new-privileges:true
 
+  # прокладка: cobalt POST без Content-Type -> bgutil требует JSON-заголовок
+  potshim:
+    image: python:3.12-alpine
+    container_name: vdl-potshim
+    restart: unless-stopped
+    command: python /shim.py
+    volumes:
+      - {{ path }}/get_pot_shim.py:/shim.py:ro
+    labels:
+      - com.centurylinklabs.watchtower.enable=false

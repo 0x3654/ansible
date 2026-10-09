@@ -44,6 +44,13 @@
     key: docker
   tags: [filescopy]
 
+- name: Copy pot shim script
+  ansible.builtin.copy:
+    src: vdl/get_pot_shim.py
+    dest: "{{ path }}/get_pot_shim.py"
+    mode: "0644"
+  tags: [filescopy]
+
 - name: Render docker compose from template
   ansible.builtin.template:
     src: vdl-compose.yaml.j2
