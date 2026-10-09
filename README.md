@@ -76,14 +76,24 @@ ansible/
 ├── playbooks/          # плейбуки
 ├── roles/
 │   ├── .template/      # скаффолд для новых ролей
+│   ├── blocky/         # локальный DoH-резолвер homelab-хоста
 │   ├── common/         # переиспользуемые задачи: apt, filescopy, firewall, certbot
+│   ├── dotfiles/       # dotfiles-сабмодуль + применение по платформам
 │   ├── gisp/           # поиск по реестру Минпромторга
-│   ├── homelab/        # медиасервер, smarthome, торренты
-│   ├── macbook/        # DevOps-окружение на MBA
-│   ├── manage/         # обновления, обслуживание серверов
+│   ├── homelab/        # базис homelab-хоста: пакеты, samba, compose-стеки
+│   ├── jackett/        # Jackett (агрегатор трекеров)
+│   ├── lampa/          # Lampa медиа-фронт
+│   ├── lampaweb/       # публичный статический клон веб-Lampa
+│   ├── manage/         # watchtower/beszel/tailscale на серверах
+│   ├── mediaserver/    # plex-стек (plex, tautulli, опц. frp-туннель)
 │   ├── semaphore/      # Semaphore CI
-│   ├── subnginx3xui/   # nginx-прокси для 3x-ui подписок
-│   ├── untilwall/      # untilwall
+│   ├── subnginx3xui/   # прокси-агрегатор подписок 3x-ui
+│   ├── timemachine/    # Time Machine шара (samba+avahi)
+│   ├── torrent/        # transmission + transmission-rss
+│   ├── torrserver/     # TorrServer: торрент-стриминг для Lampa
+│   ├── trackertop/     # фронт «Топ · трекеры»
+│   ├── untilwall/      # автообновляемые обои-календарь
+│   ├── vdl/            # видео-загрузчик (cobalt + keeper)
 │   └── vpnserver/      # VPN: 3x-ui/Xray + AmnesiaWG
 ├── group_vars/         # vault-переменные по группам: vps — словарь серверов 3x-ui
 ├── configs/            # локальные артефакты клиентов (AWG/mtproxy), gitignored
@@ -168,6 +178,7 @@ cp roles/<role>/vars/secrets.yml.example roles/<role>/vars/secrets.yml
 ## Документация по ролям
 
 - [gisp](roles/gisp/README.md) — GISP стек: downloader → import → embeddings
-- [homelab](roles/homelab/README.md) — homelab
+- [homelab](roles/homelab/README.md) — базис homelab-хоста
+- [mediaserver](roles/mediaserver/README.md) — plex-стек
 - [vpnserver](roles/vpnserver/README.md) — VPN серверы (хранение конфигов серверов)
 - [subnginx3xui](roles/subnginx3xui/README.md) — прокси-агрегатор подписок 3x-ui
