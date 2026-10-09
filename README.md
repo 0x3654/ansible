@@ -85,7 +85,8 @@ ansible/
 │   ├── subnginx3xui/   # nginx-прокси для 3x-ui подписок
 │   ├── untilwall/      # untilwall
 │   └── vpnserver/      # VPN: 3x-ui/Xray + AmnesiaWG
-├── configs/            # конфиги 3x-ui, AWG клиентов
+├── group_vars/         # vault-переменные по группам: vps — словарь серверов 3x-ui
+├── configs/            # локальные артефакты клиентов (AWG/mtproxy), gitignored
 ├── ansible.cfg
 ├── makefile
 └── requirements.yml
@@ -134,12 +135,24 @@ cp -r roles/.template roles/<new_role>
 
 ## Секреты
 
-Роли с секретами содержат `vars/secrets.yml.example`:
+Два уровня:
+
+1. **Ролевые** — `roles/<role>/vars/secrets.yml` (vault) из `.example`-шаблона:
 
 ```bash
 cp roles/<role>/vars/secrets.yml.example roles/<role>/vars/secrets.yml
 # заполнить значения
 ```
+
+2. **Групповые** — `group_vars/<группа>/secrets.yml` (vault): данные, общие
+для нескольких ролей. Пример: словарь серверов 3x-ui в
+`group_vars/vps/secrets.yml` виден только хостам группы `vps` (как
+хранение устроено и как пополняется при первичном развёрте —
+[roles/vpnserver/README.md](roles/vpnserver/README.md)).
+
+Секреты и их метаданные не должны появляться в публичном дереве под
+раскрывающими именами: нейтральные пути (`group_vars/vps/`), данные —
+только внутри vault-шифра.
 
 ---
 
@@ -156,4 +169,5 @@ cp roles/<role>/vars/secrets.yml.example roles/<role>/vars/secrets.yml
 
 - [gisp](roles/gisp/README.md) — GISP стек: downloader → import → embeddings
 - [homelab](roles/homelab/README.md) — homelab
-- [vpnserver](roles/vpnserver/README.md) — VPN серверы
+- [vpnserver](roles/vpnserver/README.md) — VPN серверы (хранение конфигов серверов)
+- [subnginx3xui](roles/subnginx3xui/README.md) — прокси-агрегатор подписок 3x-ui

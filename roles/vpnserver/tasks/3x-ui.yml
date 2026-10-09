@@ -34,26 +34,21 @@
     - name: Prepare config for import
       when: vpnserver_import_needed
       block:
-        - name: Check if config file exists
-          ansible.builtin.stat:
-            path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-          register: vpnserver_config_file
-          delegate_to: localhost
+        - name: Set config presence fact
+          # Серверные конфиги живут в vault-словаре group_vars/vps/secrets.yml
+          # (three_ui_servers); отсутствие ключа = первичный развёрт
+          ansible.builtin.set_fact:
+            vpnserver_config_exists: "{{ domain_name in (three_ui_servers | default({})) }}"
 
-        - name: Extract values from config file
-          when: vpnserver_config_file.stat.exists
+        - name: Extract values from config
+          when: vpnserver_config_exists
           block:
-            - name: Read config content
-              ansible.builtin.slurp:
-                path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-              register: vpnserver_config_content
-              delegate_to: localhost
-
-            - name: Parse YAML
+            - name: Load server config
               ansible.builtin.set_fact:
-                vpnserver_config_yaml: "{{ vpnserver_config_content.content | b64decode | from_yaml }}"
+                vpnserver_config_yaml: "{{ three_ui_servers[domain_name] }}"
+              no_log: true
 
-            - name: Extract values from YAML
+            - name: Extract values from config
               ansible.builtin.set_fact:
                 vpnserver_web_port: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
                 vpnserver_web_base_path: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:\\d+/(.*?)/', '\\1') | first }}"
@@ -62,9 +57,10 @@
                 vpnserver_sub_json_path: "{{ vpnserver_config_yaml.subscription.subJsonPath }}"
                 vpnserver_username: "{{ vpnserver_config_yaml.panel.username }}"
                 vpnserver_password: "{{ vpnserver_config_yaml.panel.password }}"
+              no_log: true
 
-        - name: Generate values if config is missing
-          when: vpnserver_config_file.stat is defined and not vpnserver_config_file.stat.exists
+        - name: Generate values if server config is missing
+          when: not vpnserver_config_exists
           ansible.builtin.set_fact:
             vpnserver_web_port: "{{ 20000 | random(10000) }}"
             vpnserver_web_base_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
@@ -168,13 +164,25 @@
           changed_when: vpnserver_import_result.rc == 0
           failed_when: vpnserver_import_result.rc != 0
 
-        - name: Save generated config file
-          when: vpnserver_config_file.stat is defined and not vpnserver_config_file.stat.exists
+        - name: Render new server config fragment
+          # Первичный развёрт: фрагмент уходит скрипту, который вольёт его
+          # в vault-словарь group_vars/vps/secrets.yml и закоммитит (ниже)
+          when: not vpnserver_config_exists
           ansible.builtin.template:
             src: 3x-ui.yml.j2
-            dest: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
+            dest: "{{ vpnserver_configs_dir }}/new-3xui-fragment.yml"
             mode: '0600'
-          delegate_to: localhost
+          delegate_to: moro
+
+        - name: Merge new server into vault group_vars and commit
+          # Плейнтекст живёт секунды: скрипт на moro расшифровывает, мержит,
+          # шифрует обратно и пушит точным pathspec
+          when: not vpnserver_config_exists
+          delegate_to: moro
+          ansible.builtin.command:
+            cmd: "python3 /Users/m/code/ansible/scripts/add_3xui_server.py {{ domain_name }} {{ vpnserver_configs_dir }}/new-3xui-fragment.yml"
+            chdir: /Users/m/code/ansible
+          changed_when: true
 
         - name: Restart 3x-ui container
           ansible.builtin.command: docker start 3x-ui

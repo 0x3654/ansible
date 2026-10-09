@@ -9,38 +9,19 @@
     - name: Import certbot tasks
       ansible.builtin.import_tasks: certbot.yml
 
-    - name: Find all 3x-ui config files
-      # Конфиги 3x-ui живут в эталонном репо на moro (gitignored, в чекауте
-      # Semaphore их нет) — читаем по абсолютному пути с делегированием.
-      ansible.builtin.find:
-        paths: "{{ subnginx3xui_configs_dir }}"
-        patterns: "3x-ui_*.yml"
-      register: subnginx3xui_config_files
-      delegate_to: moro
-
-    - name: Extract suburls from config files
-      no_log: true
-      ansible.builtin.slurp:
-        src: "{{ subnginx3xui_current_config_file.path }}"
-      register: subnginx3xui_config_contents
-      loop: "{{ subnginx3xui_config_files.files }}"
-      loop_control:
-        loop_var: subnginx3xui_current_config_file
-      delegate_to: moro
-
     - name: Set vpn_servers_sub variable
+      # Апстримы берутся из vault-словаря three_ui_servers
+      # (group_vars/vps/secrets.yml): base_url = suburl без последнего сегмента
+      no_log: true
       ansible.builtin.set_fact:
         subnginx3xui_vpn_servers_sub: >-
           {%- set suburls = [] -%}
-          {%- for content in subnginx3xui_config_contents.results -%}
-            {%- if content.content is defined -%}
-              {%- set config = content.content | b64decode | from_yaml -%}
-              {%- if config.subscription is defined and config.subscription.suburl is defined -%}
-                {%- set url = config.subscription.suburl -%}
-                {%- set url_parts = url.split('/') -%}
-                {%- set base_url = url_parts[:-1] | join('/') + '/' -%}
-                {%- set _ = suburls.append(base_url) -%}
-              {%- endif -%}
+          {%- for dom, cfg in (three_ui_servers | default({})).items() -%}
+            {%- if cfg.subscription is defined and cfg.subscription.suburl is defined -%}
+              {%- set url = cfg.subscription.suburl -%}
+              {%- set url_parts = url.split('/') -%}
+              {%- set base_url = url_parts[:-1] | join('/') + '/' -%}
+              {%- set _ = suburls.append(base_url) -%}
             {%- endif -%}
           {%- endfor -%}
           {{ suburls | join(' ') }}

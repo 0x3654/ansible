@@ -1,48 +1,56 @@
-# VPN Servers Role
+# vpnserver
 
-## Overview
-Role for setting up and managing VPN servers using Docker containers. Supports multiple VPN protocols and provides comprehensive security features.
+Роль разворачивает 3x-ui (панель + Reality-инбаунд) на VPS группы `vps`
+и сопутствующее: файрвол, fail2ban, WARP-прокси, опциональные каналы
+(mtproxy/awg — переключаются переменными хоста).
 
-## Features
-- Multi-protocol VPN support (3x-ui/Xray, AmnesiaWG)
-- Automatic SSL certificate management with Certbot
-- Firewall configuration with iptables
-- Fail2ban integration for security
-- Docker-based deployment
-- Subscription system for VPN configurations
+## Хранение конфигов серверов
 
-## Requirements
-- Ansible 2.9+
-- Docker and docker-compose on target servers
-- SSH access to target servers
-- Tested on Ubuntu 20.04/22.04 and Debian 12
+Персональные данные каждого сервера (креды панели, sub-адреса, пути)
+живут в **одном vault-словаре** `three_ui_servers` в
+`group_vars/vps/secrets.yml` (ansible-vault, ключ `default`):
 
-## Role Variables
-
-### Required Variables (vars/secrets.yml)
-- `panel_username`: Admin username for 3x-ui panel
-- `panel_password`: Admin password for 3x-ui panel
-- `amneziawg_password`: Password for AmnesiaWG admin panel
-- `cloudflare_email`: Email for Cloudflare API
-- `cloudflare_api_key`: API key for Cloudflare DNS management
-
-### Optional Variables (defaults/main.yml)
-- `domain_name`: Domain name for SSL certificate
-- `city`: City name for configuration identification
-- `update_repo`: Enable/disable repository updates (default: true)
-- `force_repo_update`: Force repository updates (default: true)
-- `PWD`: Base directory for installations (default: "/server")
-
-## Dependencies
-- common role (for basic server setup)
-- watchtower role (for container updates)
-
-## Example Playbook
 ```yaml
-- hosts: vpn_servers
-  roles:
-    - role: vpn_servers
-      vars:
-        domain_name: "vpn.example.com"
-        city: "amsterdam"
+three_ui_servers:
+  <домен хоста>:            # ключ = domain_name из инвентаря
+    panel:
+      url: ...              # адрес панели с портом и base-path
+      username: ...
+      password: ...
+    subscription:
+      suburl: ...           # адрес подписки (порт/путь/subId)
+      subJsonPath: ...
+    # ...сервисные секции (server_info и пр.)
 ```
+
+Почему так:
+- путь `group_vars/vps/` нейтрален: в публичном дереве репо нет ни имён
+  серверов, ни факта структуры файлов; данные видны только хостам группы vps
+- чекаут Semaphore самодостаточен: vault-ключ проекта расшифровывает файл,
+  никакого обращения к эталонной машине за секретами
+- доступ по потребности: роль на хосте берёт только свой ключ
+  `three_ui_servers[domain_name]`; агрегатор подписок (роль subnginx3xui)
+  итерирует все значения
+
+## Первичный развёрт нового сервера
+
+Если ключа хоста в словаре нет, роль:
+1. генерирует значения (порты, пути, креды, Reality-ключи) и импортирует их
+   в sqlite 3x-ui;
+2. рендерит фрагмент конфига во временный файл на эталонной машине;
+3. `scripts/add_3xui_server.py` расшифровывает `group_vars/vps/secrets.yml`,
+   вливает фрагмент под ключ домена, шифрует обратно и коммитит+пушит
+   точным pathspec (плейнтекст живёт секунды, чужие правки рабочей копии
+   не затрагиваются).
+
+Повторные прогоны ветку первичного развёртывания пропускают (в sqlite уже
+есть настройки) и только читают словарь.
+
+## Читатели словаря
+
+- `tasks/3x-ui.yml` — креды панели и sub-адреса при импорте/извлечении
+- `tasks/firewall.yml` — порты панели и подписки для правил
+
+При добавлении нового читателя: только прямой доступ к `three_ui_servers`;
+slurp/b64decode/from_yaml по vault-файлам запрещён (шифроблоб парсится
+в строку, а core 2.20 валидирует args даже у скипнутых тасок).

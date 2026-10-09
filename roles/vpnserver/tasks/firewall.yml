@@ -1,29 +1,13 @@
 - name: 3x-ui Extract values from config
   block:
-    - name: Check if config file exists
-      ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-      register: vpnserver_config_file
-      delegate_to: localhost
-      failed_when: false
-
-    - name: Read and parse config file
-      when: vpnserver_config_file.stat.exists | default(false)
-      block:
-        - name: Read config file content
-          ansible.builtin.slurp:
-            path: "{{ playbook_dir }}/../configs/3x-ui_{{ domain_name }}.yml"
-          register: vpnserver_config_content
-          delegate_to: localhost
-
-        - name: Parse YML config
-          ansible.builtin.set_fact:
-            vpnserver_config_yaml: "{{ vpnserver_config_content['content'] | b64decode | from_yaml }}"
-
-        - name: Extract values from YML
-          ansible.builtin.set_fact:
-            vpnserver_web_port: "{{ vpnserver_config_yaml.panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
-            vpnserver_sub_port: "{{ vpnserver_config_yaml.subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first }}"
+    # Серверные конфиги живут в vault-словаре group_vars/vps/secrets.yml
+    - name: Extract values from vault config
+      when: domain_name in (three_ui_servers | default({}))
+      ansible.builtin.set_fact:
+        vpnserver_config_yaml: "{{ three_ui_servers[domain_name] }}"
+        vpnserver_web_port: "{{ (three_ui_servers[domain_name].panel.url | regex_search('https://.*:(\\d+)/', '\\1') | first) if three_ui_servers[domain_name].panel is defined else omit }}"
+        vpnserver_sub_port: "{{ (three_ui_servers[domain_name].subscription.suburl | regex_search('https://.*:(\\d+)/', '\\1') | first) if three_ui_servers[domain_name].subscription is defined else omit }}"
+      no_log: true
 
     - name: Set firewall rules
       ansible.builtin.set_fact:
