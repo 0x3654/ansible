@@ -1,0 +1,24 @@
+---
+# Полная роль marks: сертификат, nginx, контейнер + health-check.
+# Рутина — deploy.yml-тег; сертификат выпускается при первом прогоне.
+- name: Deploy marks (single marks store)
+  hosts: marks_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  pre_tasks:
+    - name: Load role defaults
+      ansible.builtin.include_vars: "{{ ansible_roles_path }}/marks/defaults/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+
+  tasks:
+    - name: Run marks role
+      ansible.builtin.include_role:
+        name: marks
+      tags: [always]

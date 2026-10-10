@@ -1,0 +1,28 @@
+---
+- name: Docker down marks
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ path }}"
+  register: marks_compose_down_result
+  changed_when: >-
+    marks_compose_down_result.stdout is search('Removing')
+    or marks_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down marks
+
+- name: Docker up marks
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: marks_compose_up_result
+  changed_when: >-
+    marks_compose_up_result.stdout is search('Creating')
+    or marks_compose_up_result.stdout is search('Recreating')
+    or marks_compose_up_result.stdout is search('Starting')
+  listen: docker up marks
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

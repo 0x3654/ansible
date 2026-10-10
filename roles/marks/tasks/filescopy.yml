@@ -1,0 +1,23 @@
+---
+- name: Ensure base directory exists
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: directory
+    mode: "0755"
+  tags: [filescopy]
+
+- name: Copy compose file from role files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/marks/files/marks/compose.yaml"
+    dest: "{{ path }}/docker-compose.yaml"
+    mode: "0644"
+  tags: [filescopy]
+
+# секрет — в .env рядом с compose (interpolation), файл 0600
+- name: Write marks secret env file
+  ansible.builtin.copy:
+    content: "MARKS_SECRET={{ marks_secret }}\n"
+    dest: "{{ path }}/.env"
+    mode: "0600"
+  no_log: true
+  tags: [filescopy]

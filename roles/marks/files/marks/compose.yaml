@@ -1,0 +1,19 @@
+# marks — стабильное хранилище отметок Lampa (GET/POST /m/<secret>/, LWW),
+# браузерный клиент ходит с https-страниц клона
+services:
+  marks:
+    image: ghcr.io/0x3654/marks:latest
+    container_name: marks
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8357:8356"
+    command: ["-addr", ":8356", "-data", "/data", "-secret", "${MARKS_SECRET}"]
+    volumes:
+      - marks-data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+
+volumes:
+  marks-data:

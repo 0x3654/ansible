@@ -1,0 +1,13 @@
+---
+- name: Configure nginx for marks
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ marks_domain_name }}"
+    common_nginx_site_name: "marks"
+    common_nginx_ssl_enabled: true
+    common_nginx_ssl_cert: "{{ marks_cert_path }}/live/{{ marks_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ marks_cert_path }}/live/{{ marks_domain_name }}/privkey.pem"
+    common_nginx_backend_port: "{{ marks_backend_port }}"
+  tags: [nginx]

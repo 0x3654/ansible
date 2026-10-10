@@ -1,0 +1,8 @@
+# marks — «одна база» отметок Lampa (ручные отметки/история/«Просмотрено»),
+# публичный фронт https://marks.0x3654.com/m/<секрет>/
+path: "/server/marks"  # noqa: var-naming[no-role-prefix]
+marks_cert_path: "/server/certbot"  # noqa: var-naming[no-role-prefix]
+
+marks_domain_name: "marks.0x3654.com"
+marks_image: "ghcr.io/0x3654/marks:latest"
+marks_backend_port: 8357
