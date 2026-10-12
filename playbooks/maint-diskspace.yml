@@ -103,8 +103,26 @@
                 state: absent
               loop: "{{ old_temps.results | map(attribute='files') | sum(start=[]) }}"
 
+            - name: Find old torrserver cache files
+              ansible.builtin.find:
+                paths: /server/torrserver/tmp
+                age: "{{ temp_age_days }}d"
+                recurse: true
+                file_type: file
+              register: torrserver_cache_files
+              when: "'torrserver_role' in group_names"
+
+            - name: Delete old torrserver cache files
+              no_log: true
+              ansible.builtin.file:
+                path: "{{ item.path }}"
+                state: absent
+              loop: "{{ torrserver_cache_files.files | default([]) }}"
+              when: "'torrserver_role' in group_names"
+
             - name: Docker cleanup
-              when: "'docker' in ansible_facts.packages"
+              # match docker / docker-ce / docker.io package names
+              when: ansible_facts.packages | dict2items | selectattr('key', 'search', 'docker') | list | length > 0
               block:
                 - name: Remove stopped containers
                   ansible.builtin.command: docker container prune -f

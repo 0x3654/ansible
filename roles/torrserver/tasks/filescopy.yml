@@ -8,6 +8,7 @@
     - "{{ path }}"
     - "{{ path }}/config"
     - "{{ path }}/torrents"
+    - "{{ path }}/tmp"
   tags: [filescopy]
 
 - name: Copy docker compose file from role files
