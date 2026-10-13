@@ -21,6 +21,9 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
 {% endif %}
+{% if common_nginx_client_max_body_size is defined %}
+    client_max_body_size {{ common_nginx_client_max_body_size }};
+{% endif %}
 
 {% for path in common_nginx_denied_locations | default([]) %}
     location {{ path }} {

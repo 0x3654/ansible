@@ -10,4 +10,5 @@
     common_nginx_ssl_cert: "{{ marks_cert_path }}/live/{{ marks_domain_name }}/fullchain.pem"
     common_nginx_ssl_key: "{{ marks_cert_path }}/live/{{ marks_domain_name }}/privkey.pem"
     common_nginx_backend_port: "{{ marks_backend_port }}"
+    common_nginx_client_max_body_size: "8m"
   tags: [nginx]
