@@ -1,0 +1,25 @@
+# jacred init.yaml — managed by ansible (roles/jacred)
+listenip: any
+listenport: {{ jacred_backend_port }}
+apikey: "{{ jacred_api_key }}"
+devkey: "{{ jacred_dev_key }}"
+
+# базу никого не парсим через облачный sync (он за Cloudflare-WAF),
+# наполняем сами кронами с этого хоста
+syncapi: ""
+opensync: false
+
+mergeduplicates: true
+mergenumduplicates: true
+openstats: true
+web: true
+
+# Cloudflare-трекеры (rutracker/kinozal): FlareSolverr + cffetch через
+# WARP-контейнер — датацентровой IP ae2 Cloudflare режет
+flaresolverr:
+  enable: true
+  url: http://host.docker.internal:8191/v1
+  crawlUrl: http://host.docker.internal:8193/v1
+cffetch:
+  enable: true
+  url: http://host.docker.internal:8192/fetch

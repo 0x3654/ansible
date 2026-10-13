@@ -1,0 +1,8 @@
+# jacred — свой инстанс JacRed (агрегатор трекеров, Jackett-совместимый API),
+# публичный фронт https://jacred.0x3654.com. Замена умершему по IP-блоклисту
+# публичному прокси jac.red. Данные (FileDB) — в ./data рядом с compose.
+path: "/server/jacred"  # noqa: var-naming[no-role-prefix]
+jacred_cert_path: "/server/certbot"  # noqa: var-naming[no-role-prefix]
+
+jacred_domain_name: "jacred.0x3654.com"
+jacred_backend_port: 9117

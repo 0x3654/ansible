@@ -1,0 +1,28 @@
+---
+- name: Docker down jacred
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} down"
+  args:
+    chdir: "{{ path }}"
+  register: jacred_compose_down_result
+  changed_when: >-
+    jacred_compose_down_result.stdout is search('Removing')
+    or jacred_compose_down_result.stdout is search('Stopped')
+  failed_when: false
+  listen: docker down jacred
+
+- name: Docker up jacred
+  ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
+  args:
+    chdir: "{{ path }}"
+  register: jacred_compose_up_result
+  changed_when: >-
+    jacred_compose_up_result.stdout is search('Creating')
+    or jacred_compose_up_result.stdout is search('Recreating')
+    or jacred_compose_up_result.stdout is search('Starting')
+  listen: docker up jacred
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: reload nginx

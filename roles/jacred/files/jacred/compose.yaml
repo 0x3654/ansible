@@ -1,0 +1,65 @@
+# jacred — свой инстанс JacRed (Jackett-совместимый API) на VPS
+# VPS-вариант из их доков: WARP-контейнер даёт «не-датацентровой» IP
+# для FlareSolverr/cffetch (Cloudflare-трекеры), парсеры — системный cron
+services:
+  jacred:
+    image: ghcr.io/jacred-fdb/jacred:latest
+    container_name: jacred
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:9117:9117"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/Data
+    environment:
+      - TZ=Europe/Moscow
+    depends_on:
+      - flaresolverr
+      - flaresolverr-crawl
+      - cffetch
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Moscow
+      - PROXY_URL=socks5://127.0.0.1:20001
+      - DISABLE_MEDIA=true
+
+  flaresolverr-crawl:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr-crawl
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Moscow
+      - PORT=8193
+      - PROXY_URL=socks5://127.0.0.1:20001
+      - DISABLE_MEDIA=true
+
+  cffetch:
+    image: ghcr.io/jacred-fdb/cffetch:latest
+    container_name: cffetch
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - CFFETCH_PROXY=socks5://127.0.0.1:20001
+      - CFFETCH_IMPERSONATE=chrome136
+
+  warp:
+    image: caomingjun/warp
+    container_name: warp
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - warp-data:/var/lib/cloudflare-warp
+
+volumes:
+  warp-data:

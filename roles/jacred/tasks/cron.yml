@@ -1,0 +1,25 @@
+---
+# Парсеры JacRed живут не внутри контейнера, а в системном cron:
+# crontab -> data/run-job.sh (flock) -> HTTP /cron/{slug}/{action}
+- name: Ensure cron is installed and running
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  tags: [cron]
+
+- name: Ensure cron service is running
+  ansible.builtin.service:
+    name: cron
+    state: started
+    enabled: true
+  tags: [cron]
+
+- name: Install jacred crontab
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/jacred/templates/crontab.j2"
+    dest: /etc/cron.d/jacred
+    mode: "0644"
+    owner: root
+    group: root
+  no_log: true
+  tags: [cron]

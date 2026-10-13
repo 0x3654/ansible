@@ -1,0 +1,25 @@
+---
+# Полная роль jacred: контейнерный стек, сертификат, nginx, cron парсеров.
+# Рутина — deploy.yml-тег; сертификат выпускается при первом прогоне.
+- name: Deploy jacred (self-hosted tracker aggregator)
+  hosts: jacred_role
+  vars:
+    ansible_roles_path: "{{ playbook_dir }}/../roles"
+  vars_files:
+    - "{{ playbook_dir }}/../roles/jacred/vars/secrets.yml"
+  pre_tasks:
+    - name: Load role defaults
+      ansible.builtin.include_vars: "{{ ansible_roles_path }}/jacred/defaults/main.yml"
+      failed_when: false
+      delegate_to: localhost
+      tags: [always]
+
+    - name: Load host_vars if exists
+      ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ inventory_hostname }}.yml"
+      failed_when: false
+      tags: [always]
+  tasks:
+    - name: Run jacred role
+      ansible.builtin.include_role:
+        name: jacred
+      tags: [always]

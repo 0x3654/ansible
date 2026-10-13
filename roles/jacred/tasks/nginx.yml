@@ -1,0 +1,13 @@
+---
+- name: Configure nginx for jacred
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: nginx.yml
+  vars:
+    common_nginx_server_name: "{{ jacred_domain_name }}"
+    common_nginx_site_name: "jacred"
+    common_nginx_ssl_enabled: true
+    common_nginx_ssl_cert: "{{ jacred_cert_path }}/live/{{ jacred_domain_name }}/fullchain.pem"
+    common_nginx_ssl_key: "{{ jacred_cert_path }}/live/{{ jacred_domain_name }}/privkey.pem"
+    common_nginx_backend_port: "{{ jacred_backend_port }}"
+  tags: [nginx]
