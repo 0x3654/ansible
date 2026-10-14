@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Универсальный локальный бэкап-раннер (хост запускает сам, без сети).
+
+ansible только доставляет этот файл и контракты (см. роль backup) —
+данные гоняет сам хост, вынос копий наружу (TM, pull с micro) — слои поверх.
+
+Контракты: ~/.backups/contracts/*.json (mac) | /etc/opt/backup/contracts (linux):
+  {"role": "semaphore", "items": [
+     {"name": "data", "kind": "bind", "path": "...", "retention": 7},
+     {"name": "db",    "kind": "volume", "volume": "x", "retention": 7},
+     {"name": "db",    "kind": "pg", "container": "c", "db": "d", "retention": 7},
+     {"name": "vols",  "kind": "docker-volumes", "skip": "re1|re2", "retention": 7},
+     {"name": "m",     "kind": "docker-manifest", "retention": 7},
+     {"name": "x",     "kind": "none", "why": "stateless"}
+  ]}
+retention — целыми комплектами: N свежих файлов на item (не по файлам:
+прецедент pg1c — «без изменений» + пофайловая ротация = база без копий).
+Итог — run-report text рядом с данными; любой FAIL = exit 1 (ловит
+класс «молча отработало вхолостую», прецедент PATH-баг 05.10).
+"""
+import json
+import re
+import subprocess
+import sys
+import time
+from datetime import date
+from pathlib import Path
+
+IS_MAC = sys.platform == "darwin"
+HOME = Path.home()
+BACKUPS = HOME / "backups" if IS_MAC else Path("/var/backups")
+CONTRACTS_DIR = HOME / ".backups/contracts" if IS_MAC else Path("/etc/opt/backup/contracts")
+DOCKER = ["/usr/local/bin/docker"] if Path("/usr/local/bin/docker").exists() else ["docker"]
+
+
+def sh(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+
+
+def rotate(dest, pattern, keep):
+    files = sorted(dest.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+    for f in files[keep:]:
+        f.unlink()
+
+
+def do_bind(item, dest, stamp, log):
+    out = dest / f"{stamp}-{item['name']}.tgz"
+    if out.exists() and out.stat().st_size > 0:
+        return "skip-exists"
+    r = sh(["tar", "czf", str(out), "-C", item["path"], "."])
+    if r.returncode:
+        out.unlink(missing_ok=True)
+        raise RuntimeError(f"tar {item['path']}: {r.stderr.strip()[:200]}")
+    return f"ok {out.stat().st_size // 1024}K"
+
+
+def do_volume(item, dest, stamp, log):
+    vol = item["volume"]
+    out = dest / f"{stamp}-{vol}.tgz"
+    if out.exists() and out.stat().st_size > 0:
+        return "skip-exists"
+    tmp = dest / f"{out.name}.part"
+    r = sh(DOCKER + ["run", "--rm", "-v", f"{vol}:/src:ro", "-v", f"{dest}:/dst",
+                     "alpine:3.20", "tar", "czf", f"/dst/{tmp.name}", "-C", "/src", "."])
+    if r.returncode:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"volume {vol}: {r.stderr.strip()[:200]}")
+    tmp.rename(out)
+    return f"ok {out.stat().st_size // 1024}K"
+
+
+def do_pg(item, dest, stamp, log):
+    c, db = item["container"], item["db"]
+    out = dest / f"{stamp}-{db}.dump"
+    if out.exists() and out.stat().st_size > 0:
+        return "skip-exists"
+    tmp = dest / f"{out.name}.part"
+    with open(tmp, "wb") as f:
+        p = subprocess.run(DOCKER + ["exec", c, "pg_dump", "-Fc", "-U",
+                                     item.get("user", "postgres"), db],
+                           stdout=f, stderr=subprocess.PIPE, timeout=7200)
+    if p.returncode:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"pg_dump {db}: {p.stderr.decode()[:200]}")
+    tmp.rename(out)
+    return f"ok {out.stat().st_size // 1024}K"
+
+
+def do_docker_volumes(item, dest, stamp, log):
+    skip = re.compile(item.get("skip", "$^"))
+    r = sh(DOCKER + ["volume", "ls", "--format", "{{.Name}}"])
+    if r.returncode:
+        raise RuntimeError(f"volume ls: {r.stderr.strip()[:200]}")
+    names = [v for v in r.stdout.split()
+             if not re.fullmatch(r"[0-9a-f]{64}", v) and not skip.search(v)]
+    if not names:
+        raise RuntimeError("volume list EMPTY (docker не виден? PATH/daemon)")
+    ok = 0
+    for v in names:
+        try:
+            do_volume({"volume": v}, dest, stamp, log)
+            ok += 1
+        except RuntimeError as e:
+            log.append(f"    FAIL {v}: {e}")
+    return f"ok {ok}/{len(names)}"
+
+
+def do_manifest(item, dest, stamp, log):
+    """Снимок docker-состояния: ps/volumes/images/networks/compose + inspect.
+    Прецедент 14.10: Docker.raw пересоздан — список «что бегало» искали в чатах."""
+    parts = [f"# docker state manifest {stamp}", "## docker ps -a"]
+    for cmd, fmt in [("ps -a", "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"),
+                     ("volume ls", "{{.Name}}"),
+                     ("image ls", "{{.Repository}}:{{.Tag}}  {{.ID}}  {{.CreatedAt}}"),
+                     ("network ls", "{{.Name}}")]:
+        r = sh(DOCKER + cmd.split() + ["--format", fmt])
+        if r.returncode:
+            raise RuntimeError(f"docker {cmd}: {r.stderr.strip()[:120]}")
+        parts += [f"\n## {cmd}", r.stdout]
+    r = sh(DOCKER + ["compose", "ls", "-a"])
+    parts += ["\n## compose projects", r.stdout]
+    (dest / f"manifest-{stamp}.txt").write_text("\n".join(parts) + "\n")
+    ids = sh(DOCKER + ["ps", "-aq"])
+    full = sh(DOCKER + ["container", "inspect"] + ids.stdout.split())
+    (dest / f"manifest-{stamp}-containers.json").write_text(full.stdout)
+    rotate(dest, "manifest-*", item.get("retention", 7) * 2)
+    return "ok manifest"
+
+
+HANDLERS = {"bind": do_bind, "volume": do_volume, "pg": do_pg,
+            "docker-volumes": do_docker_volumes, "docker-manifest": do_manifest}
+
+
+def main():
+    stamp = date.today().isoformat()
+    report, fails = [], 0
+    contracts = sorted(CONTRACTS_DIR.glob("*.json"))
+    report.append(f"# backup run {stamp} {time.strftime('%H:%M')} contracts={len(contracts)}")
+    if not contracts:
+        report.append("NO CONTRACTS — роль забыла декларацию?")
+        fails += 1
+    for cf in contracts:
+        role = json.loads(cf.read_text())
+        dest = BACKUPS / role.get("dest", role["role"])
+        dest.mkdir(parents=True, exist_ok=True)
+        report.append(f"[{role['role']}] -> {dest}")
+        for item in role["items"]:
+            if item.get("kind") == "none":
+                report.append(f"  {item['name']}: NONE ({item.get('why', 'by design')})")
+                continue
+            try:
+                res = HANDLERS[item["kind"]](item, dest, stamp, report)
+                report.append(f"  {item['name']}: {res}")
+                if "FAIL" in res:
+                    fails += 1
+            except Exception as e:
+                report.append(f"  {item['name']}: FAIL {e}")
+                fails += 1
+            keep = item.get("retention", 7)
+            if item["kind"] == "bind":
+                rotate(dest, f"{item['name']}.tgz", keep)
+            elif item["kind"] == "volume":
+                rotate(dest, f"{item['volume']}.tgz", keep)
+            elif item["kind"] == "pg":
+                rotate(dest, f"{item['db']}.dump", keep)
+    text = "\n".join(report)
+    (BACKUPS / f"run-report-{stamp}.txt").write_text(text + "\n")
+    rotate(BACKUPS, "run-report-*.txt", 14)
+    print(text)
+    sys.exit(1 if fails else 0)
+
+
+if __name__ == "__main__":
+    main()

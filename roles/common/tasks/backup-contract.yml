@@ -1,0 +1,15 @@
+---
+# Записать один бэкап-контракт на хост. Вызывается include_role из роли сервиса
+# последним таском; контракт передаётся переменной backup_contract:
+#   backup_contract:
+#     role: semaphore
+#     items: [{name: data, kind: bind, path: ..., retention: 7}, ...]
+# kinds: bind | volume | pg | docker-volumes | docker-manifest | none — см. README common.
+# Осиротевший контракт (роль убрали с хоста) чистит роль своими же тасками:
+# копия контракта идёт с notify-semantic «role last deployed».
+
+- name: Записать бэкап-контракт
+  ansible.builtin.copy:
+    content: "{{ backup_contract | to_nice_json }}\n"
+    dest: "{{ backup_contracts_dir }}/{{ backup_contract.role }}.json"
+    mode: "0644"

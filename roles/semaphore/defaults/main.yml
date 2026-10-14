@@ -17,7 +17,10 @@ pwd: "/server"  # noqa: var-naming[no-role-prefix]
 path: "{{ pwd }}/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
 # Variables for common role integration
-files_source_dir: "{{ role_path }}/files/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
+files_source_dir: "{{ role_path }}/files/{{ ansible_role_name | basename }}{{ '-local' if semaphore_variant == 'local' else '' }}"  # noqa: var-naming[no-role-prefix]
+
+# prod (ae2: tailscale-сайдкар, nginx, certbot) | local (moro: порт 3210, tsdproxy)
+semaphore_variant: prod  # noqa: var-naming[no-role-prefix]
 deploy_path: "/server/{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 
 # File permissions

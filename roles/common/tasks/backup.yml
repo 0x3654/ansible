@@ -1,0 +1,60 @@
+---
+# Обеспечить локальный бэкап-раннер на хосте (idempotent).
+# Вызывается ролью сервиса, которой нужны бэкапы (include_role tasks_from=backup.yml),
+# перед common/tasks/backup-contract.yml. Сама по себе роль common не применяется.
+# Раннер и контракты деплоятся только ansible'ом; запускает их сам хост
+# (launchd 00:30 на маке / cron на linux), без сети.
+
+- name: Путь раннера/контрактов (mac)
+  ansible.builtin.set_fact:
+    backup_runner_path: "{{ ansible_user_dir }}/.local/bin/backup-runner"
+    backup_contracts_dir: "{{ ansible_user_dir }}/.backups/contracts"
+    backup_backups_root: "{{ ansible_user_dir }}/backups"
+  when: ansible_os_family == "Darwin"
+
+- name: Путь раннера/контрактов (linux)
+  ansible.builtin.set_fact:
+    backup_runner_path: /usr/local/bin/backup-runner
+    backup_contracts_dir: /etc/opt/backup/contracts
+    backup_backups_root: /var/backups
+  when: ansible_os_family != "Darwin"
+
+- name: Каталоги
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ backup_runner_path | dirname }}"
+    - "{{ backup_contracts_dir }}"
+
+- name: Раннер
+  ansible.builtin.copy:
+    src: backup-runner
+    dest: "{{ backup_runner_path }}"
+    mode: "0755"
+
+# --- расписание: mac = launchd, linux = cron ---
+- name: Mac — launchd-агент бэкапа
+  when: ansible_os_family == "Darwin"
+  block:
+    - name: Установить/обновить plist
+      ansible.builtin.template:
+        src: com.user.backup.plist.j2
+        dest: "{{ ansible_user_dir }}/Library/LaunchAgents/com.user.backup.plist"
+        mode: "0644"
+      register: backup_plist
+
+    - name: Перезагрузить агент при изменении plist
+      ansible.builtin.shell: |
+        launchctl bootout gui/$(id -u)/com.user.backup 2>/dev/null || true
+        launchctl bootstrap gui/$(id -u) "{{ ansible_user_dir }}/Library/LaunchAgents/com.user.backup.plist"
+      when: backup_plist is changed
+
+- name: Linux — cron бэкапа
+  when: ansible_os_family != "Darwin"
+  ansible.builtin.cron:
+    name: backup-runner
+    hour: "{{ backup_schedule_hour | default(0) }}"
+    minute: "{{ backup_schedule_minute | default(30) }}"
+    job: "{{ backup_runner_path }} >> {{ backup_backups_root }}/cron.log 2>&1"

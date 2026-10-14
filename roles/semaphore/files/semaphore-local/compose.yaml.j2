@@ -1,0 +1,26 @@
+# Локальный semaphore (мак): порт 3210, tsdproxy вместо tailscale-сайдкара прода.
+# Секреты — semaphore_local_* из vault host_vars (semaphore_local_admin_password,
+# semaphore_local_access_key). Данные — bind ./data.
+services:
+  semaphore:
+    image: docker.io/semaphoreui/semaphore:latest
+    container_name: semaphore
+    restart: unless-stopped
+    user: "1001:1001"
+    environment:
+      SEMAPHORE_ADMIN: {{ semaphore_local_admin | default('admin') }}
+      SEMAPHORE_ADMIN_PASSWORD: {{ semaphore_local_admin_password }}
+      SEMAPHORE_ADMIN_NAME: Admin
+      SEMAPHORE_ADMIN_EMAIL: admin@localhost
+      SEMAPHORE_WEB_ROOT: {{ semaphore_local_web_root | default('http://localhost:3210') }}
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION: {{ semaphore_local_access_key }}
+      SEMAPHORE_DB_DIALECT: sqlite
+      SEMAPHORE_DB_PATH: /var/lib/semaphore/semaphore.db
+    volumes:
+      - ./data:/var/lib/semaphore
+    ports:
+      - "3210:3000"
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "semaphore"
+      tsdproxy.container_port: 3210

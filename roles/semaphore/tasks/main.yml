@@ -2,6 +2,7 @@
 - name: Import APT management tasks
   ansible.builtin.import_tasks: apt.yml
   tags: [apt, upgrade]
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
 
 - name: Create role directory
   ansible.builtin.file:
@@ -16,6 +17,7 @@
     shell: /usr/sbin/nologin
     create_home: false
     state: present
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
 
 - name: Set directory ownership
   ansible.builtin.file:
@@ -24,10 +26,12 @@
     owner: "{{ folder_user }}"
     group: "{{ folder_user }}"
     mode: "{{ directory_mode }}"
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
 
 - name: Import certbot tasks
   ansible.builtin.import_tasks: certbot.yml
   tags: [certbot]
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
 
 - name: Check if database already exists
   ansible.builtin.stat:
@@ -42,7 +46,9 @@
     owner: "{{ semaphore_container_uid }}"
     group: "{{ semaphore_container_uid }}"
     mode: "{{ directory_mode }}"
-  when: not semaphore_db_stat.stat.exists
+  when:
+    - not semaphore_db_stat.stat.exists
+    - semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
   tags: [filescopy]
 
 - name: Seed database if not present
@@ -52,7 +58,9 @@
     owner: "{{ semaphore_container_uid }}"
     group: "{{ semaphore_container_uid }}"
     mode: "0644"
-  when: not semaphore_db_stat.stat.exists
+  when:
+    - not semaphore_db_stat.stat.exists
+    - semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
   tags: [filescopy]
 
 - name: Import file copy tasks
@@ -62,7 +70,36 @@
 - name: Import nginx tasks
   ansible.builtin.import_tasks: nginx.yml
   tags: [nginx]
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
 
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]
+  when: semaphore_variant == 'prod'  # noqa: var-naming[no-role-prefix]
+
+# --- Бэкап: раннер (если ещё не стоит) и контракт этой роли (последний шаг) ---
+- name: Обеспечить локальный бэкап-раннер
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: backup.yml
+
+- name: Записать бэкап-контракт semaphore
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: backup-contract.yml
+  vars:
+    backup_contract:
+      role: semaphore
+      items:
+        - name: semaphore-data
+          kind: bind
+          path: "{{ path }}/data"
+          retention: 7
+
+- name: Записать экстра-контракты хоста (catch-all и пр., из host_vars)
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: backup-contract.yml
+  vars:
+    backup_contract: "{{ item.value }}"
+  loop: "{{ backup_extra_contracts | default({}) | dict2items }}"
