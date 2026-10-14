@@ -40,3 +40,10 @@ services:
 
 volumes:
   warp-data:
+
+# фиксированная подсеть: обратный SSH-туннель parser-ноды биндится на гейтвей
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

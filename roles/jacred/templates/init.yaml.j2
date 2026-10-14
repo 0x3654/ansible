@@ -8,7 +8,8 @@ devkey: "{{ jacred_dev_key }}"
 # там — на VPS chromium не стартует); мак держит обратный SSH-туннель и
 # отдаёт свою базу на localhost:9118 этого хоста. Туннель упал — живём
 # на своей базе. Остальное парсим сами кронами с этого хоста
-syncapi: "http://127.0.0.1:9118"
+syncapi: "http://172.21.0.1:9118"
+timeSync: 60
 synctrackers: [rutracker, kinozal]
 opensync: false
 

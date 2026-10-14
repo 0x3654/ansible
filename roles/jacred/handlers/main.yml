@@ -26,3 +26,9 @@
     name: nginx
     state: reloaded
   listen: reload nginx
+
+- name: Reload sshd
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded
+  listen: reload sshd

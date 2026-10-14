@@ -18,3 +18,5 @@ jacred_parser_port: 9118
 
 # куда строит обратный туннель parser-нода (ssh -R 127.0.0.1:9118)
 jacred_tunnel_target: "root@ae2.0x3654.com"
+# биндим не на loopback хоста: jacred-контейнер на ae2 ходит на гейтвей бриджа
+jacred_tunnel_bind: "172.21.0.1"

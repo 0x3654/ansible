@@ -1,0 +1,15 @@
+---
+# туннель от parser-ноды биндится на 172.17.0.1 (гейтвей docker-бриджа),
+# чтобы jacred-контейнер доставался до него; sshd должен это разрешить
+- name: Allow clientspecified remote forwards in sshd
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?GatewayPorts '
+    line: 'GatewayPorts clientspecified'
+    state: present
+  notify: reload sshd
+  tags: [sshd]
+
+- name: Reload sshd handler exists check
+  ansible.builtin.meta: flush_handlers
+  tags: [sshd]

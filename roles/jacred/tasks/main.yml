@@ -33,6 +33,10 @@
       ansible.builtin.import_tasks: nginx.yml
       tags: [nginx]
 
+    - name: Allow GatewayPorts for the parser tunnel
+      ansible.builtin.import_tasks: sshd-gatewayports.yml
+      tags: [sshd]
+
     - name: Import deploy tasks
       ansible.builtin.import_tasks: deploy.yml
       tags: [deploy]
