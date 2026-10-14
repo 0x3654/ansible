@@ -1,0 +1,18 @@
+# jacred init.yaml (parser-нода, мак) — managed by ansible (roles/jacred)
+listenip: any
+listenport: 9117
+apikey: "{{ jacred_api_key }}"
+devkey: "{{ jacred_dev_key }}"
+
+# только Cloudflare-трекеры: браузер (FlareSolverr) тянет лишь эта нода
+synctrackers: [rutracker, kinozal]
+
+# отдавать базу ae2-инстансу (syncapi на той стороне)
+opensync: true
+openstats: true
+web: true
+
+flaresolverr:
+  enable: true
+  url: http://flaresolverr:8191/v1
+  crawlUrl: http://flaresolverr-crawl:8193/v1

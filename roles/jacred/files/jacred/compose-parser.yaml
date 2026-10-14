@@ -1,0 +1,37 @@
+# jacred parser-нода (мак) — добор rutracker/kinozal через FlareSolverr.
+# macOS docker не умеет network_mode: host — бридж + имена сервисов;
+# наружу (для ae2) — tailscale serve на порт 9118
+services:
+  jacred:
+    image: ghcr.io/jacred-fdb/jacred:latest
+    container_name: jacred-parser
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:9118:9117"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/Data
+    environment:
+      - TZ=Europe/Moscow
+    depends_on:
+      - flaresolverr
+      - flaresolverr-crawl
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+      - DISABLE_MEDIA=true
+
+  flaresolverr-crawl:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr-crawl
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+      - PORT=8193
+      - DISABLE_MEDIA=true

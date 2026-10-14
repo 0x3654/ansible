@@ -7,41 +7,15 @@ BASE=http://127.0.0.1:9117
 DEV=?devkey={{ jacred_dev_key }}
 
 # служебные
-*/5 * * * *  $RUN jsondb-save $BASE/jsondb/save 60
-5,25,45 * * * *  $RUN cloudflare-keepalive "$BASE/cron/cloudflare/Warmup$DEV" 300
-55 * * * *  $RUN cloudflare-warmup "$BASE/cron/cloudflare/Warmup$DEV" 300
-0 5 * * 0  $RUN maintenance-check "$BASE/cron/maintenance/Check?mode=report&devkey={{ jacred_dev_key }}" 60
-*/15 * * * *  $RUN parseall-resume "$BASE/cron/maintenance/ResumeParseAll$DEV" 60
+*/5 * * * *  root $RUN jsondb-save $BASE/jsondb/save 60
+# rutracker/kinozal (FlareSolverr) выключены: chromium на ae2 не стартует 0 5 * * 0  root $RUN maintenance-check "$BASE/cron/maintenance/Check?mode=report&devkey={{ jacred_dev_key }}" 60
+*/15 * * * *  root $RUN parseall-resume "$BASE/cron/maintenance/ResumeParseAll$DEV" 60
 
-# rutracker (~1.5M, FlareSolverr, полный круг ~сутки)
-0 * * * *  $RUN rutracker-parse "$BASE/cron/rutracker/parse$DEV" 3600
-20 3 * * *  $RUN rutracker-UpdateTasksParse "$BASE/cron/rutracker/UpdateTasksParse$DEV" 60
-40 4 * * *  $RUN rutracker-ParseAllTask "$BASE/cron/rutracker/ParseAllTask$DEV" 60
-
-# kinozal (~550k, FlareSolverr)
-3,18,33,48 * * * *  $RUN kinozal-parse "$BASE/cron/kinozal/parse$DEV" 900
-10 2 * * *  $RUN kinozal-UpdateTasksParse "$BASE/cron/kinozal/UpdateTasksParse$DEV" 60
-35 5,17 * * *  $RUN kinozal-ParseAllTask "$BASE/cron/kinozal/ParseAllTask$DEV" 60
-
-# rutor (~550k)
-1,16,31,46 * * * *  $RUN rutor-parse "$BASE/cron/rutor/parse$DEV" 900
-5 2 * * *  $RUN rutor-UpdateTasksParse "$BASE/cron/rutor/UpdateTasksParse$DEV" 60
-30 5,17 * * *  $RUN rutor-ParseAllTask "$BASE/cron/rutor/ParseAllTask$DEV" 60
-
-# nnmclub (~145k)
-5,20,35,50 * * * *  $RUN nnmclub-parse "$BASE/cron/nnmclub/parse$DEV" 900
-15 2 * * *  $RUN nnmclub-UpdateTasksParse "$BASE/cron/nnmclub/UpdateTasksParse$DEV" 60
-42 12 * * *  $RUN nnmclub-ParseAllTask "$BASE/cron/nnmclub/ParseAllTask$DEV" 60
-
-# megapeer (~113k)
-8 * * * *  $RUN megapeer-parse "$BASE/cron/megapeer/parse$DEV" 900
-20 2 * * *  $RUN megapeer-UpdateTasksParse "$BASE/cron/megapeer/UpdateTasksParse$DEV" 60
-45 5,13,21 * * *  $RUN megapeer-ParseAllTask "$BASE/cron/megapeer/ParseAllTask$DEV" 60
 
 # аниме-маргина
-6,21,36,51 * * * *  $RUN aniliberty-parse "$BASE/cron/aniliberty/parse$DEV" 900
-4,19,34,49 * * * *  $RUN anidub-parse "$BASE/cron/anidub/parse$DEV" 900
-29,59 * * * *  $RUN anibelka-parse "$BASE/cron/anibelka/parse$DEV" 900
-40 2 * * *  $RUN anibelka-UpdateTasksParse "$BASE/cron/anibelka/UpdateTasksParse$DEV" 60
-48 5,17 * * *  $RUN anibelka-ParseAllTask "$BASE/cron/anibelka/ParseAllTask$DEV" 60
-10 7 * * *  $RUN anibelka-ParseLatest "$BASE/cron/anibelka/ParseLatest$DEV" 900
+6,21,36,51 * * * *  root $RUN aniliberty-parse "$BASE/cron/aniliberty/parse$DEV" 900
+4,19,34,49 * * * *  root $RUN anidub-parse "$BASE/cron/anidub/parse$DEV" 900
+29,59 * * * *  root $RUN anibelka-parse "$BASE/cron/anibelka/parse$DEV" 900
+40 2 * * *  root $RUN anibelka-UpdateTasksParse "$BASE/cron/anibelka/UpdateTasksParse$DEV" 60
+48 5,17 * * *  root $RUN anibelka-ParseAllTask "$BASE/cron/anibelka/ParseAllTask$DEV" 60
+10 7 * * *  root $RUN anibelka-ParseLatest "$BASE/cron/anibelka/ParseLatest$DEV" 900

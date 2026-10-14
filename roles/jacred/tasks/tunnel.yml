@@ -1,0 +1,17 @@
+---
+# обратный SSH-туннель моро -> ae2: parser API доступен ae2 на его localhost.
+# mac за двойным NAT и инициатор; ae2 без туннеля живёт на своей базе
+- name: Install launchd plist for the reverse tunnel
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/jacred/templates/com.github.jacred.tunnel.plist.j2"
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.github.jacred.tunnel.plist"
+    mode: "0644"
+  tags: [tunnel]
+
+- name: Load the tunnel agent
+  ansible.builtin.shell: |
+    set -o pipefail
+    launchctl unload "{{ ansible_env.HOME }}/Library/LaunchAgents/com.github.jacred.tunnel.plist" >/dev/null 2>&1 || true
+    launchctl load "{{ ansible_env.HOME }}/Library/LaunchAgents/com.github.jacred.tunnel.plist"
+  changed_when: false
+  tags: [tunnel]

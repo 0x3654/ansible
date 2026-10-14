@@ -1,0 +1,49 @@
+---
+# macOS: /etc/cron.d не поддерживается — пользовательский crontab через
+# ansible cron; пути абсолютные, раннер в {{ path }}/data/run-job.sh
+- name: Service jobs (parser node)
+  ansible.builtin.cron:
+    name: "jacred-{{ item.name }}"
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour | default('*') }}"
+    job: '{{ path }}/data/run-job.sh {{ item.name }} "http://127.0.0.1:{{ jacred_parser_port }}{{ item.url }}?devkey={{ jacred_dev_key }}" {{ item.max_time }} >> {{ path }}/data/cron.log 2>&1'
+  loop:
+    - { name: jsondb-save, minute: "*/5", url: /jsondb/save, max_time: 60 }
+    - { name: parseall-resume, minute: "*/15", url: /cron/maintenance/ResumeParseAll, max_time: 60 }
+    - { name: cloudflare-keepalive, minute: "5,25,45", url: /cron/cloudflare/Warmup, max_time: 300 }
+    - { name: cloudflare-warmup, minute: "55", url: /cron/cloudflare/Warmup, max_time: 300 }
+  tags: [cron]
+
+- name: rutracker jobs
+  ansible.builtin.cron:
+    name: "jacred-rutracker-{{ item.name }}"
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour | default('*') }}"
+    job: '{{ path }}/data/run-job.sh rutracker-{{ item.name }} "http://127.0.0.1:{{ jacred_parser_port }}{{ item.url }}?devkey={{ jacred_dev_key }}" {{ item.max_time }} >> {{ path }}/data/cron.log 2>&1'
+  loop:
+    - { name: parse, minute: "0", url: /cron/rutracker/parse, max_time: 3600 }
+    - { name: UpdateTasksParse, minute: "20", hour: "3", url: /cron/rutracker/UpdateTasksParse, max_time: 60 }
+    - { name: ParseAllTask, minute: "40", hour: "4", url: /cron/rutracker/ParseAllTask, max_time: 60 }
+  tags: [cron]
+
+- name: kinozal jobs
+  ansible.builtin.cron:
+    name: "jacred-kinozal-{{ item.name }}"
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour | default('*') }}"
+    job: '{{ path }}/data/run-job.sh kinozal-{{ item.name }} "http://127.0.0.1:{{ jacred_parser_port }}{{ item.url }}?devkey={{ jacred_dev_key }}" {{ item.max_time }} >> {{ path }}/data/cron.log 2>&1'
+  loop:
+    - { name: parse, minute: "3,18,33,48", url: /cron/kinozal/parse, max_time: 900 }
+    - { name: UpdateTasksParse, minute: "10", hour: "2", url: /cron/kinozal/UpdateTasksParse, max_time: 60 }
+    - { name: ParseAllTask, minute: "35", hour: "5,17", url: /cron/kinozal/ParseAllTask, max_time: 60 }
+  tags: [cron]
+
+# наружу для ae2: syncapi тянет базу с этой ноды через tailscale serve
+- name: Expose parser API to tailnet (tailscale serve)
+  ansible.builtin.shell: |
+    set -o pipefail
+    tailscale serve status 2>/dev/null | grep -q ':9118' || tailscale serve --bg --https=443 {{ jacred_parser_port }}
+  register: jacred_ts_serve
+  changed_when: "' Serving ' in jacred_ts_serve.stdout | default('')"
+  failed_when: false
+  tags: [cron]

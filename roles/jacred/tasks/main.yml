@@ -3,18 +3,36 @@
   ansible.builtin.import_tasks: filescopy.yml
   tags: [filescopy]
 
-- name: Import certbot tasks
-  ansible.builtin.import_tasks: certbot.yml
-  tags: [certbot]
+- name: "Parser mode (mac): deploy + cron only"
+  when: jacred_mode == "parser"
+  block:
+    - name: Import deploy tasks
+      ansible.builtin.import_tasks: deploy.yml
+      tags: [deploy]
 
-- name: Import nginx tasks
-  ansible.builtin.import_tasks: nginx.yml
-  tags: [nginx]
+    - name: Import parser cron tasks (macOS)
+      ansible.builtin.import_tasks: cron-mac.yml
+      tags: [cron]
 
-- name: Import deploy tasks
-  ansible.builtin.import_tasks: deploy.yml
-  tags: [deploy]
+    - name: Import reverse SSH tunnel tasks (moro -> ae2)
+      ansible.builtin.import_tasks: tunnel.yml
+      tags: [tunnel]
 
-- name: Import cron tasks
-  ansible.builtin.import_tasks: cron.yml
-  tags: [cron]
+- name: "Server mode (VPS): cert, nginx, deploy, host cron"
+  when: jacred_mode == "server"
+  block:
+    - name: Import certbot tasks
+      ansible.builtin.import_tasks: certbot.yml
+      tags: [certbot]
+
+    - name: Import nginx tasks
+      ansible.builtin.import_tasks: nginx.yml
+      tags: [nginx]
+
+    - name: Import deploy tasks
+      ansible.builtin.import_tasks: deploy.yml
+      tags: [deploy]
+
+    - name: Import cron tasks
+      ansible.builtin.import_tasks: cron.yml
+      tags: [cron]

@@ -4,9 +4,12 @@ listenport: {{ jacred_backend_port }}
 apikey: "{{ jacred_api_key }}"
 devkey: "{{ jacred_dev_key }}"
 
-# базу никого не парсим через облачный sync (он за Cloudflare-WAF),
-# наполняем сами кронами с этого хоста
-syncapi: ""
+# rutracker/kinozal парсит parser-нода на маке (FlareSolverr живёт только
+# там — на VPS chromium не стартует); мак держит обратный SSH-туннель и
+# отдаёт свою базу на localhost:9118 этого хоста. Туннель упал — живём
+# на своей базе. Остальное парсим сами кронами с этого хоста
+syncapi: "http://127.0.0.1:9118"
+synctrackers: [rutracker, kinozal]
 opensync: false
 
 mergeduplicates: true
@@ -14,12 +17,10 @@ mergenumduplicates: true
 openstats: true
 web: true
 
-# Cloudflare-трекеры (rutracker/kinozal): FlareSolverr + cffetch через
-# WARP-контейнер — датацентровой IP ae2 Cloudflare режет
+# chromium (FlareSolverr) на ae2 не стартует: 956MB RAM + swap, load под 30.
+# rutracker/kinozal — с parser-ноды; cffetch+warp остаются на всякий
 flaresolverr:
-  enable: true
-  url: http://host.docker.internal:8191/v1
-  crawlUrl: http://host.docker.internal:8193/v1
+  enable: false
 cffetch:
   enable: true
   url: http://host.docker.internal:8192/fetch

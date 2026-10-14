@@ -1,8 +1,20 @@
-# jacred — свой инстанс JacRed (агрегатор трекеров, Jackett-совместимый API),
-# публичный фронт https://jacred.0x3654.com. Замена умершему по IP-блоклисту
-# публичному прокси jac.red. Данные (FileDB) — в ./data рядом с compose.
+# jacred — свой инстанс JacRed (агрегатор трекеров, Jackett-совместимый API)
+#
+# jacred_mode:
+#   server (ae2) — публичный фронт https://jacred.0x3654.com, парсит
+#     прямые трекеры (rutor/nnmclub/megapeer/аниме), nginx+cert+host-cron;
+#     дополнительно тянет базу rutracker/kinozal с parser-ноды (syncapi)
+#   parser (мак) — локальный стек с FlareSolverr (браузер тянет только мак),
+#     парсит rutracker/kinozal, отдаёт базу наружу (opensync) через
+#     tailscale serve на порт jacred_parser_port
+jacred_mode: "server"
+
 path: "/server/jacred"  # noqa: var-naming[no-role-prefix]
 jacred_cert_path: "/server/certbot"  # noqa: var-naming[no-role-prefix]
 
 jacred_domain_name: "jacred.0x3654.com"
 jacred_backend_port: 9117
+jacred_parser_port: 9118
+
+# куда строит обратный туннель parser-нода (ssh -R 127.0.0.1:9118)
+jacred_tunnel_target: "root@ae2.0x3654.com"
