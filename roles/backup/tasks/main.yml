@@ -34,12 +34,31 @@
     mode: "0755"
   notify: restart backup timer
 
-- name: Контракты
+- name: Контракты (от ролей сервисов + хостовые экстра)
   ansible.builtin.copy:
     content: "{{ item.value | to_nice_json }}\n"
     dest: "{{ backup_contracts_dir }}/{{ item.key }}.json"
     mode: "0644"
-  loop: "{{ backup_contracts | dict2items }}"
+  loop: "{{ (backup_role_contracts | default({})) | combine(backup_contracts | default({})) | dict2items }}"
+  notify: restart backup timer
+
+- name: Убрать контракты от роли, которой больше нет на хосте
+  ansible.builtin.find:
+    paths: "{{ backup_contracts_dir }}"
+    patterns: "*.json"
+  register: backup_contract_files
+  changed_when: false
+
+- name: Список ожидаемых имён контрактов
+  ansible.builtin.set_fact:
+    backup_expected_contracts: "{{ (backup_role_contracts | default({})) | combine(backup_contracts | default({})) | list | map('regex_replace', '$', '.json') | list }}"
+
+- name: Удалить осиротевшие контракты
+  ansible.builtin.file:
+    path: "{{ backup_contracts_dir }}/{{ item }}"
+    state: absent
+  loop: "{{ backup_contract_files.files | map(attribute='path') | map('basename') | list }}"
+  when: item not in backup_expected_contracts
   notify: restart backup timer
 
 # --- расписание: mac = launchd, linux = cron ---
