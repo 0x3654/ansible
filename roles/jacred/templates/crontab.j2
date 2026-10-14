@@ -1,4 +1,5 @@
 # jacred parsers — managed by ansible (roles/jacred), do not edit
+# rutracker/kinozal (FlareSolverr) парсятся на parser-ноде (мак), сюда не входят
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -8,9 +9,23 @@ DEV=?devkey={{ jacred_dev_key }}
 
 # служебные
 */5 * * * *  root $RUN jsondb-save $BASE/jsondb/save 60
-# rutracker/kinozal (FlareSolverr) выключены: chromium на ae2 не стартует 0 5 * * 0  root $RUN maintenance-check "$BASE/cron/maintenance/Check?mode=report&devkey={{ jacred_dev_key }}" 60
 */15 * * * *  root $RUN parseall-resume "$BASE/cron/maintenance/ResumeParseAll$DEV" 60
+0 5 * * 0  root $RUN maintenance-check "$BASE/cron/maintenance/Check?mode=report&devkey={{ jacred_dev_key }}" 60
 
+# rutor (~550k)
+1,16,31,46 * * * *  root $RUN rutor-parse "$BASE/cron/rutor/parse$DEV" 900
+5 2 * * *  root $RUN rutor-UpdateTasksParse "$BASE/cron/rutor/UpdateTasksParse$DEV" 60
+30 5,17 * * *  root $RUN rutor-ParseAllTask "$BASE/cron/rutor/ParseAllTask$DEV" 60
+
+# nnmclub (~145k)
+5,20,35,50 * * * *  root $RUN nnmclub-parse "$BASE/cron/nnmclub/parse$DEV" 900
+15 2 * * *  root $RUN nnmclub-UpdateTasksParse "$BASE/cron/nnmclub/UpdateTasksParse$DEV" 60
+42 12 * * *  root $RUN nnmclub-ParseAllTask "$BASE/cron/nnmclub/ParseAllTask$DEV" 60
+
+# megapeer (~113k)
+8 * * * *  root $RUN megapeer-parse "$BASE/cron/megapeer/parse$DEV" 900
+20 2 * * *  root $RUN megapeer-UpdateTasksParse "$BASE/cron/megapeer/UpdateTasksParse$DEV" 60
+45 5,13,21 * * *  root $RUN megapeer-ParseAllTask "$BASE/cron/megapeer/ParseAllTask$DEV" 60
 
 # аниме-маргина
 6,21,36,51 * * * *  root $RUN aniliberty-parse "$BASE/cron/aniliberty/parse$DEV" 900

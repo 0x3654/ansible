@@ -1,0 +1,30 @@
+---
+# macOS: в системе нет flock — заменяем блокировку run-job.sh на mkdir-лок
+# (атомарный mkdir). Идемпотентно: после правки шаблон не совпадает.
+- name: Replace flock with mkdir-lock in run-job.sh
+  ansible.builtin.replace:
+    path: "{{ path }}/data/run-job.sh"
+    regexp: 'exec 9>"\$LOCK_FILE"\nif ! flock -n 9; then\n(  log "SKIP \$\{JOB_NAME\}: previous run still active"\n  exit 0\n)fi'
+    replace: |-
+      LOCK_DIR_LOCK="${LOCK_DIR}/${JOB_NAME}.lockdir"
+      if ! mkdir "$LOCK_DIR_LOCK" 2>/dev/null; then
+        log "SKIP ${JOB_NAME}: previous run still active"
+        exit 0
+      fi
+  tags: [cron]
+
+- name: Free the mkdir-lock in the EXIT trap
+  ansible.builtin.replace:
+    path: "{{ path }}/data/run-job.sh"
+    regexp: 'trap ''rm -f "\$tmp" "\$\{tmp\}\.code" "\$\{tmp\}\.err"'' EXIT'
+    replace: >-
+      trap 'rm -f "$tmp" "${tmp}.code" "${tmp}.err";
+      rmdir "$LOCK_DIR_LOCK" 2>/dev/null' EXIT
+  tags: [cron]
+
+- name: Drop stale locks from the flock-less failures
+  ansible.builtin.shell: >-
+    find /tmp/jacred-cron-locks \( -name '*.lock' -o -name '*.lockdir' \)
+    -exec rm -rf {} + 2>/dev/null; exit 0
+  changed_when: false
+  tags: [cron]

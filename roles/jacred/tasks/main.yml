@@ -14,6 +14,10 @@
       ansible.builtin.import_tasks: cron-mac.yml
       tags: [cron]
 
+    - name: Patch run-job.sh for macOS (no flock)
+      ansible.builtin.import_tasks: run-job-mac.yml
+      tags: [cron]
+
     - name: Import reverse SSH tunnel tasks (moro -> ae2)
       ansible.builtin.import_tasks: tunnel.yml
       tags: [tunnel]
