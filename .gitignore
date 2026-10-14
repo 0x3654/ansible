@@ -41,3 +41,6 @@ roles/semaphore/files/database.sqlite
 .vault__pycache__/
 *.pyc
 .vault
+
+# разовые npm-установки (playwright e2e и т.п.) не коммитим
+node_modules/
