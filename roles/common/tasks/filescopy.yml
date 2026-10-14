@@ -1,6 +1,6 @@
 ---
 - name: Check if folder user exists
-  when: ansible_os_family != 'Darwin'  # на маках юзеров не создаём, owner = ansible_user
+  when: filescopy_create_user | default(true)  # local-варианты задают false: owner = ansible_user
   ansible.builtin.getent:
     database: passwd
     key: "{{ common_folder_user | default('root') }}"
@@ -15,7 +15,7 @@
     create_home: true
     shell: /bin/bash
   when:
-    - ansible_os_family != 'Darwin'
+    - filescopy_create_user | default(true)
     - common_folder_user_exists.ansible_facts.getent_passwd is not defined
   become: true
   register: common_folder_user_created
@@ -26,7 +26,7 @@
     key: "{{ common_folder_user | default('root') }}"
   register: common_folder_user_info
   when:
-    - ansible_os_family != 'Darwin'
+    - filescopy_create_user | default(true)
     - common_folder_user_exists.ansible_facts.getent_passwd is defined or common_folder_user_created is changed
 
 - name: Set folder user UID and GID variables
@@ -34,14 +34,14 @@
     common_folder_user_uid: "{{ common_folder_user_info.ansible_facts.getent_passwd[common_folder_user | default('root')][1] }}"
     common_folder_user_gid: "{{ common_folder_user_info.ansible_facts.getent_passwd[common_folder_user | default('root')][2] }}"
   when:
-    - ansible_os_family != 'Darwin'
+    - filescopy_create_user | default(true)
     - common_folder_user_info.ansible_facts.getent_passwd is defined
 
 
-- name: Darwin — файлы принадлежат ansible_user:staff (uid/gid факты не собираются)
+- name: Без управления юзером — группа из переменной (по умолчанию staff-подобная)
   ansible.builtin.set_fact:
-    common_folder_user_gid: "20"  # staff
-  when: ansible_os_family == 'Darwin'
+    common_folder_user_gid: "{{ filescopy_default_gid | default('20') }}"
+  when: not (filescopy_create_user | default(true))
 
 - name: Process files and directories
   tags: [files_copy]

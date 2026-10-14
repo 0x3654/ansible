@@ -5,19 +5,20 @@
 # Раннер и контракты деплоятся только ansible'ом; запускает их сам хост
 # (launchd 00:30 на маке / cron на linux), без сети.
 
-- name: Путь раннера/контрактов (mac)
+# user (локальные хосты: всё в ~, запуск от юзера) | system (серверы: системные пути)
+- name: Путь раннера/контрактов (user)
   ansible.builtin.set_fact:
     backup_runner_path: "{{ ansible_user_dir }}/.local/bin/backup-runner"
     backup_contracts_dir: "{{ ansible_user_dir }}/.backups/contracts"
     backup_backups_root: "{{ ansible_user_dir }}/backups"
-  when: ansible_os_family == "Darwin"
+  when: backup_install | default('system') == 'user'
 
-- name: Путь раннера/контрактов (linux)
+- name: Путь раннера/контрактов (system)
   ansible.builtin.set_fact:
     backup_runner_path: /usr/local/bin/backup-runner
     backup_contracts_dir: /etc/opt/backup/contracts
     backup_backups_root: /var/backups
-  when: ansible_os_family != "Darwin"
+  when: backup_install | default('system') == 'system'
 
 - name: Каталоги
   ansible.builtin.file:
@@ -36,7 +37,7 @@
 
 # --- расписание: mac = launchd, linux = cron ---
 - name: Mac — launchd-агент бэкапа
-  when: ansible_os_family == "Darwin"
+  when: ansible_os_family == "Darwin"  # планировщик — единственное, что реально OS-зависимо
   block:
     - name: Установить/обновить plist
       ansible.builtin.template:
