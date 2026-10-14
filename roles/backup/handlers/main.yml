@@ -1,0 +1,7 @@
+---
+- name: restart backup timer
+  ansible.builtin.shell: |
+    launchctl bootout gui/$(id -u)/com.user.backup 2>/dev/null || true
+    launchctl bootstrap gui/$(id -u) "{{ ansible_user_dir }}/Library/LaunchAgents/com.user.backup.plist"
+  when: ansible_os_family == "Darwin"
+  changed_when: true

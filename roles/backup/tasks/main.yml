@@ -1,0 +1,62 @@
+---
+# Роль backup: деплой локального бэкап-раннера и контрактов.
+# Данные гоняет сам хост (cron/launchd), ansible — только деплой и обновление
+# при изменении правил. Контракты задаются в host_vars/<host>/backup.yml
+# (backup_contracts: список dict'ов — см. примеры в defaults/main.yml).
+
+- name: Mac — путь раннера и контрактов
+  ansible.builtin.set_fact:
+    backup_runner_path: "{{ ansible_user_dir }}/.local/bin/backup-runner"
+    backup_contracts_dir: "{{ ansible_user_dir }}/.backups/contracts"
+    backup_backups_root: "{{ ansible_user_dir }}/backups"
+  when: ansible_os_family == "Darwin"
+
+- name: Linux — путь раннера и контрактов
+  ansible.builtin.set_fact:
+    backup_runner_path: /usr/local/bin/backup-runner
+    backup_contracts_dir: /etc/opt/backup/contracts
+    backup_backups_root: /var/backups
+  when: ansible_os_family != "Darwin"
+
+- name: Каталоги
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ backup_runner_path | dirname }}"
+    - "{{ backup_contracts_dir }}"
+
+- name: Раннер
+  ansible.builtin.copy:
+    src: backup-runner
+    dest: "{{ backup_runner_path }}"
+    mode: "0755"
+  notify: restart backup timer
+
+- name: Контракты
+  ansible.builtin.copy:
+    content: "{{ item.value | to_nice_json }}\n"
+    dest: "{{ backup_contracts_dir }}/{{ item.key }}.json"
+    mode: "0644"
+  loop: "{{ backup_contracts | dict2items }}"
+  notify: restart backup timer
+
+# --- расписание: mac = launchd, linux = cron ---
+- name: Mac — launchd-агент
+  when: ansible_os_family == "Darwin"
+  block:
+    - name: plist
+      ansible.builtin.template:
+        src: com.user.backup.plist.j2
+        dest: "{{ ansible_user_dir }}/Library/LaunchAgents/com.user.backup.plist"
+        mode: "0644"
+      notify: restart backup timer
+
+- name: Linux — cron
+  when: ansible_os_family != "Darwin"
+  ansible.builtin.cron:
+    name: backup-runner
+    hour: "{{ backup_schedule_hour | default(0) }}"
+    minute: "{{ backup_schedule_minute | default(30) }}"
+    job: "{{ backup_runner_path }} >> {{ backup_backups_root }}/cron.log 2>&1"

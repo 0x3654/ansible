@@ -1,0 +1,24 @@
+---
+# Контракты бэкапов moro (роль backup; раннер уже выкатан руками 14.10 —
+# роль при первом прогоне приведёт plist/контракты к этому же виду).
+# pg1c-data не тарится (живой PG) — его базам нужен pg_dump-контракт
+# со стороны v8dock (зона v8dock-сессии), catch-all тут только страховка.
+backup_contracts:
+  docker-volumes:
+    role: docker-volumes
+    dest: docker-volumes
+    items:
+      - name: all-volumes
+        kind: docker-volumes
+        skip: "gomod|gocache|playwright|dev-cache|pg1c-data$"
+        retention: 7
+      - name: manifest
+        kind: docker-manifest
+        retention: 7
+  semaphore:
+    role: semaphore
+    items:
+      - name: semaphore-data
+        kind: bind
+        path: /Users/m/code/_local/semaphore/data
+        retention: 7

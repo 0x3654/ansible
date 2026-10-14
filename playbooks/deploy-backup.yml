@@ -1,0 +1,7 @@
+---
+# Деплой локального бэкап-раннера и контрактов (роль backup).
+# Данные гоняет сам хост по расписанию; этот плей — только доставка.
+- name: Deploy local backup runner
+  hosts: backup_role
+  roles:
+    - backup

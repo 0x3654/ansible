@@ -1,0 +1,21 @@
+---
+# Контракты по умолчанию пусты — каждый хост декларирует свои
+# в host_vars/<host>/backup.yml (или group_vars). Формат:
+#
+# backup_contracts:
+#   semaphore:                      # имя файла <key>.json
+#     role: semaphore
+#     items:
+#       - {name: data, kind: bind, path: /path, retention: 7}
+#       - {name: db, kind: volume, volume: x, retention: 7}      # named volume
+#       - {name: db, kind: pg, container: c, db: d, retention: 7} # pg_dump -Fc
+#       - {name: vols, kind: docker-volumes, skip: "re", retention: 7} # catch-all
+#       - {name: manifest, kind: docker-manifest, retention: 7}
+#       - {name: cache, kind: none, why: stateless}               # осознанно нет
+#
+# dest по умолчанию ~/backups/<role>/ (linux: /var/backups/<role>/),
+# переопределяется ключом dest в контракте.
+backup_contracts: {}
+
+backup_schedule_hour: 0
+backup_schedule_minute: 30
