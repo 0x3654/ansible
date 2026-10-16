@@ -1,0 +1,14 @@
+# Managed by Ansible (vpnserver nginx-door). SNI routing on port 443:
+# the masquerade SNI goes to the xray inbound, everything else - to the
+# local vhosts on the internal listener.
+map $ssl_preread_server_name $vpnserver_door_backend {
+    {{ vpnserver_reality_server_name }}   127.0.0.1:{{ vpnserver_nginx_door_xray_port }};
+    default                               127.0.0.1:{{ vpnserver_nginx_door_internal_port }};
+}
+
+server {
+    listen 443;
+    listen [::]:443;
+    ssl_preread on;
+    proxy_pass $vpnserver_door_backend;
+}

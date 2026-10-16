@@ -27,6 +27,14 @@
   ansible.builtin.import_tasks: fail2ban.yml
   tags: [fail2ban]
 
+- name: Import Reality masquerade tasks
+  ansible.builtin.import_tasks: reality-masquerade.yml
+  tags: [reality]
+
+- name: Import nginx SNI-door tasks
+  ansible.builtin.import_tasks: nginx-door.yml
+  tags: [door]
+
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]

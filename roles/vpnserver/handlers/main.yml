@@ -52,3 +52,12 @@
   community.docker.docker_container:
     name: 3x-ui
     state: started
+
+- name: Restart docker 3x-ui by shell
+  ansible.builtin.command: docker restart 3x-ui
+  changed_when: true
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded

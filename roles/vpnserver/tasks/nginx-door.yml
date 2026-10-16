@@ -1,0 +1,57 @@
+---
+# SNI-door: expose the xray inbound on port 443 next to a busy nginx.
+# nginx stream/ssl_preread routes by SNI: the masquerade SNI goes to xray,
+# every other SNI (real vhosts) goes to the internal listener.
+# Legacy vhosts with `listen 443` are moved to the internal port - they are
+# not ansible-managed on the door host, so the door owns this fix-up and
+# runs LAST in a deploy (roles are applied in sorted order).
+- name: Nginx SNI-door on 443
+  when: vpnserver_nginx_door_enabled
+  tags: [door]
+  block:
+    - name: Install nginx stream module
+      ansible.builtin.apt:
+        name: libnginx-mod-stream
+        state: present
+        update_cache: true
+
+    - name: Create stream config directory
+      ansible.builtin.file:
+        path: /etc/nginx/stream-conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Deploy stream door config
+      ansible.builtin.template:
+        src: nginx-door-stream.conf.j2
+        dest: /etc/nginx/stream-conf.d/vpnserver-door.conf
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Include stream configs from nginx.conf
+      ansible.builtin.blockinfile:
+        path: /etc/nginx/nginx.conf
+        marker: "# {mark} ANSIBLE MANAGED - vpnserver stream door"
+        block: |
+          stream {
+              include /etc/nginx/stream-conf.d/*.conf;
+          }
+      notify: Reload nginx
+
+    - name: Move legacy 443 vhosts to the internal listener
+      ansible.builtin.find:
+        paths: /etc/nginx/sites-enabled
+        patterns: "*"
+        file_type: link
+      register: vpnserver_door_sites
+
+    - name: Rewrite listen 443 to internal port
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        regexp: "^(\s*)listen 443 ssl"
+        line: '\1listen 127.0.0.1:{{ vpnserver_nginx_door_internal_port }} ssl http2;'
+        backrefs: true
+      loop: "{{ vpnserver_door_sites.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      notify: Reload nginx
