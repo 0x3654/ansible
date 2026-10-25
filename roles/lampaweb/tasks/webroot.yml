@@ -51,11 +51,13 @@
 # Сезонные промо куба (halloween/black-friday/snow/new-year/womens-day):
 # ServiceEvents грузит с их зеркал /plugin/<событие> — рисует мигающую
 # кнопку-рекламу в шапке. Выключаем загрузчик целиком: init сразу выходит
+# имя функции сохраняем capture-группой: минификатор даёт init$N, а ссылка
+# ServiceEvents.init = init$N остаётся — переименование вешает бут на лого
 - name: Disable cub seasonal promo events in app bundle
   ansible.builtin.replace:
     path: "{{ path }}/webroot/app.min.js"
-    regexp: 'function init\(\) \{\s*if \(!window\.lampa_settings\.services\) return;\s*events\.forEach'
-    replace: 'function init() {     return;     events.forEach'
+    regexp: '(function init\$\d+\(\) \{\s*)if \(!window\.lampa_settings\.services\) return;'
+    replace: '\1return;'
   tags: [webroot]
 
 - name: Render lampainit.js (official hook, waits for Lampa and loads t.js)
