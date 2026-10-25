@@ -48,6 +48,16 @@
     regexp: 'return user\.id \? Utils\$1\.countDays\(Date\.now\(\), user\.premium\) : 0;'
   tags: [webroot]
 
+# Сезонные промо куба (halloween/black-friday/snow/new-year/womens-day):
+# ServiceEvents грузит с их зеркал /plugin/<событие> — рисует мигающую
+# кнопку-рекламу в шапке. Выключаем загрузчик целиком: init сразу выходит
+- name: Disable cub seasonal promo events in app bundle
+  ansible.builtin.replace:
+    path: "{{ path }}/webroot/app.min.js"
+    regexp: 'function init\(\) \{\s*if \(!window\.lampa_settings\.services\) return;\s*events\.forEach'
+    replace: 'function init() {     return;     events.forEach'
+  tags: [webroot]
+
 - name: Render lampainit.js (official hook, waits for Lampa and loads t.js)
   ansible.builtin.template:
     src: lampainit.js.j2
