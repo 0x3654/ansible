@@ -36,6 +36,18 @@
   loop: "{{ lampaweb_plugins }}"
   tags: [webroot]
 
+# Локальный анлок куб-статусов (Смотрю/Просмотрено/…): hasPremium в бандле
+# читает премиум-флаг аккаунта с сервера cub — сервер может его увести в
+# любой момент (так и случилось 25.10), замки возвращаются. Патчим бандл:
+# безусловно: куб-аккаунт и его премиум не нужны, статусы синкаются plex-sync в marks.
+# Идемпотентно: применённый патч не меняет строку-образец
+- name: Unlock cub statuses in app bundle (hasPremium)
+  ansible.builtin.replace:
+    path: "{{ path }}/webroot/app.min.js"
+    replace: "return 1;"
+    regexp: 'return user\.id \? Utils\$1\.countDays\(Date\.now\(\), user\.premium\) : 0;'
+  tags: [webroot]
+
 - name: Render lampainit.js (official hook, waits for Lampa and loads t.js)
   ansible.builtin.template:
     src: lampainit.js.j2

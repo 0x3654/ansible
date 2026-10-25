@@ -27,7 +27,7 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
+    location ~* ^/(t|lampainit|top|transmission-send|plex-sync|app\.min)\.js$ {
         add_header Cache-Control "no-cache";
         add_header X-Robots-Tag "noindex, nofollow" always;
         add_header Referrer-Policy "no-referrer" always;
@@ -49,7 +49,7 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
+    listen 127.0.0.1:1443 ssl http2;
     server_name {{ lampaweb_domain_name }};
 
     ssl_certificate {{ lampaweb_cert_path }}/live/{{ lampaweb_domain_name }}/fullchain.pem;
@@ -75,7 +75,7 @@ server {
 
     # наши плагины/bootstrap меняются — не кэшировать надолго
     # (регекс-локация стоит раньше общей статики и перехватывает её)
-    location ~* ^/(t|lampainit|top|transmission-send|plex-sync)\.js$ {
+    location ~* ^/(t|lampainit|top|transmission-send|plex-sync|app\.min)\.js$ {
         add_header Cache-Control "no-cache";
         add_header X-Robots-Tag "noindex, nofollow" always;
         add_header Referrer-Policy "no-referrer" always;

@@ -13,7 +13,7 @@ server {
 
 {% if common_nginx_ssl_enabled | default(true) %}
 server {
-    listen 443 ssl http2;
+    listen {{ common_nginx_ssl_listen | default("443") }} ssl http2;
     server_name {{ common_nginx_server_name }};
 
     ssl_certificate {{ common_nginx_ssl_cert }};

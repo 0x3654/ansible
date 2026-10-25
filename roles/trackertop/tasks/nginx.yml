@@ -10,4 +10,6 @@
     common_nginx_ssl_cert: "{{ trackertop_cert_path }}/live/{{ trackertop_domain_name }}/fullchain.pem"
     common_nginx_ssl_key: "{{ trackertop_cert_path }}/live/{{ trackertop_domain_name }}/privkey.pem"
     common_nginx_backend_port: "{{ trackertop_backend_port }}"
+    common_nginx_ssl_listen: "127.0.0.1:1443"
+    common_nginx_read_timeout: "180s"
   tags: [nginx]
