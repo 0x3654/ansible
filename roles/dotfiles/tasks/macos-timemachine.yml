@@ -27,6 +27,19 @@
   become: true
   register: _tm_plist
 
+# ВАЖНО: обёртка tm-nightly-run.sh (ночная граница 05:00, отсоединённый старт)
+# обязана ставиться ЭТОЙ задачей — её уже 4 раза теряли при переписах файла
+# (правка в дереве не доезжала до коммита / задача выпиливалась параллельной
+# правкой). plist выше зовёт /bin/sh + /usr/local/bin/tm-nightly-run.sh.
+- name: Time Machine | Обёртка ночного запуска (ночная граница 05:00)
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/dotfiles/macos/timemachine/tm-nightly-run.sh"
+    dest: /usr/local/bin/tm-nightly-run.sh
+    owner: root
+    group: wheel
+    mode: "0755"
+  become: true
+
 - name: Time Machine | Выгрузить демона перед заменой plist
   ansible.builtin.command:
     cmd: launchctl bootout system/com.user.timemachine-nightly
