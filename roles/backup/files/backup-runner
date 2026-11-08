@@ -8,7 +8,7 @@ ansible только доставляет этот файл и контракт�
   {"role": "semaphore", "items": [
      {"name": "data", "kind": "bind", "path": "...", "retention": 7},
      {"name": "db",    "kind": "volume", "volume": "x", "retention": 7},
-     {"name": "db",    "kind": "pg", "container": "c", "db": "d", "retention": 7},
+     {"name": "db",    "kind": "pg", "container": "c", "db": "d"|"all", "retention": 7},
      {"name": "vols",  "kind": "docker-volumes", "skip": "re1|re2", "retention": 7},
      {"name": "m",     "kind": "docker-manifest", "retention": 7},
      {"name": "x",     "kind": "none", "why": "stateless"}
@@ -43,6 +43,18 @@ def rotate(dest, pattern, keep):
         f.unlink()
 
 
+def rotate_kits(dest, pattern, keep):
+    """Целыми комплектами: keep = число свежих ДНЕЙ (stamp-префикс), не файлов.
+    Прецедент 08.11: pg db=all + пофайловая ротация вычищала 15 из 22 дампов
+    ЛОКАЛЬНО ещё до ship — micro получал ≤7 файлов/день, история дырявая."""
+    dates = sorted({p.name[:10] for p in dest.glob(pattern)
+                    if re.match(r"\d{4}-\d{2}-\d{2}", p.name)}, reverse=True)
+    keep_dates = set(dates[:keep])
+    for p in dest.glob(pattern):
+        if p.name[:10] not in keep_dates:
+            p.unlink()
+
+
 def do_bind(item, dest, stamp, log):
     out = dest / f"{stamp}-{item['name']}.tgz"
     if out.exists() and out.stat().st_size > 0:
@@ -69,16 +81,47 @@ def do_volume(item, dest, stamp, log):
     return f"ok {out.stat().st_size // 1024}K"
 
 
+def _pg_exec(c, args, user, stdout=None):
+    """psql/pg_dump с паролем из env контейнера (POSTGRES_PASSWORD) —
+    секреты не хранятся в контрактах. Пароль кэшируется на контейнер."""
+    if not hasattr(_pg_exec, "_pw"):
+        _pg_exec._pw = {}
+    if c not in _pg_exec._pw:
+        r = sh(DOCKER + ["exec", c, "printenv", "POSTGRES_PASSWORD"])
+        _pg_exec._pw[c] = r.stdout.strip() if r.returncode == 0 else ""
+    cmd = DOCKER + ["exec"]
+    if _pg_exec._pw[c]:
+        cmd += ["-e", f"PGPASSWORD={_pg_exec._pw[c]}"]
+    return subprocess.run(cmd + [c] + args,
+                          stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE,
+                          timeout=7200)
+
+
 def do_pg(item, dest, stamp, log):
     c, db = item["container"], item["db"]
+    user = item.get("user", "postgres")
+    if db == "all":
+        # catch-all: все не-шаблонные базы кластера, новая база подхватывается
+        # сама (прецедент EPR_MDLP_1310, молча потерянная allowlist'ом 15.10)
+        r = _pg_exec(c, ["psql", "-U", user, "-Atc",
+                         "select datname from pg_database where not datistemplate"], user)
+        if r.returncode:
+            raise RuntimeError(f"psql list: {r.stderr.decode()[:200]}")
+        dbs = r.stdout.decode().split()
+        if not dbs:
+            raise RuntimeError("database list EMPTY")
+        ok = skip = 0
+        for d in dbs:
+            res = do_pg({"container": c, "db": d, "user": user}, dest, stamp, log)
+            ok += res.startswith("ok")
+            skip += res.startswith("skip")
+        return f"ok {ok}/{len(dbs)}" + (f" (+{skip} skip)" if skip else "")
     out = dest / f"{stamp}-{db}.dump"
     if out.exists() and out.stat().st_size > 0:
         return "skip-exists"
     tmp = dest / f"{out.name}.part"
     with open(tmp, "wb") as f:
-        p = subprocess.run(DOCKER + ["exec", c, "pg_dump", "-Fc", "-U",
-                                     item.get("user", "postgres"), db],
-                           stdout=f, stderr=subprocess.PIPE, timeout=7200)
+        p = _pg_exec(c, ["pg_dump", "-Fc", "-U", user, db], user, stdout=f)
     if p.returncode:
         tmp.unlink(missing_ok=True)
         raise RuntimeError(f"pg_dump {db}: {p.stderr.decode()[:200]}")
@@ -131,6 +174,48 @@ HANDLERS = {"bind": do_bind, "volume": do_volume, "pg": do_pg,
             "docker-volumes": do_docker_volumes, "docker-manifest": do_manifest}
 
 
+
+def do_ship(role_cfg, stamp, report):
+    """Отправить свежие архивы на micro (вторая копия) + GFS-ротация там.
+    Сеть лежит — это WARN, не провал бэкапа: локальная копия и TM остаются."""
+    dest_root = BACKUPS
+    host, sep, remote = role_cfg["ship_to"].partition(":")
+    r = sh(["rsync", "-a", "--partial", f"{dest_root}/",
+            f"{host}:{remote}/"])
+    if r.returncode:
+        report.append(f"  ship: FAIL {r.stderr.strip()[:150]}")
+        return
+    n = r.stdout.count("\n")
+    report.append(f"  ship: ok -> {host}:{remote}/")
+    # GFS: на micro держим 7 дневных / понедельники <=5 недель / 1-е числа <=12 месяцев
+    py = (
+        "import os,sys,re,time\n"
+        f"root={remote!r}\n"
+        "now=time.time(); keep=set()\n"
+        "for dp,_,fns in os.walk(root):\n"
+        "  for fn in fns:\n"
+        "    m=re.match(r'(\\d{4})-(\\d{2})-(\\d{2})-',fn)\n"
+        "    if not m: continue\n"
+        "    d=time.mktime(tuple(int(m.group(i)) for i in (1,2,3))+(0,0,0,0,0,0))\n"
+        "    age=(now-d)/86400\n"
+        "    wd=time.localtime(d).tm_wday; dom=time.localtime(d).tm_mday\n"
+        "    if age<=7 or (wd==0 and age<=35) or (dom==1 and age<=365): keep.add(os.path.join(dp,fn))\n"
+        "    else: os.remove(os.path.join(dp,fn))\n"
+        "print('gfs kept',len(keep))\n"
+    )
+    g = subprocess.run(["ssh", host, "python3", "-"], input=py,
+                       capture_output=True, text=True, timeout=600)
+    if g.returncode:
+        report.append(f"  gfs: FAIL {g.stderr.strip()[:150]}")
+    else:
+        report.append(f"  gfs: ok ({g.stdout.strip().splitlines()[-1] if g.stdout.strip() else 'done'})")
+    # run-reports живут на micro (копия уехала rsync'ом); локально — только сегодняшний
+    today = f"run-report-{stamp}.txt"
+    for f in Path(dest_root).glob("run-report-*.txt"):
+        if f.name != today:
+            f.unlink()
+
+
 def main():
     stamp = date.today().isoformat()
     report, fails = [], 0
@@ -162,10 +247,26 @@ def main():
             elif item["kind"] == "volume":
                 rotate(dest, f"{item['volume']}.tgz", keep)
             elif item["kind"] == "pg":
-                rotate(dest, f"{item['db']}.dump", keep)
+                if item["db"] == "all":
+                    rotate_kits(dest, "*.dump", keep)
+                else:
+                    rotate(dest, f"{item['db']}.dump", keep)
+        if role.get("ship_to"):
+            do_ship(role, stamp, report)
     text = "\n".join(report)
     (BACKUPS / f"run-report-{stamp}.txt").write_text(text + "\n")
     rotate(BACKUPS, "run-report-*.txt", 14)
+    # сегодняшний отчёт досылаем (основной rsync в ship идёт до записи отчёта)
+    for cf in contracts:
+        try:
+            role = json.loads(cf.read_text())
+        except Exception:
+            continue
+        if role.get("ship_to"):
+            host, _, remote = role["ship_to"].partition(":")
+            subprocess.run(["rsync", "-a", str(BACKUPS / f"run-report-{stamp}.txt"),
+                            f"{host}:{remote}/run-report-{stamp}.txt"],
+                           capture_output=True, timeout=120)
     print(text)
     sys.exit(1 if fails else 0)
 
