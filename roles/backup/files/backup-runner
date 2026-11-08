@@ -184,7 +184,7 @@ def do_ship(role_cfg, stamp, report):
             f"{host}:{remote}/"])
     if r.returncode:
         report.append(f"  ship: FAIL {r.stderr.strip()[:150]}")
-        return
+        return False
     n = r.stdout.count("\n")
     report.append(f"  ship: ok -> {host}:{remote}/")
     # GFS: на micro держим 7 дневных / понедельники <=5 недель / 1-е числа <=12 месяцев
@@ -214,6 +214,27 @@ def do_ship(role_cfg, stamp, report):
     for f in Path(dest_root).glob("run-report-*.txt"):
         if f.name != today:
             f.unlink()
+    return True
+
+
+def collapse_kits(role_cfg, report):
+    """После УСПЕШНОГО ship на маке остаётся только новейший дневной
+    комплект роли (правило 08.11: актуальное - на маке, история и GFS -
+    на micro). Провал ship'а сюда не доходит: локальная история не
+    приносится в жертву ни при каких обстоятельствах."""
+    dest = BACKUPS / role_cfg.get("dest", role_cfg["role"])
+    dates = sorted({p.name[:10] for p in dest.glob("*")
+                    if re.match(r"\d{4}-\d{2}-\d{2}", p.name)}, reverse=True)
+    if not dates:
+        return
+    newest = dates[0]
+    removed = 0
+    for p in dest.glob("*"):
+        if re.match(r"\d{4}-\d{2}-\d{2}", p.name) and p.name[:10] != newest:
+            p.unlink()
+            removed += 1
+    report.append(f"  collapse: локально только комплект {newest} "
+                  f"(удалено файлов {removed})")
 
 
 def main():
@@ -252,7 +273,8 @@ def main():
                 else:
                     rotate(dest, f"{item['db']}.dump", keep)
         if role.get("ship_to"):
-            do_ship(role, stamp, report)
+            if do_ship(role, stamp, report):
+                collapse_kits(role, report)
     text = "\n".join(report)
     (BACKUPS / f"run-report-{stamp}.txt").write_text(text + "\n")
     rotate(BACKUPS, "run-report-*.txt", 14)
