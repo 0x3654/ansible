@@ -15,6 +15,17 @@ backup_contracts:
       - name: manifest
         kind: docker-manifest
         retention: 7
+  # pg-дампы: свой ship обязателен — ship первого контракта уходит ДО того,
+  # как pg1c надампит файлы (прецедент 08.11: pg-дампы неделю не доезжали)
+  pg1c:
+    role: pg1c
+    ship_to: "root@micro:/mnt/torrent/disk2/docker-backups/moro"
+    items:
+      - name: all-bases
+        kind: pg
+        container: pg1c
+        db: all
+        retention: 7
   semaphore:
     role: semaphore
     items:
