@@ -31,6 +31,18 @@
 # обязана ставиться ЭТОЙ задачей — её уже 4 раза теряли при переписах файла
 # (правка в дереве не доезжала до коммита / задача выпиливалась параллельной
 # правкой). plist выше зовёт /bin/sh + /usr/local/bin/tm-nightly-run.sh.
+
+# Внешний 4T (disk12, с 17.11): два тома в одном контейнере — TM-moro (destination
+# TM, ставит юзер) и Backups-moro (ship-цель раннера). После контейнерных операций
+# томы могут не вернуться в mount (прецедент: deleteVolume дубля снял соседа,
+# rsync получил stale-маунтпоинт) — гарантируем смонтированность на каждом прогоне.
+- name: Time Machine | Внешний том артефактов | смонтирован
+  ansible.builtin.shell: |
+    mount | grep -q "on /Volumes/Backups-moro " || diskutil mount disk13s3
+    mount | grep "on /Volumes/Backups-moro " | head -1
+  register: _vol_mount
+  changed_when: "'diskutil mount' in _vol_mount.stdout"
+  become: true
 - name: Time Machine | Обёртка ночного запуска (ночная граница 05:00)
   ansible.builtin.copy:
     src: "{{ role_path }}/files/dotfiles/macos/timemachine/tm-nightly-run.sh"
