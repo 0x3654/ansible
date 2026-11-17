@@ -28,10 +28,13 @@ from pathlib import Path
 
 IS_MAC = sys.platform == "darwin"
 HOME = Path.home()
-# Последняя копия всегда на внутреннем диске (~/backups): быстрый рестор, доступен
-# из любого контекста. Внешний том Backups-moro (4T, с 17.11) и micro получают
-# историю ship'ом (ship_to в контракте, может быть списком; локальный путь = без ssh).
-BACKUPS = HOME / "backups" if IS_MAC else Path("/var/backups")
+# Съёмный том имеет приоритет (moro: внешний 4T «Backups-moro» с 17.11; TCC
+# пустит после первого ручного «Allow» для бэкап-раннера). Нет тома — внутренний путь.
+_VOL = Path("/Volumes/Backups-moro")
+if IS_MAC and _VOL.is_dir():
+    BACKUPS = _VOL
+else:
+    BACKUPS = HOME / "backups" if IS_MAC else Path("/var/backups")
 CONTRACTS_DIR = HOME / ".backups/contracts" if IS_MAC else Path("/etc/opt/backup/contracts")
 DOCKER = ["/usr/local/bin/docker"] if Path("/usr/local/bin/docker").exists() else ["docker"]
 
@@ -72,47 +75,16 @@ def do_volume(item, dest, stamp, log):
     return f"ok {out.stat().st_size // 1024}K"
 
 
-def _pg_exec(c, args, user, stdout=None):
-    """psql/pg_dump с паролем из env контейнера (POSTGRES_PASSWORD) —
-    секреты не хранятся в контрактах. Пароль кэшируется на контейнер."""
-    if not hasattr(_pg_exec, "_pw"):
-        _pg_exec._pw = {}
-    if c not in _pg_exec._pw:
-        r = sh(DOCKER + ["exec", c, "printenv", "POSTGRES_PASSWORD"])
-        _pg_exec._pw[c] = r.stdout.strip() if r.returncode == 0 else ""
-    cmd = DOCKER + ["exec"]
-    if _pg_exec._pw[c]:
-        cmd += ["-e", f"PGPASSWORD={_pg_exec._pw[c]}"]
-    return subprocess.run(cmd + [c] + args,
-                          stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE,
-                          timeout=7200)
-
-
 def do_pg(item, dest, stamp, log):
     c, db = item["container"], item["db"]
-    user = item.get("user", "postgres")
-    if db == "all":
-        # catch-all: все не-шаблонные базы кластера, новая база подхватывается сама
-        # (прецедент EPR_MDLP_1310, молча потерянная allowlist'ом 15.10)
-        r = _pg_exec(c, ["psql", "-U", user, "-Atc",
-                         "select datname from pg_database where not datistemplate"], user)
-        if r.returncode:
-            raise RuntimeError(f"psql list: {r.stderr.decode()[:200]}")
-        dbs = r.stdout.decode().split()
-        if not dbs:
-            raise RuntimeError("database list EMPTY")
-        ok = skip = 0
-        for d in dbs:
-            res = do_pg({"container": c, "db": d, "user": user}, dest, stamp, log)
-            ok += res.startswith("ok")
-            skip += res.startswith("skip")
-        return f"ok {ok}/{len(dbs)}" + (f" (+{skip} skip)" if skip else "")
     out = dest / f"{stamp}-{db}.dump"
     if out.exists() and out.stat().st_size > 0:
         return "skip-exists"
     tmp = dest / f"{out.name}.part"
     with open(tmp, "wb") as f:
-        p = _pg_exec(c, ["pg_dump", "-Fc", "-U", user, db], user, stdout=f)
+        p = subprocess.run(DOCKER + ["exec", c, "pg_dump", "-Fc", "-U",
+                                     item.get("user", "postgres"), db],
+                           stdout=f, stderr=subprocess.PIPE, timeout=7200)
     if p.returncode:
         tmp.unlink(missing_ok=True)
         raise RuntimeError(f"pg_dump {db}: {p.stderr.decode()[:200]}")
@@ -165,60 +137,6 @@ HANDLERS = {"bind": do_bind, "volume": do_volume, "pg": do_pg,
             "docker-volumes": do_docker_volumes, "docker-manifest": do_manifest}
 
 
-def _gfs_py(root):
-    return (
-        "import os,sys,re,time\n"
-        f"root={root!r}\n"
-        "now=time.time(); keep=set()\n"
-        "for dp,_,fns in os.walk(root):\n"
-        "  for fn in fns:\n"
-        "    m=re.match(r'(\\d{4})-(\\d{2})-(\\d{2})-',fn)\n"
-        "    if not m: continue\n"
-        "    d=time.mktime(tuple(int(m.group(i)) for i in (1,2,3))+(0,0,0,0,0,0))\n"
-        "    age=(now-d)/86400\n"
-        "    wd=time.localtime(d).tm_weekday; dom=time.localtime(d).tm_mday\n"
-        "    if age<=7 or (wd==0 and age<=35) or (dom==1 and age<=365): keep.add(os.path.join(dp,fn))\n"
-        "    else: os.remove(os.path.join(dp,fn))\n"
-        "print('gfs kept',len(keep))\n"
-    )
-
-
-def _ship_one(target, report):
-    """Одна цель: 'host:/путь' — ssh (micro), '/путь' — локальный том
-    (Backups-moro). FAIL цели — WARN, не провал бэкапа."""
-    host, sep, remote = target.partition(":")
-    local = not sep
-    dest = remote if local else f"{host}:{remote}/"
-    if not dest.endswith("/"):
-        dest += "/"
-    r = sh(["rsync", "-a", "--partial", f"{BACKUPS}/", dest])
-    if r.returncode:
-        report.append(f"  ship: FAIL {target} {r.stderr.strip()[:120]}")
-        return
-    report.append(f"  ship: ok -> {target}")
-    py = _gfs_py(remote)
-    if local:
-        g = subprocess.run(["python3", "-"], input=py,
-                           capture_output=True, text=True, timeout=600)
-    else:
-        g = subprocess.run(["ssh", host, "python3", "-"], input=py,
-                           capture_output=True, text=True, timeout=600)
-    if g.returncode:
-        report.append(f"  gfs: FAIL {target} {g.stderr.strip()[:120]}")
-    else:
-        report.append(f"  gfs: ok {target}")
-
-
-def do_ship(role_cfg, report):
-    """Вторые копии: ship_to — строка или список целей. Рсync'ит весь корень
-    BACKUPS (последняя копия остаётся на внутреннем) + GFS на цели."""
-    targets = role_cfg.get("ship_to")
-    if isinstance(targets, str):
-        targets = [targets]
-    for t in targets or []:
-        _ship_one(t, report)
-
-
 def main():
     stamp = date.today().isoformat()
     report, fails = [], 0
@@ -250,9 +168,7 @@ def main():
             elif item["kind"] == "volume":
                 rotate(dest, f"{item['volume']}.tgz", keep)
             elif item["kind"] == "pg":
-                rotate(dest, "*.dump" if item["db"] == "all" else f"{item['db']}.dump", keep)
-        if role.get("ship_to"):
-            do_ship(role, report)
+                rotate(dest, f"{item['db']}.dump", keep)
     text = "\n".join(report)
     (BACKUPS / f"run-report-{stamp}.txt").write_text(text + "\n")
     rotate(BACKUPS, "run-report-*.txt", 14)
