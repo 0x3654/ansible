@@ -36,3 +36,4 @@ v8dock/dists/
 _Work/gisp/        # → _Work/opti-com/gisp (сирота на обоих мака)
 _Work/old_gisp/    # → _Work/opti-com/gisp
 dotfiles/          # → ansible submodule roles/dotfiles (stow-репо 180М)
+YMusic/YM-*-unpack/
