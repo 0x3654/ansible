@@ -36,6 +36,7 @@
 
     # Разница приложений moro→citrus: что НЕ едет на citrus (см. sync-macbook.yml).
     sync_apps_exclude:
+      - "Google Chrome"            # self-updates (2026-11-17)
       - Docker                     # citrus 8G RAM — докеру там делать нечего (2026-09-13)
       - iMovie                     # Apple-медиа, снесено на citrus 2026-09-13
       - GarageBand                 # Apple-медиа
