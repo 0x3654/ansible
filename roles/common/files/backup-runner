@@ -28,13 +28,7 @@ from pathlib import Path
 
 IS_MAC = sys.platform == "darwin"
 HOME = Path.home()
-# Съёмный том имеет приоритет (moro: внешний 4T «Backups-moro» с 17.11; TCC
-# пустит после первого ручного «Allow» для бэкап-раннера). Нет тома — внутренний путь.
-_VOL = Path("/Volumes/Backups-moro")
-if IS_MAC and _VOL.is_dir():
-    BACKUPS = _VOL
-else:
-    BACKUPS = HOME / "backups" if IS_MAC else Path("/var/backups")
+BACKUPS = HOME / "backups" if IS_MAC else Path("/var/backups")
 CONTRACTS_DIR = HOME / ".backups/contracts" if IS_MAC else Path("/etc/opt/backup/contracts")
 DOCKER = ["/usr/local/bin/docker"] if Path("/usr/local/bin/docker").exists() else ["docker"]
 
