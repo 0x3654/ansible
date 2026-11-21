@@ -18,6 +18,10 @@ services:
     extends:
       file: ../_secrets/media-binds.yaml
       service: x-media-binds
+    # the daemon binds its RPC to the LAN ip only (rpc-bind-address=10.0.1.51
+    # since 2026-11-18), so the hook scripts must not talk to 127.0.0.1
+    environment:
+      - TRANSMISSION_RPC_HOST=10.0.1.51
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
