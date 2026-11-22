@@ -268,7 +268,7 @@
               failed_when: vpnserver_pq_verify.rc != 0
 
     - name: Setup WARP proxy
-      when: ruserv is not defined or ruserv != "true"
+      when: not (ruserv | default(false) | bool)
       block:
         - name: Check if port 40000 is in use
           ansible.builtin.shell: |

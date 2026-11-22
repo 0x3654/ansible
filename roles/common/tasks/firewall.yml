@@ -1,8 +1,10 @@
 - name: Get current iptables rules
+  # per-host on purpose: sub/panel ports differ across the fleet; with
+  # run_once the missing-rule check compared every host against the FIRST
+  # host's rules and re-added its unique ports on every deploy
   ansible.builtin.shell: iptables-save
   register: common_current_rules
   changed_when: false
-  run_once: true
 
 - name: Extract ports from current iptables rules
   ansible.builtin.set_fact:
