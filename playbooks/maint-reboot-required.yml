@@ -1,6 +1,9 @@
 ---
 - name: Check if system reboot is required
   hosts: "{{ target_hosts | default('all') }}"
+  # optional hosts (nano test platform etc): being offline must not
+  # fail the whole maintenance run
+  ignore_unreachable: true
 
   tasks:
     - name: Check if system reboot is required

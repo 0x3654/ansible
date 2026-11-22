@@ -1,6 +1,9 @@
 ---
 - name: Add swap file on weak VPS (idempotent, skip if swap exists)
   hosts: "{{ target_hosts | default('all:!macbook') }}"
+  # optional hosts (nano test platform etc): being offline must not
+  # fail the whole maintenance run
+  ignore_unreachable: true
   become: true
   vars:
     swap_file: /swapfile

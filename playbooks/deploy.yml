@@ -1,6 +1,9 @@
 ---
 - name: Start deploy with target hosts
   hosts: "{{ target_hosts | default('all') }}"
+  # optional hosts (nano test platform etc): being offline must not
+  # fail the whole maintenance run
+  ignore_unreachable: true
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:

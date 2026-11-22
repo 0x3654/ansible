@@ -1,6 +1,9 @@
 ---
 - name: Fix DNS configuration
   hosts: "{{ target_hosts | default('all') }}"
+  # optional hosts (nano test platform etc): being offline must not
+  # fail the whole maintenance run
+  ignore_unreachable: true
   gather_facts: false
   tasks:
     - name: Test initial network connectivity

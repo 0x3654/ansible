@@ -1,6 +1,9 @@
 ---
 - name: Cleanup When Low on Disk Space
   hosts: "{{ target_hosts | default('all:!macbook') }}"
+  # optional hosts (nano test platform etc): being offline must not
+  # fail the whole maintenance run
+  ignore_unreachable: true
   become: true
   vars:
     disk_path: /
