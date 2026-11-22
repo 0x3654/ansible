@@ -136,10 +136,14 @@
           notify: Restart sub
 
         - name: Render subscription link
+          # base64 WITHOUT anything after it: the aggregator's lua decoder
+          # is strict (ngx.decode_base64 = nil on a trailing newline, the
+          # upstream gets silently skipped). The panel-encoded a newline
+          # INSIDE; the template already ends with one, so no trim either.
           ansible.builtin.copy:
             dest: "{{ path }}/sub/webroot/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
             mode: "0644"
-            content: "{{ lookup('template', 'xray/sub-link.j2') | trim | b64encode }}\n"
+            content: "{{ lookup('template', 'xray/sub-link.j2') | b64encode }}"
 
         - name: Remove the legacy 3x-ui container
           # it still holds the old inbound (8443) and the panel sub listener
