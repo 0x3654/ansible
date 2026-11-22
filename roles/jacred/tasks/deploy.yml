@@ -4,7 +4,7 @@
     - name: Bring stack up
       ansible.builtin.command: "{{ common_compose_command | default('docker compose') }} up -d"
       args:
-        chdir: "{{ path }}"
+        chdir: "{{ jacred_path }}"
       register: jacred_up_result
       changed_when: >-
         jacred_up_result.stdout is search('Creating')

@@ -1,7 +1,10 @@
 ---
 # Playbook to run certbot tasks for SSL certificates
 - name: Run certbot for SSL certificate management
-  hosts: vpnserver_role:subnginx3xui_role:untilwall_role:semaphore_role:lampa_role:trackertop_role:vdl_role
+  # semaphore_role excluded: moro's semaphore lives on tailscale/localhost
+  # (no LE cert, and semaphore_domain_name is undefined there - the certbot
+  # section would crash), ae2's semaphore is not deployed (vhost stub only)
+  hosts: vpnserver_role:subnginx3xui_role:untilwall_role:lampa_role:trackertop_role:vdl_role
   vars:
     ansible_roles_path: "{{ playbook_dir }}/../roles"
   pre_tasks:

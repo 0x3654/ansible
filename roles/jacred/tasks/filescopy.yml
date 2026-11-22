@@ -1,14 +1,14 @@
 ---
 - name: Ensure base directory exists
   ansible.builtin.file:
-    path: "{{ path }}"
+    path: "{{ jacred_path }}"
     state: directory
     mode: "0755"
   tags: [filescopy]
 
 - name: Ensure data and config directories exist
   ansible.builtin.file:
-    path: "{{ path }}/{{ item }}"
+    path: "{{ jacred_path }}/{{ item }}"
     state: directory
     mode: "0755"
     # контейнер non-root: UID/GID 1000 (jacred) должен владеть Data и config
@@ -22,7 +22,7 @@
 - name: Copy compose file from role files (server)
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/jacred/files/jacred/compose.yaml"
-    dest: "{{ path }}/docker-compose.yaml"
+    dest: "{{ jacred_path }}/docker-compose.yaml"
     mode: "0644"
   when: jacred_mode == "server"
   tags: [filescopy]
@@ -30,7 +30,7 @@
 - name: Copy compose file from role files (parser)
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/jacred/files/jacred/compose-parser.yaml"
-    dest: "{{ path }}/docker-compose.yaml"
+    dest: "{{ jacred_path }}/docker-compose.yaml"
     mode: "0644"
   when: jacred_mode == "parser"
   tags: [filescopy]
@@ -39,7 +39,7 @@
 - name: Write init.yaml (server)
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../roles/jacred/templates/init.yaml.j2"
-    dest: "{{ path }}/config/init.yaml"
+    dest: "{{ jacred_path }}/config/init.yaml"
     mode: "0644"
   no_log: true
   notify: docker up jacred
@@ -49,7 +49,7 @@
 - name: Write init.yaml (parser)
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../roles/jacred/templates/init-parser.yaml.j2"
-    dest: "{{ path }}/config/init.yaml"
+    dest: "{{ jacred_path }}/config/init.yaml"
     mode: "0644"
   no_log: true
   notify: docker up jacred
@@ -61,6 +61,6 @@
 - name: Fetch run-job.sh from upstream
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/jacred-fdb/jacred/main/Data/run-job.sh
-    dest: "{{ path }}/data/run-job.sh"
+    dest: "{{ jacred_path }}/data/run-job.sh"
     mode: "0755"
   tags: [filescopy]

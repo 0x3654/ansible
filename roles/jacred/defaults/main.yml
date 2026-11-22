@@ -9,7 +9,7 @@
 #     tailscale serve на порт jacred_parser_port
 jacred_mode: "server"
 
-path: "/server/jacred"  # noqa: var-naming[no-role-prefix]
+jacred_path: "/server/jacred"  # noqa: var-naming[no-role-prefix]
 jacred_cert_path: "/server/certbot"  # noqa: var-naming[no-role-prefix]
 
 jacred_domain_name: "jacred.0x3654.com"

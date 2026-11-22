@@ -3,7 +3,7 @@
 # (атомарный mkdir). Идемпотентно: после правки шаблон не совпадает.
 - name: Replace flock with mkdir-lock in run-job.sh
   ansible.builtin.replace:
-    path: "{{ path }}/data/run-job.sh"
+    path: "{{ jacred_path }}/data/run-job.sh"
     regexp: 'exec 9>"\$LOCK_FILE"\nif ! flock -n 9; then\n(  log "SKIP \$\{JOB_NAME\}: previous run still active"\n  exit 0\n)fi'
     replace: |-
       LOCK_DIR_LOCK="${LOCK_DIR}/${JOB_NAME}.lockdir"
@@ -15,7 +15,7 @@
 
 - name: Free the mkdir-lock in the EXIT trap
   ansible.builtin.replace:
-    path: "{{ path }}/data/run-job.sh"
+    path: "{{ jacred_path }}/data/run-job.sh"
     regexp: 'trap ''rm -f "\$tmp" "\$\{tmp\}\.code" "\$\{tmp\}\.err"'' EXIT'
     replace: >-
       trap 'rm -f "$tmp" "${tmp}.code" "${tmp}.err";
