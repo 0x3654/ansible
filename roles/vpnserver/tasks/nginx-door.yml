@@ -48,7 +48,7 @@
     - name: Rewrite listen 443 to internal port
       ansible.builtin.lineinfile:
         path: "{{ item.path }}"
-        regexp: "^(\s*)listen 443 ssl"
+        regexp: '^(\s*)listen 443 ssl'
         line: '\1listen 127.0.0.1:{{ vpnserver_nginx_door_internal_port }} ssl http2;'
         backrefs: true
       loop: "{{ vpnserver_door_sites.files }}"
