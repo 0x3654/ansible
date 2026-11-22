@@ -159,6 +159,12 @@
           register: vpnserver_legacy_panel
           changed_when: "'removed' in vpnserver_legacy_panel.stdout"
 
+        - name: Write compose env for the sub port
+          ansible.builtin.copy:
+            dest: "{{ path }}/.env"
+            mode: "0600"
+            content: "VPNSERVER_SUB_PORT={{ vpnserver_sub_port }}\n"
+
         - name: Bring the stack up
           ansible.builtin.command: docker compose up -d
           args:
