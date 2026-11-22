@@ -43,11 +43,16 @@ vpnserver_amneziawg_enabled: true
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0600"  # noqa: var-naming[no-role-prefix]
 
-# Reality masquerade (anti-TSPU): dest-site for the inbound + the SNI clients
-# send. RU sites are preferred - TSPU cannot afford blocking them wholesale.
-# Applied idempotently to inbound id=1 stream_settings, panel restarted on drift.
-vpnserver_reality_target: "www.yandex.ru:443"
-vpnserver_reality_server_name: "www.yandex.ru"
+# Reality SNI policy (2026-11-22): clients send the server's OWN domain
+# (DNS-consistent with its IP - the TSPU check that flags foreign-SNI
+# masquerades). The fallback target points at the local gateway page
+# (basic-auth camouflage) when the gateway is enabled.
+vpnserver_reality_server_name: "{{ domain_name }}"
+vpnserver_reality_target: "127.0.0.1:443"
+
+# Gateway camouflage (basic-auth page on the VPN SNI domain); auto-skipped
+# on door hosts where nginx 443 is the SNI door instead.
+vpnserver_gateway_enabled: true
 
 # SNI-door on port 443: share 443 with a busy nginx via stream/ssl_preread.
 # Door SNI (== vpnserver_reality_server_name) routes to the xray inbound,

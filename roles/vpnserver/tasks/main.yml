@@ -35,6 +35,10 @@
   ansible.builtin.import_tasks: nginx-door.yml
   tags: [door]
 
+- name: Import gateway camouflage tasks
+  ansible.builtin.import_tasks: gateway.yml
+  tags: [gateway]
+
 - name: Import firewall tasks
   ansible.builtin.import_tasks: firewall.yml
   tags: [firewall]

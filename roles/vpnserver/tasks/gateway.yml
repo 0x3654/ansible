@@ -1,0 +1,91 @@
+---
+# Gateway camouflage: a basic-auth protected static page on the VPN SNI
+# domain (443). Browsers see an ordinary "closed resource" (401), the
+# Reality fallback relays unauthenticated TLS here, clients use the xray
+# port directly and never touch nginx. Skipped on door hosts (es): the
+# door owns 443 and routes SNI to xray/1443 instead.
+- name: Gateway camouflage
+  when:
+    - vpnserver_gateway_enabled | default(true)
+    - not (vpnserver_nginx_door_enabled | default(false))
+  tags: [gateway]
+  block:
+    - name: Install nginx and htpasswd utils
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - apache2-utils
+        state: present
+        update_cache: true
+
+    - name: Create gateway directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/www/gateway
+        - /etc/nginx/htpasswd
+
+    - name: Deploy gateway page
+      ansible.builtin.copy:
+        dest: /var/www/gateway/index.html
+        mode: "0644"
+        content: |
+          <!DOCTYPE html><html><head><meta charset="utf-8"><title>Service Gateway</title><style>body{font-family:system-ui,sans-serif;background:#f5f6f7;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:2rem 3rem;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center}h1{font-size:1.2rem;color:#333}p{color:#777;font-size:.9rem}</style></head><body><div class="card"><h1>Service Gateway</h1><p>Authenticated access only. Contact your administrator for credentials.</p></div></body></html>
+
+    - name: Generate gateway credentials once
+      # random user/pass, forgotten on purpose: the page only needs to look
+      # closed, nobody is supposed to log in
+      ansible.builtin.shell: |
+        set -o pipefail
+        [ -s /etc/nginx/htpasswd/gateway ] && exit 0
+        htpasswd -bc /etc/nginx/htpasswd/gateway "$(openssl rand -hex 4)" "$(openssl rand -hex 12)"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Deploy gateway vhost
+      ansible.builtin.template:
+        src: gateway-vhost.conf.j2
+        dest: /etc/nginx/sites-available/gateway
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Enable gateway vhost
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/gateway
+        dest: /etc/nginx/sites-enabled/gateway
+        state: link
+      notify: Reload nginx
+
+    - name: Ensure nginx is running
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Point the Reality fallback at the gateway
+      # sync serverNames/link SNI and the fallback target to role vars
+      # (own-domain policy; replaces the disabled masquerade task)
+      ansible.builtin.shell: |
+        set -o pipefail
+        DB="{{ vpnserver_xray_db_path }}/x-ui.db"
+        WANT_SNI="{{ vpnserver_reality_server_name }}"
+        WANT_TARGET="{{ vpnserver_reality_target }}"
+        CUR_SNI=$(sqlite3 "$DB" "select json_extract(stream_settings,'$.realitySettings.serverNames') from inbounds where id=1;")
+        CUR_TARGET=$(sqlite3 "$DB" "select json_extract(stream_settings,'$.realitySettings.target') from inbounds where id=1;")
+        if [ "$CUR_SNI" = "[\"$WANT_SNI\"]" ] && [ "$CUR_TARGET" = "$WANT_TARGET" ]; then
+          echo "already in sync"
+          exit 0
+        fi
+        docker stop 3x-ui
+        sqlite3 "$DB" "update inbounds set stream_settings = json_set(json_set(stream_settings, '\$.realitySettings.serverNames', json_array('$WANT_SNI')), '\$.realitySettings.settings.serverName', '$WANT_SNI') where id=1;"
+        sqlite3 "$DB" "update inbounds set stream_settings = json_set(stream_settings, '\$.realitySettings.target', '$WANT_TARGET') where id=1;"
+        docker start 3x-ui
+        sleep 8
+        echo "synced sni=$WANT_SNI target=$WANT_TARGET"
+      args:
+        executable: /bin/bash
+      register: vpnserver_gateway_sync
+      changed_when: "'already in sync' not in vpnserver_gateway_sync.stdout"

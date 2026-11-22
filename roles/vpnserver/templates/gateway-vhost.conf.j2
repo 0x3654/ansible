@@ -1,0 +1,18 @@
+# Managed by Ansible (vpnserver gateway). Camouflage behind the VPN SNI:
+# browsers/scanners see a basic-auth protected page - the most ordinary
+# "closed resource" pattern. Clients do not touch it (they hit the xray
+# port directly); the Reality fallback relays unauthenticated TLS here.
+server {
+    listen 443 ssl;
+    server_name {{ vpnserver_reality_server_name }};
+
+    ssl_certificate {{ vpnserver_cert_path }}/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key {{ vpnserver_cert_path }}/live/{{ domain_name }}/privkey.pem;
+
+    root /var/www/gateway;
+    index index.html;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/htpasswd/gateway;
+
+    location / { try_files $uri $uri/ =404; }
+}
