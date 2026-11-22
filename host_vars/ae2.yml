@@ -1,0 +1,4 @@
+# ae2: gateway camouflage lives inside the vdl vhost (ae2.0x3654.com-vdl,
+# /tunnel/ proxy + auth on /) - the vpnserver gateway task would create a
+# duplicate server_name vhost on 443
+vpnserver_gateway_enabled: false
