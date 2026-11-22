@@ -58,13 +58,13 @@
           changed_when: false
 
         - name: Parse Reality keys
-          # xray-core >= 26.x prints the derived client key as "Password:"
-          # (formerly "PublicKey:") - strip any leading label
+          # 26.x labels: "PrivateKey: …" / "Password (PublicKey): …" - strip
+          # everything up to the first ": " (parens break charset classes)
           ansible.builtin.set_fact:
             vpnserver_reality_private_key: >-
-              {{ vpnserver_keygen_result.stdout_lines[0] | regex_replace('^[A-Za-z0-9 ]+: ', '') }}
+              {{ vpnserver_keygen_result.stdout_lines[0] | regex_replace('^[^:]+: ', '') }}
             vpnserver_reality_public_key: >-
-              {{ vpnserver_keygen_result.stdout_lines[1] | regex_replace('^[A-Za-z0-9 ]+: ', '') }}
+              {{ vpnserver_keygen_result.stdout_lines[1] | regex_replace('^[^:]+: ', '') }}
 
         - name: Generate Reality short ids
           ansible.builtin.shell: |

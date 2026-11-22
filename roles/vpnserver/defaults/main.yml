@@ -43,7 +43,15 @@ vpnserver_backend: "panel"
 # behind the door, 8443 direct.
 vpnserver_xray_listen_port: "8443"
 vpnserver_xray_default_client_port: "{{ 443 if vpnserver_nginx_door_enabled | default(false) | bool else 8443 }}"
-vpnserver_xray_image: "ghcr.io/xtls/xray-core:26.11.9@sha256:d42420dca2014cbd06e24daad8a039b455b7d9e905cda1cf871254cfffda2149"
+# xray image: our own registry, :latest straight out of the box.
+# Quality gate = CI (full e2e test with the production config template
+# before every push); watchtower rolls hosts to fresh :latest on its own -
+# update speed beats downtime purism. Manual rollback = pin this var to a
+# rev-<sha> / xray-<version> tag for one deploy.
+# Requires the first CI publication of ghcr.io/0x3654/vpnserver-xray:
+vpnserver_xray_image: "ghcr.io/0x3654/vpnserver-xray:latest"
+# pre-publication fallback (official, digest-pinned):
+# vpnserver_xray_image: "ghcr.io/xtls/xray-core:26.11.9@sha256:d42420dca2014cbd06e24daad8a039b455b7d9e905cda1cf871254cfffda2149"
 vpnserver_sub_image: "nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8"
 
 # Subscription headers - panel parity by default: the brand title the
