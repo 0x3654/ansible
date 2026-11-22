@@ -2,7 +2,12 @@
 # Keep the Reality masquerade of inbound id=1 in sync with role vars.
 # TSPU burns masquerades and IPs over time; changing the SNI/dest must be a
 # one-variable redeploy, not manual sqlite surgery (2026-10-16 incident).
+# DISABLED by default (2026-11-22): the foreign-SNI masquerade (yandex) is the
+# TSPU flag pattern - the fleet policy is now own-domain serverNames; the
+# sync shell is also broken (JSON quoting through bash heredoc). Do not
+# re-enable until it is per-host aware and the quoting is fixed.
 - name: Reality masquerade sync
+  when: vpnserver_reality_masquerade_enabled | default(false)
   tags: [reality]
   block:
     - name: Read current stream_settings
