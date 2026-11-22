@@ -190,6 +190,83 @@
           ansible.builtin.command: docker start 3x-ui
           changed_when: true
 
+    - name: Sanitize legacy post-quantum fields (VLESS EOF fix)
+      # v2.8.8-era panel material (mldsa65 blobs, mlkem encryption/decryption)
+      # breaks VLESS handshakes on xray 26.10.21+ and only materializes in the
+      # runtime config on container (re)create - hence "worked by hand, broke
+      # after deploy". Guard every run: detect, strip, verify the generated
+      # config, not just the DB (incident 2026-11-22, twice).
+      tags: [3x-ui]
+      block:
+        - name: Detect PQ leftovers in the inbound DB
+          ansible.builtin.shell: |
+            set -o pipefail
+            DB="{{ vpnserver_xray_db_path }}/x-ui.db"
+            n=$(sqlite3 "$DB" "select count(*) from inbounds i, json_tree(i.stream_settings) jt where jt.key like 'mldsa65%';")
+            n=$((n + $(sqlite3 "$DB" "select count(*) from inbounds i, json_tree(i.settings) jt where jt.key in ('encryption','selectedAuth','testseed');")))
+            n=$((n + $(sqlite3 "$DB" "select count(*) from inbounds where coalesce(json_extract(settings,'$.decryption'),'none') != 'none';")))
+            echo "$n"
+          args:
+            executable: /bin/bash
+          register: vpnserver_pq_leftovers
+          changed_when: false
+
+        - name: Strip PQ fields
+          when: vpnserver_pq_leftovers.stdout | int > 0
+          block:
+            - name: Stop 3x-ui for DB surgery
+              ansible.builtin.command: docker stop 3x-ui
+              changed_when: true
+
+            - name: Remove PQ fields from all inbounds
+              ansible.builtin.shell: |
+                set -o pipefail
+                DB="{{ vpnserver_xray_db_path }}/x-ui.db"
+                for p in $(sqlite3 "$DB" "select distinct jt.fullkey from inbounds i, json_tree(i.stream_settings) jt where jt.key like 'mldsa65%'"); do
+                  sqlite3 "$DB" "update inbounds set stream_settings=json_remove(stream_settings, '$p');"
+                done
+                for INB in $(sqlite3 "$DB" "select id from inbounds"); do
+                  ARGS=""
+                  N=$(sqlite3 "$DB" "select json_array_length(settings,'$.clients') from inbounds where id=$INB;")
+                  for i in $(seq 0 $((N-1))); do
+                    P="\$.clients[$i].encryption"
+                    c=$(sqlite3 "$DB" "select count(*) from inbounds where id=$INB and json_type(settings,'$P') is not null;")
+                    if [ "${c:-0}" -gt 0 ]; then ARGS="$ARGS, '$P'"; fi
+                  done
+                  if [ -n "$ARGS" ]; then
+                    sqlite3 "$DB" "update inbounds set settings=json_remove(settings ${ARGS#,}) where id=$INB;"
+                  fi
+                  sqlite3 "$DB" "update inbounds set settings=json_remove(json_set(settings, '$.decryption', 'none'), '$.selectedAuth', '$.testseed') where id=$INB;"
+                done
+                echo "stripped"
+              args:
+                executable: /bin/bash
+              register: vpnserver_pq_strip
+              changed_when: true
+
+            - name: Start 3x-ui after surgery
+              ansible.builtin.command: docker start 3x-ui
+              changed_when: true
+
+            - name: Wait for xray to regenerate config
+              ansible.builtin.shell: sleep 8
+              changed_when: false
+
+            - name: Verify the runtime config is PQ-free
+              ansible.builtin.shell: |
+                set -o pipefail
+                docker exec 3x-ui cat /app/bin/config.json \
+                  | grep -oE '"(decryption|selectedAuth|encryption)":"?[^,"}]*' \
+                  | grep -v '"decryption":"none"' && exit 1 || true
+                docker exec 3x-ui cat /app/bin/config.json | grep -q '"decryption":"none"' \
+                  || { echo "decryption:none missing in runtime config"; exit 1; }
+                echo "runtime config clean"
+              args:
+                executable: /bin/bash
+              register: vpnserver_pq_verify
+              changed_when: false
+              failed_when: vpnserver_pq_verify.rc != 0
+
     - name: Setup WARP proxy
       when: ruserv is not defined or ruserv != "true"
       block:
