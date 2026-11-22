@@ -108,12 +108,27 @@
       when: vpnserver_entry.xray is defined
       block:
         - name: Extract xray and subscription values
+          # subscription convention: suburl = base URL for the aggregator,
+          # suburlid = the client-facing link (own address for some hosts,
+          # e.g. ru2 lives outside the aggregator on purpose). Legacy
+          # entries (ae) keep the full link inside suburl with no suburlid,
+          # so the sub_id chain tolerates all three shapes.
           ansible.builtin.set_fact:
             vpnserver_x: "{{ vpnserver_entry.xray }}"
             vpnserver_sub_port: "{{ vpnserver_entry.subscription.suburl | regex_search(':(\\d+)/', '\\1') | first }}"
             vpnserver_sub_path: "{{ vpnserver_entry.subscription.suburl | regex_search('https://[^:]+:\\d+/([^/]+)/', '\\1') | first }}"
-            vpnserver_sub_id: "{{ vpnserver_entry.xray.sub_id | default(vpnserver_entry.subscription.suburlid | urlsplit('path') | basename) }}"
+            vpnserver_sub_id: >-
+              {{ (vpnserver_entry.xray.sub_id | default(''))
+                 or (vpnserver_entry.subscription.suburlid | default('') | urlsplit('path') | basename)
+                 or (vpnserver_entry.subscription.suburl | urlsplit('path') | basename) }}
           no_log: true
+
+        - name: Refuse entries without a usable sub id
+          when: vpnserver_sub_id | length == 0
+          ansible.builtin.fail:
+            msg: >-
+              No sub id derivable for {{ domain_name }}: need xray.sub_id,
+              suburlid tail or a full-form suburl in three_ui_servers.
 
         - name: Ensure subscription webroot
           ansible.builtin.file:
