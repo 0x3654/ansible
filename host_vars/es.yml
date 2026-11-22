@@ -2,3 +2,14 @@
 # marks — «одна база» отметок Lampa (роль marks); секретная часть URL
 # совпадает с t.js (marks_url) — публичный репо, модель как у torr-секрета ru2
 marks_secret: "36f6988c327c6f2561b58a90"
+
+# jacred — Torznab API агрегатора на ae2 (роль trackertop)
+jacred_key: "929824c2fa0ec045be993b6da1538155"
+
+# vpnserver: es — SNI-door host. The door owns 443 (stream/ssl_preread),
+# the gateway camouflage task must not touch it; the VPN SNI is a dedicated
+# subdomain (es2) with the untilwall page behind the Reality fallback.
+vpnserver_nginx_door_enabled: true
+vpnserver_gateway_enabled: false
+vpnserver_reality_server_name: "es2.0x3654.com"
+vpnserver_reality_target: "127.0.0.1:1443"
