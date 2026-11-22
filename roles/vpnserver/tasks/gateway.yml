@@ -28,6 +28,17 @@
         - /var/www/gateway
         - /etc/nginx/htpasswd
 
+    - name: Hide server fingerprint host-wide
+      # http-level drop-in: covers every vhost on the host (gateway and
+      # foreign apps alike) - no version, no OS, no Server header at all
+      ansible.builtin.copy:
+        dest: /etc/nginx/conf.d/00-hide-server.conf
+        mode: "0644"
+        content: |
+          server_tokens off;
+          more_clear_headers Server;
+      notify: Reload nginx
+
     - name: Deploy gateway page
       ansible.builtin.copy:
         dest: /var/www/gateway/index.html
