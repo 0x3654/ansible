@@ -32,7 +32,8 @@ def run(cmd, **kw):
 
 def harvest(domain):
     sql = ("select port, settings, stream_settings from inbounds where id=1;")
-    res = run(["ssh", "-o", "ConnectTimeout=10", domain,
+    host = os.environ.get("SSH_HOST", domain)  # ssh alias may differ from FQDN
+    res = run(["ssh", "-o", "ConnectTimeout=10", host,
                f"sqlite3 -json {DB} \"{sql}\""])
     rows = json.loads(res.stdout)
     if not rows:
