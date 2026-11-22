@@ -2,17 +2,32 @@
 # browsers/scanners see a basic-auth protected page - the most ordinary
 # "closed resource" pattern. Clients do not touch it (they hit the xray
 # port directly); the Reality fallback relays unauthenticated TLS here.
+#
+# Fingerprint discipline: no version, no OS, no nginx mentions anywhere -
+# Server header cleared entirely (headers-more), stock error pages
+# replaced with bare minimal ones, h2 on like any modern site.
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name {{ vpnserver_reality_server_name }};
 
     ssl_certificate {{ vpnserver_cert_path }}/live/{{ domain_name }}/fullchain.pem;
     ssl_certificate_key {{ vpnserver_cert_path }}/live/{{ domain_name }}/privkey.pem;
 
+    server_tokens off;
+    more_clear_headers Server;
+
     root /var/www/gateway;
     index index.html;
     auth_basic "Restricted";
     auth_basic_user_file /etc/nginx/htpasswd/gateway;
+
+    error_page 401 /__401.html;
+    location = /__401.html {
+        internal;
+        auth_basic off;
+        default_type text/html;
+        return 401 '<!DOCTYPE html><html><head><meta charset="utf-8"><title>401 Authorization Required</title></head><body><center><h1>401 Authorization Required</h1></center><hr><center>Restricted</center></body></html>';
+    }
 
     location / { try_files $uri $uri/ =404; }
 }

@@ -15,6 +15,7 @@
         name:
           - nginx
           - apache2-utils
+          - libnginx-mod-http-headers-more-filter
         state: present
         update_cache: true
 
