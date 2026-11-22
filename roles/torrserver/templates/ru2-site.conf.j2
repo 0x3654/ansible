@@ -21,8 +21,27 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    # Камуфляж (слит с gateway-вхостом роли vpnserver): всё, что не наши
+    # публичные пути ниже — basic-auth 401 с bare-страницей (zero-fingerprint,
+    # паттерн gateway-vhost). Server-заголовок чистится host-wide drop-in'ом
+    # 00-hide-server.conf роли vpnserver. Reality-fallback xray (SNI этого
+    # домена, неаутентифицированный TLS → 127.0.0.1:443) приземляется сюда же
+    # и видит тот же «закрытый ресурс». auth задан ТОЛЬКО здесь — публичные
+    # location'ы ниже его не наследуют.
+    root /var/www/gateway;
+    index index.html;
+
+    error_page 401 /__401.html;
+    location = /__401.html {
+        internal;
+        default_type text/html;
+        return 401 '<!DOCTYPE html><html><head><meta charset="utf-8"><title>401 Authorization Required</title></head><body><center><h1>401 Authorization Required</h1></center><hr><center>Restricted</center></body></html>';
+    }
+
     location / {
-        return 404;
+        auth_basic "Restricted";
+        auth_basic_user_file /etc/nginx/htpasswd/gateway;
+        try_files $uri $uri/ =404;
     }
 
     location /yandex-jwt/ {

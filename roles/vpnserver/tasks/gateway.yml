@@ -62,6 +62,7 @@
         src: gateway-vhost.conf.j2
         dest: /etc/nginx/sites-available/gateway
         mode: "0644"
+      when: vpnserver_gateway_vhost_enabled | default(true)
       notify: Reload nginx
 
     - name: Enable gateway vhost
@@ -69,6 +70,20 @@
         src: /etc/nginx/sites-available/gateway
         dest: /etc/nginx/sites-enabled/gateway
         state: link
+      when: vpnserver_gateway_vhost_enabled | default(true)
+      notify: Reload nginx
+
+    - name: Remove gateway vhost when the site role owns 443
+      # ru2 (torrserver) / ae2 (vdl): camouflage lives inside the site-owning
+      # role's vhost; a separate gateway vhost on the same server_name wins
+      # by sites-enabled load order and shadows the real site
+      when: not (vpnserver_gateway_vhost_enabled | default(true))
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/nginx/sites-enabled/gateway
+        - /etc/nginx/sites-available/gateway
       notify: Reload nginx
 
     - name: Ensure nginx is running

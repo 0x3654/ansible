@@ -75,6 +75,14 @@ vpnserver_reality_target: "127.0.0.1:443"
 # on door hosts where nginx 443 is the SNI door instead.
 vpnserver_gateway_enabled: true
 
+# Separate switch for the gateway VHOST only. On hosts where another role
+# owns the 443 vhost on the same server_name (ru2: torrserver, ae2: vdl),
+# the camouflage is merged into that vhost instead: assets (page, htpasswd),
+# the host-wide fingerprint drop-in and the Reality fallback sync stay with
+# this role, but deploying the standalone vhost would create a duplicate
+# server_name that shadows the real site (sites-enabled load order).
+vpnserver_gateway_vhost_enabled: true
+
 # SNI-door on port 443: share 443 with a busy nginx via stream/ssl_preread.
 # Door SNI (== vpnserver_reality_server_name) routes to the xray inbound,
 # everything else goes to the local vhosts listening on the internal port.

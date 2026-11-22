@@ -5,3 +5,10 @@
 # у браузерной лампы; TorrServer отдаёт ACAO: *). URL для Lampa:
 # https://ru2.0x3654.com/torr-<secret>
 torrserver_secret: "torr-31008ae1f60d63973d9ed4cb"
+
+# Gateway-камуфляж vpnserver живёт ВНУТРИ вхоста роли torrserver
+# (ru2-0x3654: /torr-<secret>/, /plex/, /yandex-jwt/ публичны, всё
+# остальное — basic-auth 401). Отдельный gateway-вхост на том же
+# server_name перекрыл бы сайт (как у ae2/vdl). Ассеты, drop-in
+# fingerprint и Reality-fallback sync остаются за ролью vpnserver.
+vpnserver_gateway_vhost_enabled: false

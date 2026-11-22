@@ -7,6 +7,62 @@
     path: /etc/nginx/sites-enabled/ru2-jwt
     state: absent
 
+- name: Remove standalone gateway vhost (camouflage merged into this site)
+  # отдельный gateway-вхост роли vpnserver на том же server_name
+  # выигрывает по алфавиту sites-enabled и перекрывает сайт целиком
+  # (инцидент 22.11: /torr-<secret>/, /plex/, /yandex-jwt/ отдавали 401)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nginx/sites-enabled/gateway
+    - /etc/nginx/sites-available/gateway
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Check host-wide fingerprint drop-in (vpnserver)
+  ansible.builtin.stat:
+    path: /etc/nginx/conf.d/00-hide-server.conf
+  register: torrserver_hide_dropin
+  tags: [nginx]
+
+- name: Deduplicate server_tokens in nginx.conf
+  # drop-in задаёт server_tokens off на уровне http; дожившая с ручных
+  # времён строка в nginx.conf даёт "directive is duplicate" → nginx -t
+  # падает (и уронит сайт при любом рестарте)
+  when: torrserver_hide_dropin.stat.exists
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^\s*server_tokens\s+off;\s*(#.*)?$'
+    state: absent
+  notify: reload nginx
+  tags: [nginx]
+
+- name: Ensure gateway camouflage dirs
+  # обычно создаёт роль vpnserver; страховка для автономного запуска
+  # deploy-torrserver.yml
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /var/www/gateway
+    - /etc/nginx/htpasswd
+  tags: [nginx]
+
+- name: Ensure gateway htpasswd exists
+  # без файла auth_basic в location / не пускает никого — это и нужно;
+  # креды случайные и забытые (как у vpnserver), только openssl, без
+  # apache2-utils
+  ansible.builtin.shell: |
+    set -o pipefail
+    [ -s /etc/nginx/htpasswd/gateway ] && exit 0
+    printf 'gateway:%s\n' "$(openssl passwd -apr1 "$(openssl rand -hex 12)")" > /etc/nginx/htpasswd/gateway
+  args:
+    executable: /bin/bash
+  changed_when: false
+  tags: [nginx]
+
 - name: Configure nginx site for ru2 (JWT + Plex + TorrServer)
   ansible.builtin.template:
     src: ru2-site.conf.j2
