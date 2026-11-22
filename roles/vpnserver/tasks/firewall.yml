@@ -16,6 +16,15 @@
           - "-A INPUT -p tcp -m tcp --dport {{ https_port | default(443) }} -j ACCEPT"
           - "-A INPUT -p tcp -m tcp --dport {{ vpnserver_sub_port | default(31000) }} -j ACCEPT"
 
+    - name: Add xray inbound port on the pure backend
+      # non-door xray hosts serve the inbound on 8443 directly (443 is the
+      # gateway camouflage page); door hosts reach xray from local nginx
+      when: vpnserver_backend | default('panel') == 'xray' and not (vpnserver_nginx_door_enabled | default(false) | bool)
+      ansible.builtin.set_fact:
+        vpnserver_firewall_rules: >-
+          {{ vpnserver_firewall_rules
+          + ['-A INPUT -p tcp -m tcp --dport ' + (vpnserver_xray_listen_port | string) + ' -j ACCEPT'] }}
+
     - name: Call firewall role with dynamic rules
       ansible.builtin.include_role:
         name: common

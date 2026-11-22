@@ -8,6 +8,13 @@ set -euo pipefail
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$ROOT"
 
+# Worktree/branch runs (pilot): local-only pins are the point of the
+# branch - allow skipping the remote check explicitly.
+if [ "${SUBMODULE_CHECK:-strict}" = "off" ]; then
+    echo "submodule check SKIPPED (SUBMODULE_CHECK=off)"
+    exit 0
+fi
+
 fail=0
 # git ls-files -s format: "<mode> <sha> <stage>\t<path>" — default IFS covers both separators
 while read -r mode sha1 _stage path; do

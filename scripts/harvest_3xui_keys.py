@@ -20,7 +20,7 @@ import tempfile
 
 import yaml
 
-REPO = "/Users/m/code/ansible"
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SECRETS = os.path.join(REPO, "inventory/group_vars/vps/secrets.yml")
 DB = "/server/vpnserver/3x-ui/db/x-ui.db"
 

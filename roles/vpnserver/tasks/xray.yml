@@ -112,7 +112,7 @@
             vpnserver_x: "{{ vpnserver_entry.xray }}"
             vpnserver_sub_port: "{{ vpnserver_entry.subscription.suburl | regex_search(':(\\d+)/', '\\1') | first }}"
             vpnserver_sub_path: "{{ vpnserver_entry.subscription.suburl | regex_search('https://[^:]+:\\d+/([^/]+)/', '\\1') | first }}"
-            vpnserver_sub_id: "{{ vpnserver_entry.subscription.suburlid | urlsplit('path') | basename }}"
+            vpnserver_sub_id: "{{ vpnserver_entry.xray.sub_id | default(vpnserver_entry.subscription.suburlid | urlsplit('path') | basename) }}"
           no_log: true
 
         - name: Ensure subscription webroot
