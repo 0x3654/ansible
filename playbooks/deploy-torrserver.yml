@@ -1,6 +1,7 @@
 ---
 # Deploy TorrServer (MatriX) на ru2: контейнер + nginx-сайт ru2.0x3654.com
-# (yandex-jwt + /plex/ + TorrServer). Серт уже есть (playbooks/certbot.yml).
+# (/plex/ + TorrServer + gateway-камуфляж на остальном). Серт уже есть
+# (playbooks/certbot.yml). yandex-jwt выпилен 23.11 (бэкенд умер).
 - name: Deploy TorrServer with health-check
   hosts: torrserver_role
   vars:

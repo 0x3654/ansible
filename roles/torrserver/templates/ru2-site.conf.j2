@@ -1,6 +1,6 @@
-# {{ torrserver_domain_name }} — yandex-jwt / plex (тоннель с micro) / torrserver
-# Управляется ansible (роль torrserver). До 30.09 был ручным конфигом ru2-jwt.
-limit_req_zone $binary_remote_addr zone=yandex_jwt:10m rate=30r/m;
+# {{ torrserver_domain_name }} — plex (тоннель с micro) / torrserver / gateway-камуфляж
+# Управляется ansible (роль torrserver). До 30.09 был ручным конфигом ru2-jwt;
+# yandex-jwt выпилен 23.11: бэкенд :9988 умер, путь отдавал 502.
 
 server {
     listen 80;
@@ -42,17 +42,6 @@ server {
         auth_basic "Restricted";
         auth_basic_user_file /etc/nginx/htpasswd/gateway;
         try_files $uri $uri/ =404;
-    }
-
-    location /yandex-jwt/ {
-        limit_req zone=yandex_jwt burst=10 nodelay;
-        limit_req_status 429;
-        proxy_pass http://127.0.0.1:9988/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Plex (тоннель с micro) для https-клиентов Lampa — http-URL режется

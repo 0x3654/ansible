@@ -2,10 +2,14 @@
 # ru2.0x3654.com был ручным конфигом ru2-jwt (yandex-jwt + /plex/);
 # роль забирает сайт под ansible, добавляя TorrServer. Порядок: сначала снять
 # старый symlink (иначе nginx -t падает по duplicate server_name), потом новый.
-- name: Remove legacy manual site link
+- name: Remove legacy manual yandex-jwt site
+  # ручной конфиг ру2-jwt (yandex-jwt, бэкенд :9988 умер) - мёртвый дрейф
   ansible.builtin.file:
-    path: /etc/nginx/sites-enabled/ru2-jwt
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /etc/nginx/sites-enabled/ru2-jwt
+    - /etc/nginx/sites-available/ru2-jwt
 
 - name: Remove standalone gateway vhost (camouflage merged into this site)
   # отдельный gateway-вхост роли vpnserver на том же server_name
@@ -63,7 +67,7 @@
   changed_when: false
   tags: [nginx]
 
-- name: Configure nginx site for ru2 (JWT + Plex + TorrServer)
+- name: Configure nginx site for ru2 (Plex + TorrServer + camouflage)
   ansible.builtin.template:
     src: ru2-site.conf.j2
     dest: /etc/nginx/sites-available/ru2-0x3654
