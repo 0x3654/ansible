@@ -141,6 +141,24 @@
             mode: "0644"
             content: "{{ lookup('template', 'xray/sub-link.j2') | trim | b64encode }}\n"
 
+        - name: Remove the legacy 3x-ui container
+          # it still holds the old inbound (8443) and the panel sub listener
+          # (sub_port) in host network - the new stack cannot bind them.
+          # Data (x-ui.db) stays in ./3x-ui/db on the host for rollback;
+          # switching vpnserver_backend back to panel recreates the container.
+          ansible.builtin.shell: |
+            set -o pipefail
+            if docker ps -a --format '{{.Names}}' | grep -qx 3x-ui; then
+              docker rm -f 3x-ui
+              echo removed
+            else
+              echo absent
+            fi
+          args:
+            executable: /bin/bash
+          register: vpnserver_legacy_panel
+          changed_when: "'removed' in vpnserver_legacy_panel.stdout"
+
         - name: Bring the stack up
           ansible.builtin.command: docker compose up -d
           args:
