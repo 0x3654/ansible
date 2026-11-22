@@ -148,7 +148,7 @@
           # switching vpnserver_backend back to panel recreates the container.
           ansible.builtin.shell: |
             set -o pipefail
-            if docker ps -a --format '{{.Names}}' | grep -qx 3x-ui; then
+            if docker container inspect 3x-ui >/dev/null 2>&1; then
               docker rm -f 3x-ui
               echo removed
             else
