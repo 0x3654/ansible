@@ -1,0 +1,49 @@
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [
+    {
+      "tag": "inbound-{{ vpnserver_x.inbound_port | default(vpnserver_xray_listen_port) }}",
+      "listen": "0.0.0.0",
+      "port": {{ vpnserver_x.inbound_port | default(vpnserver_xray_listen_port) }},
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "{{ vpnserver_x.client_id }}",
+            "email": "{{ vpnserver_entry.server_info.location | default(city) | default(domain_name) }}",
+            "enable": true
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "xver": 0,
+          "target": "{{ vpnserver_x.reality_target | default(vpnserver_reality_target) }}",
+          "serverNames": [ "{{ vpnserver_x.reality_server_name | default(vpnserver_reality_server_name) }}" ],
+          "privateKey": "{{ vpnserver_x.reality_private_key }}",
+          "shortIds": {{ vpnserver_x.reality_short_ids | tojson }}
+        },
+        "xhttpSettings": { "path": "/", "mode": "auto" }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      }
+    }
+  ],
+  "outbounds": [
+    { "protocol": "freedom", "settings": {} },
+    { "tag": "blocked", "protocol": "blackhole", "settings": {} }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      { "type": "field", "outboundTag": "blocked", "protocol": ["bittorrent"] },
+      { "type": "field", "outboundTag": "blocked", "ip": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "127.0.0.0/8", "::1/128", "fc00::/7"] }
+    ]
+  }
+}

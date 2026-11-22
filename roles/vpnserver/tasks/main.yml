@@ -11,17 +11,9 @@
   ansible.builtin.import_tasks: filescopy.yml
   tags: [filescopy]
 
-- name: Import 3x-ui tasks
-  ansible.builtin.import_tasks: 3x-ui.yml
-  tags: [3x-ui]
-
-- name: Import AmneziaWG tasks
-  ansible.builtin.import_tasks: amneziawg.yml
-  tags: [amneziawg]
-
-- name: Import MTProxy tasks
-  ansible.builtin.import_tasks: mtproxy.yml
-  tags: [mtproxy]
+- name: Import pure xray tasks
+  ansible.builtin.import_tasks: xray.yml
+  tags: [xray]
 
 - name: Import fail2ban tasks
   ansible.builtin.import_tasks: fail2ban.yml

@@ -1,0 +1,23 @@
+---
+# Pure xray server for {{ domain_name }} (new-host fragment)
+domain_name: {{ domain_name }}
+filename: xray_{{ domain_name }}.yml
+
+server_info:
+  location: "{{ city }}"
+
+subscription:
+  suburl: "https://{{ domain_name }}:{{ vpnserver_sub_port }}/{{ vpnserver_sub_path }}/"
+  suburlid: "https://{{ domain_name }}:{{ vpnserver_sub_port }}/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
+  subJsonPath: "{{ vpnserver_sub_json_path }}"
+
+xray:
+  client_id: "{{ vpnserver_client_id }}"
+  sub_id: "{{ vpnserver_sub_id }}"
+  inbound_port: {{ vpnserver_xray_listen_port }}
+  client_port: {{ vpnserver_xray_default_client_port }}
+  reality_server_name: "{{ vpnserver_reality_server_name }}"
+  reality_target: "{{ vpnserver_reality_target }}"
+  reality_private_key: "{{ vpnserver_reality_private_key }}"
+  reality_public_key: "{{ vpnserver_reality_public_key }}"
+  reality_short_ids: {{ vpnserver_reality_short_ids_list | tojson }}

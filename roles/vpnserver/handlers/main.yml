@@ -2,16 +2,21 @@
 ---
 # handlers file for vpn_servers
 
-- name: Restart docker amneziawg
-  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart amnezia-wg-easy"
+- name: Restart xray
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart xray"
   args:
     chdir: "{{ path }}"
   register: vpnserver_compose_result
   changed_when: >-
     (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
-  when:
-    - ansible_facts['architecture'] != 'aarch64'
-    - vpnserver_amneziawg_enabled | default(true)
+
+- name: Restart sub
+  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart sub"
+  args:
+    chdir: "{{ path }}"
+  register: vpnserver_compose_result
+  changed_when: >-
+    (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
 
 - name: Restart docker fail2ban
   ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart fail2ban"
@@ -42,20 +47,6 @@
     or vpnserver_compose_up_result.stdout is search('Recreating')
     or vpnserver_compose_up_result.stdout is search('Starting')
   listen: docker up vpnserver
-
-- name: Stop docker 3x-ui
-  community.docker.docker_container:
-    name: 3x-ui
-    state: stopped
-
-- name: Start docker 3x-ui
-  community.docker.docker_container:
-    name: 3x-ui
-    state: started
-
-- name: Restart docker 3x-ui by shell
-  ansible.builtin.command: docker restart 3x-ui
-  changed_when: true
 
 - name: Reload nginx
   ansible.builtin.service:

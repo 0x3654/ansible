@@ -15,7 +15,7 @@ import tempfile
 import yaml
 
 REPO = "/Users/m/code/ansible"
-SECRETS = os.path.join(REPO, "group_vars/vps/secrets.yml")
+SECRETS = os.path.join(REPO, "inventory/group_vars/vps/secrets.yml")
 
 
 def run(cmd, **kw):

@@ -1,0 +1,150 @@
+---
+# Pure xray backend: config.json + static subscription rendered from the
+# vault dict (three_ui_servers). Same principles as the panel flow had:
+# a new host gets generated values registered into the dict once, an
+# existing host converges from stored values on every run. The dict format
+# is unchanged; xray material lives in an additive `xray:` section.
+- name: Pure xray backend
+  tags: [xray]
+  when: vpnserver_backend | default('panel') == 'xray'
+  block:
+    - name: Load vault entry for this host
+      ansible.builtin.set_fact:
+        vpnserver_entry: "{{ three_ui_servers[domain_name] | default({}) }}"
+      no_log: true
+
+    - name: Refuse half-migrated hosts (keys still live in the panel sqlite only)
+      # Generating fresh keys here would silently break every existing client
+      when: vpnserver_entry | length > 0 and vpnserver_entry.xray is not defined
+      ansible.builtin.fail:
+        msg: >-
+          {{ domain_name }} has no `xray:` section in three_ui_servers.
+          Harvest the inbound material from its panel DB first:
+          scripts/harvest_3xui_keys.py {{ domain_name }}
+          (no git ops inside; commit the vault change manually), then re-run.
+
+    - name: First deploy of a new server
+      when: vpnserver_entry | length == 0
+      block:
+        - name: Generate subscription values
+          ansible.builtin.set_fact:
+            vpnserver_sub_port: "{{ 30000 | random(20001) }}"
+            vpnserver_sub_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_sub_json_path: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=8') }}"
+            vpnserver_sub_id: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=16') }}"
+
+        - name: Generate client UUID
+          ansible.builtin.shell: |
+            set -o pipefail
+            printf "%08x-%04x-%04x-%04x-%012x" \
+              $((0x$(openssl rand -hex 4))) \
+              $((0x$(openssl rand -hex 2))) \
+              $((0x$(openssl rand -hex 2))) \
+              $((0x$(openssl rand -hex 2))) \
+              $((0x$(openssl rand -hex 6)))
+          args:
+            executable: /bin/bash
+          register: vpnserver_client_id_result
+          changed_when: false
+
+        - name: Set client ID fact
+          ansible.builtin.set_fact:
+            vpnserver_client_id: "{{ vpnserver_client_id_result.stdout }}"
+
+        - name: Generate Reality X25519 key pair
+          # same digest-pinned image as the service; a fresh host pulls it here
+          ansible.builtin.shell: docker run --rm {{ vpnserver_xray_image }} x25519
+          register: vpnserver_keygen_result
+          changed_when: false
+
+        - name: Parse Reality keys
+          # xray-core >= 26.x prints the derived client key as "Password:"
+          # (formerly "PublicKey:") - strip any leading label
+          ansible.builtin.set_fact:
+            vpnserver_reality_private_key: >-
+              {{ vpnserver_keygen_result.stdout_lines[0] | regex_replace('^[A-Za-z0-9 ]+: ', '') }}
+            vpnserver_reality_public_key: >-
+              {{ vpnserver_keygen_result.stdout_lines[1] | regex_replace('^[A-Za-z0-9 ]+: ', '') }}
+
+        - name: Generate Reality short ids
+          ansible.builtin.shell: |
+            set -o pipefail
+            lengths=(2 4 6 8 10 12 14 16)
+            for len in "${lengths[@]}"; do
+              openssl rand -hex $((len/2))
+            done
+          args:
+            executable: /bin/bash
+          register: vpnserver_short_ids_result
+          changed_when: false
+
+        - name: Set short ids list fact
+          ansible.builtin.set_fact:
+            vpnserver_reality_short_ids_list: "{{ vpnserver_short_ids_result.stdout_lines }}"
+
+        - name: Render fragment for vault registration
+          ansible.builtin.template:
+            src: xray-server.yml.j2
+            dest: "{{ vpnserver_configs_dir }}/new-xray-fragment.yml"
+            mode: "0600"
+          delegate_to: moro
+
+        - name: Register new server in the vault dict
+          # NOTE: the script commits and pushes ansible MAIN (and bumps the
+          # inventory submodule pin) - run first deploys of new servers from
+          # main, never from a dev branch
+          ansible.builtin.command:
+            cmd: "python3 /Users/m/code/ansible/scripts/add_3xui_server.py {{ domain_name }} {{ vpnserver_configs_dir }}/new-xray-fragment.yml"
+            chdir: /Users/m/code/ansible
+          delegate_to: moro
+          changed_when: true
+
+        - name: Reload entry after registration
+          ansible.builtin.set_fact:
+            vpnserver_entry: "{{ three_ui_servers[domain_name] | default({}) }}"
+          no_log: true
+
+    - name: Converge from the vault dict
+      when: vpnserver_entry.xray is defined
+      block:
+        - name: Extract xray and subscription values
+          ansible.builtin.set_fact:
+            vpnserver_x: "{{ vpnserver_entry.xray }}"
+            vpnserver_sub_port: "{{ vpnserver_entry.subscription.suburl | regex_search(':(\\d+)/', '\\1') | first }}"
+            vpnserver_sub_path: "{{ vpnserver_entry.subscription.suburl | regex_search('https://[^:]+:\\d+/([^/]+)/', '\\1') | first }}"
+            vpnserver_sub_id: "{{ vpnserver_entry.subscription.suburlid | urlsplit('path') | basename }}"
+          no_log: true
+
+        - name: Ensure subscription webroot
+          ansible.builtin.file:
+            path: "{{ path }}/sub/webroot/{{ vpnserver_sub_path }}"
+            state: directory
+            mode: "0755"
+
+        - name: Render xray config
+          ansible.builtin.template:
+            src: xray/config.json.j2
+            dest: "{{ path }}/xray/config.json"
+            mode: "0640"
+          notify: Restart xray
+
+        - name: Render sub nginx config
+          ansible.builtin.template:
+            src: xray/nginx-sub.conf.j2
+            dest: "{{ path }}/sub/nginx.conf"
+            mode: "0644"
+          notify: Restart sub
+
+        - name: Render subscription link
+          ansible.builtin.copy:
+            dest: "{{ path }}/sub/webroot/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
+            mode: "0644"
+            content: "{{ lookup('template', 'xray/sub-link.j2') | trim | b64encode }}\n"
+
+        - name: Bring the stack up
+          ansible.builtin.command: docker compose up -d
+          args:
+            chdir: "{{ path }}"
+          register: vpnserver_xray_compose_up
+          changed_when: >-
+            vpnserver_xray_compose_up.stdout is search('Creating|Recreating|Starting')

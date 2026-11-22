@@ -67,7 +67,10 @@
 
     - name: Point the Reality fallback at the gateway
       # sync serverNames/link SNI and the fallback target to role vars
-      # (own-domain policy; replaces the disabled masquerade task)
+      # (own-domain policy; replaces the disabled masquerade task).
+      # Panel DB only: the xray backend templates these values into
+      # config.json directly, nothing to sync.
+      when: vpnserver_backend | default('panel') != 'xray'
       ansible.builtin.shell: |
         set -o pipefail
         DB="{{ vpnserver_xray_db_path }}/x-ui.db"
