@@ -12,7 +12,7 @@ server {
         try_files $uri =404;
     }
 
-    add_header Profile-Title "{{ domain_name }}" always;
-    add_header Profile-Update-Interval 12 always;
+    add_header Profile-Title "{{ vpnserver_sub_title | default('0x3654.com') }}" always;
+    add_header Profile-Update-Interval {{ vpnserver_sub_update_interval | default(1) }} always;
     add_header Cache-Control "no-store" always;
 }

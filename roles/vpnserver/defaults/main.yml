@@ -46,6 +46,12 @@ vpnserver_xray_default_client_port: "{{ 443 if vpnserver_nginx_door_enabled | de
 vpnserver_xray_image: "ghcr.io/xtls/xray-core:26.11.9@sha256:d42420dca2014cbd06e24daad8a039b455b7d9e905cda1cf871254cfffda2149"
 vpnserver_sub_image: "nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8"
 
+# Subscription headers - panel parity by default: the brand title the
+# panel served (subTitle) and the hourly refresh window (subUpdates=1);
+# RF clients must pick up re-issued links fast during blocking events
+vpnserver_sub_title: "0x3654.com"
+vpnserver_sub_update_interval: 1
+
 # File permissions
 directory_mode: "0755"  # noqa: var-naming[no-role-prefix]
 file_mode: "0600"  # noqa: var-naming[no-role-prefix]
