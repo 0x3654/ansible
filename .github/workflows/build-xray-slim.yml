@@ -182,7 +182,5 @@ jobs:
           else
             TEXT="🔴 vpnserver-xray: СБОРКА ПРОВАЛЕНА (${RESULT}) - :latest НЕ обновлён, флот отстал от апстрима (${CORE_VERSION:-версия неизвестна})"
           fi
-          curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            --data-urlencode chat_id="$TG_CHAT" \
-            --data-urlencode text="$TEXT
-$RUN_URL" >/dev/null && echo "tg notified: $RESULT"
+          MSG="$(printf '%s\n%s' "$TEXT" "$RUN_URL")"
+          curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" --data-urlencode chat_id="$TG_CHAT" --data-urlencode text="$MSG" >/dev/null && echo "tg notified: $RESULT"
