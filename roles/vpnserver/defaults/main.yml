@@ -33,10 +33,6 @@ vpnserver_configs_dir: /Users/m/code/ansible/configs
 vpnserver_cert_path: "{{ pwd }}/certbot"
 vpnserver_fail2ban_path: "{{ path }}/fail2ban"
 
-# Backend: 'panel' (legacy 3x-ui, rollback path until the fleet is cut
-# over) or 'xray' (pure kernel + static sub, config from the vault dict)
-vpnserver_backend: "panel"
-
 # Pure xray backend: the kernel always listens on 8443 (door hosts route
 # 443 -> 8443 by SNI, gateway hosts serve the camouflage page on 443 and
 # clients hit the xray port directly). Client-facing port differs: 443
@@ -48,10 +44,6 @@ vpnserver_xray_default_client_port: "{{ 443 if vpnserver_nginx_door_enabled | de
 # before every push); watchtower rolls hosts to fresh :latest on its own -
 # update speed beats downtime purism. Manual rollback = pin this var to a
 # rev-<sha> / xray-<version> tag for one deploy.
-# Requires the first CI publication of ghcr.io/0x3654/vpnserver-xray:
-vpnserver_xray_image: "ghcr.io/0x3654/vpnserver-xray:latest"
-# pre-publication fallback (official, digest-pinned):
-# vpnserver_xray_image: "ghcr.io/xtls/xray-core:26.11.9@sha256:d42420dca2014cbd06e24daad8a039b455b7d9e905cda1cf871254cfffda2149"
 vpnserver_sub_webroot: "/var/www/vpnserver-sub"
 
 # Subscription headers - panel parity by default: the brand title the

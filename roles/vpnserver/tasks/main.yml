@@ -8,9 +8,9 @@
   tags: [certbot]
 
 # xray converge runs BEFORE filescopy: filescopy flushes its compose-up
-# handler right after the rsync, so configs/.env must already exist on a
+# handler right after the rsync, so configs must already exist on a
 # first deploy (fresh hosts have nothing to compose up from otherwise)
-- name: Import pure xray tasks
+- name: Import xray tasks
   ansible.builtin.import_tasks: xray.yml
   tags: [xray]
 

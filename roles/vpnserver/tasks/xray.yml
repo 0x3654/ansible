@@ -6,7 +6,6 @@
 # is unchanged; xray material lives in an additive `xray:` section.
 - name: Pure xray backend
   tags: [xray]
-  when: vpnserver_backend | default('panel') == 'xray'
   block:
     - name: Load vault entry for this host
       ansible.builtin.set_fact:
@@ -166,8 +165,8 @@
         - name: Remove the legacy 3x-ui container
           # it still holds the old inbound (8443) and the panel sub listener
           # (sub_port) in host network - the new stack cannot bind them.
-          # Data (x-ui.db) stays in ./3x-ui/db on the host for rollback;
-          # switching vpnserver_backend back to panel recreates the container.
+          # Data (x-ui.db) stays in ./3x-ui/db on the host; the panel
+          # rollback path lives in git history if ever needed again.
           ansible.builtin.shell: |
             set -o pipefail
             if docker container inspect 3x-ui >/dev/null 2>&1; then
