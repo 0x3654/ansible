@@ -23,6 +23,12 @@
       tags: [always]
 
   tasks:
+    - name: Sync compose/env files to the host
+      ansible.builtin.include_role:
+        name: untilwall
+        tasks_from: filescopy.yml
+      tags: [deploy, filescopy]
+
     - name: Run untilwall deployment
       ansible.builtin.include_role:
         name: untilwall
