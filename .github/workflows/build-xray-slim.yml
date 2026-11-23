@@ -123,10 +123,17 @@ jobs:
 
           for i in 1 2 3; do
             IP=$(docker run --rm --network ci-net curlimages/curl:8.11.1 \
-              -s -m 15 --socks5-hostname xray-cli:1080 https://api.ipify.org) && [ -n "$IP" ] && break
-            sleep 3
+              -sS -m 15 --socks5-hostname xray-cli:1080 https://api.ipify.org 2>/tmp/curl.err) && [ -n "$IP" ] && break
+            echo "attempt $i failed: $(cat /tmp/curl.err)"; sleep 3
           done
-          [ -n "$IP" ] || { echo "FAIL: no egress through the tunnel"; exit 1; }
+          [ -n "$IP" ] || {
+            echo "FAIL: no egress through the tunnel"
+            echo "--- client log:"; docker logs xray-cli 2>&1 | tail -10
+            echo "--- server log:"; docker logs xray-srv 2>&1 | tail -10
+            echo "--- direct internet sanity:"
+            docker run --rm --network ci-net curlimages/curl:8.11.1 -sS -m 10 -o /dev/null -w 'direct api.ipify.org: %{http_code}\n' https://api.ipify.org || true
+            exit 1
+          }
           echo "ok: e2e tunnel works, egress IP: $IP"
 
           # core version of the built image - rollback tag + notify text
