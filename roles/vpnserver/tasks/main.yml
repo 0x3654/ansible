@@ -7,13 +7,16 @@
   ansible.builtin.import_tasks: certbot.yml
   tags: [certbot]
 
-- name: Import file copy tasks
-  ansible.builtin.import_tasks: filescopy.yml
-  tags: [filescopy]
-
+# xray converge runs BEFORE filescopy: filescopy flushes its compose-up
+# handler right after the rsync, so configs/.env must already exist on a
+# first deploy (fresh hosts have nothing to compose up from otherwise)
 - name: Import pure xray tasks
   ansible.builtin.import_tasks: xray.yml
   tags: [xray]
+
+- name: Import file copy tasks
+  ansible.builtin.import_tasks: filescopy.yml
+  tags: [filescopy]
 
 - name: Import fail2ban tasks
   ansible.builtin.import_tasks: fail2ban.yml

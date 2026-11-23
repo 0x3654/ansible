@@ -179,15 +179,12 @@
           changed_when: "'removed' in vpnserver_legacy_panel.stdout"
 
         - name: Write compose env for the sub port
-          ansible.builtin.copy:
-            dest: "{{ path }}/.env"
-            mode: "0600"
-            content: "VPNSERVER_SUB_PORT={{ vpnserver_sub_port }}\n"
+          # legacy: kept for one transition; the port is rendered into
+          # compose directly now (xray.yml runs before filescopy)
+          ansible.builtin.file:
+            path: "{{ path }}/.env"
+            state: absent
 
-        - name: Bring the stack up
-          ansible.builtin.command: docker compose up -d
-          args:
-            chdir: "{{ path }}"
-          register: vpnserver_xray_compose_up
-          changed_when: >-
-            vpnserver_xray_compose_up.stdout is search('Creating|Recreating|Starting')
+        # no explicit compose up here: filescopy's "docker up vpnserver"
+        # handler brings the stack up right after syncing the compose
+        # files, with all rendered artifacts already in place
