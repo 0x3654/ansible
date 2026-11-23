@@ -62,6 +62,13 @@
                 clean: true
               when: ansible_facts.pkg_mgr == 'apt'
 
+            - name: Drop apt list indexes (re-fetched by next apt update)
+              # apt clean only clears the archives cache; the list indexes
+              # (~50M) are what actually regrows on every deploy's apt update
+              ansible.builtin.command: find /var/lib/apt/lists -mindepth 1 -delete
+              when: ansible_facts.pkg_mgr == 'apt'
+              changed_when: false
+
             - name: Remove junk directories from /root
               ansible.builtin.file:
                 path: "{{ item }}"
@@ -88,6 +95,12 @@
                 path: "{{ item.path }}"
                 state: absent
               loop: "{{ old_logs.results | map(attribute='files') | sum(start=[]) }}"
+
+            - name: Remove rotated syslog-family archives older than a day
+              # weekly logrotate archives are younger than log_age_days (30),
+              # but they are the main /var/log regrow on small VPS
+              ansible.builtin.command: find /var/log -maxdepth 1 -type f -name '*.gz' -mtime +1 -delete
+              changed_when: false
 
             - name: Find old temp files
               no_log: true
