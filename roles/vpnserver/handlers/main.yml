@@ -10,14 +10,6 @@
   changed_when: >-
     (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
 
-- name: Restart sub
-  ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart sub"
-  args:
-    chdir: "{{ path }}"
-  register: vpnserver_compose_result
-  changed_when: >-
-    (vpnserver_compose_result.stdout ~ vpnserver_compose_result.stderr) is search('Restarting')
-
 - name: Restart docker fail2ban
   ansible.builtin.shell: "{{ common_compose_command | default('docker compose') }} restart fail2ban"
   args:

@@ -52,7 +52,7 @@ vpnserver_xray_default_client_port: "{{ 443 if vpnserver_nginx_door_enabled | de
 vpnserver_xray_image: "ghcr.io/0x3654/vpnserver-xray:latest"
 # pre-publication fallback (official, digest-pinned):
 # vpnserver_xray_image: "ghcr.io/xtls/xray-core:26.11.9@sha256:d42420dca2014cbd06e24daad8a039b455b7d9e905cda1cf871254cfffda2149"
-vpnserver_sub_image: "nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8"
+vpnserver_sub_webroot: "/var/www/vpnserver-sub"
 
 # Subscription headers - panel parity by default: the brand title the
 # panel served (subTitle) and the hourly refresh window (subUpdates=1);

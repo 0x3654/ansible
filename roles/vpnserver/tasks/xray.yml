@@ -132,7 +132,7 @@
 
         - name: Ensure subscription webroot
           ansible.builtin.file:
-            path: "{{ path }}/sub/webroot/{{ vpnserver_sub_path }}"
+            path: "{{ vpnserver_sub_webroot }}/{{ vpnserver_sub_path }}"
             state: directory
             mode: "0755"
 
@@ -143,12 +143,15 @@
             mode: "0640"
           notify: Restart xray
 
-        - name: Render sub nginx config
+        - name: Render sub vhost for the host nginx
+          # serves the static subscription on the panel-era port/URL;
+          # the port is released by the legacy-container removal below,
+          # the reload lands via handler at play end
           ansible.builtin.template:
-            src: xray/nginx-sub.conf.j2
-            dest: "{{ path }}/sub/nginx.conf"
+            src: xray/sub-vhost.conf.j2
+            dest: /etc/nginx/conf.d/vpnserver-sub.conf
             mode: "0644"
-          notify: Restart sub
+          notify: Reload nginx
 
         - name: Render subscription link
           # base64 WITHOUT anything after it: the aggregator's lua decoder
@@ -156,7 +159,7 @@
           # upstream gets silently skipped). The panel-encoded a newline
           # INSIDE; the template already ends with one, so no trim either.
           ansible.builtin.copy:
-            dest: "{{ path }}/sub/webroot/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
+            dest: "{{ vpnserver_sub_webroot }}/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
             mode: "0644"
             content: "{{ lookup('template', 'xray/sub-link.j2') | b64encode }}"
 
@@ -178,12 +181,29 @@
           register: vpnserver_legacy_panel
           changed_when: "'removed' in vpnserver_legacy_panel.stdout"
 
-        - name: Write compose env for the sub port
-          # legacy: kept for one transition; the port is rendered into
-          # compose directly now (xray.yml runs before filescopy)
+        - name: Remove the legacy sub container
+          # container-era artifact: it holds the sub port via docker-proxy,
+          # the host nginx vhost takes the port over (same URL)
+          ansible.builtin.shell: |
+            set -o pipefail
+            if docker container inspect vpnserver-sub >/dev/null 2>&1; then
+              docker rm -f vpnserver-sub
+              echo removed
+            else
+              echo absent
+            fi
+          args:
+            executable: /bin/bash
+          register: vpnserver_legacy_sub
+          changed_when: "'removed' in vpnserver_legacy_sub.stdout"
+
+        - name: Clean container-era sub dir and env
           ansible.builtin.file:
-            path: "{{ path }}/.env"
+            path: "{{ item }}"
             state: absent
+          loop:
+            - "{{ path }}/sub"
+            - "{{ path }}/.env"
 
         # no explicit compose up here: filescopy's "docker up vpnserver"
         # handler brings the stack up right after syncing the compose

@@ -1,0 +1,22 @@
+# Managed by Ansible (vpnserver). Static subscription endpoint served by
+# the HOST nginx on the panel-era port/URL - the aggregator and clients
+# see no change. No container: this is just a server block next to the
+# camouflage vhost, same certs, same fingerprint discipline.
+server {
+    listen {{ vpnserver_sub_port }} ssl http2;
+    server_name {{ domain_name }};
+
+    ssl_certificate {{ vpnserver_cert_path }}/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key {{ vpnserver_cert_path }}/live/{{ domain_name }}/privkey.pem;
+
+    server_tokens off;
+
+    root {{ vpnserver_sub_webroot }};
+    location / {
+        try_files $uri =404;
+    }
+
+    add_header Profile-Title "{{ vpnserver_sub_title | default('0x3654.com') }}" always;
+    add_header Profile-Update-Interval {{ vpnserver_sub_update_interval | default(1) }} always;
+    add_header Cache-Control "no-store" always;
+}
