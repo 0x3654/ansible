@@ -23,9 +23,6 @@ force_repo_update: true  # noqa: var-naming[no-role-prefix]
 folder_user: "{{ ansible_role_name | basename }}"  # noqa: var-naming[no-role-prefix]
 pwd: "/server"  # noqa: var-naming[no-role-prefix]
 path: "{{ pwd }}/vpnserver"  # noqa: var-naming[no-role-prefix]
-vpnserver_xray_path: "{{ path }}/3x-ui"
-vpnserver_xray_db_path: "{{ vpnserver_xray_path }}/db"
-
 # Эталонный каталог на moro для transient-фрагментов (генерация нового сервера);
 # постоянное хранение конфигов 3x-ui — vault-словарь three_ui_servers
 # в group_vars/vps/secrets.yml

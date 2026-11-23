@@ -18,9 +18,9 @@
       ansible.builtin.fail:
         msg: >-
           {{ domain_name }} has no `xray:` section in three_ui_servers.
-          Harvest the inbound material from its panel DB first:
-          scripts/harvest_3xui_keys.py {{ domain_name }}
-          (no git ops inside; commit the vault change manually), then re-run.
+          The panel DBs are gone (fleet cutover 2026-11-23); restore the
+          material from git history or fill the section by hand, then
+          re-run. New hosts get it generated automatically.
 
     - name: First deploy of a new server
       when: vpnserver_entry | length == 0
