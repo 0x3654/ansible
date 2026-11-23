@@ -115,7 +115,7 @@ jobs:
             -v "$PWD/server.json":/etc/xray/config.json:ro xray-slim:ci
           docker run -d --name xray-cli --network ci-net \
             -v "$PWD/client.json":/etc/xray/config.json:ro \
-            ghcr.io/xtls/xray-core:latest
+            ghcr.io/xtls/xray-core:latest run -c /etc/xray/config.json
           sleep 4
           docker logs xray-srv 2>&1 | grep -q started || { echo "FAIL: server did not start"; docker logs xray-srv; exit 1; }
           docker logs xray-cli 2>&1 | grep -q started || { echo "FAIL: client did not start"; docker logs xray-cli; exit 1; }
