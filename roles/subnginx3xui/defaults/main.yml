@@ -19,6 +19,16 @@ path: "{{ pwd }}/3x-ui-sub"  # noqa: var-naming[no-role-prefix]
 subnginx3xui_nginx_proxy_sub: "{{ path }}"
 subnginx3xui_cert_path: "{{ pwd }}/certbot"
 
+# Mirror instances (RF-reachable sub endpoints): SITE_HOST is the host's own
+# domain - the vpnserver role already holds a live cert for it, so certbot
+# is skipped and TLS rides the existing certs. The primary instance (es)
+# keeps its manually-maintained .env (sub.0x3654.com) untouched.
+subnginx3xui_site_host: "{{ domain_name }}"
+subnginx3xui_site_port: "2097"
+subnginx3xui_tls_mode: "on"
+subnginx3xui_sub_secret: ""   # from group_vars vault (the shared SUB path)
+subnginx3xui_certbot_enabled: true
+
 # Эталонный каталог конфигов 3x-ui (gitignored, живёт в репо на moro);
 # из него собирается SERVERS для .env прокси
 subnginx3xui_configs_dir: /Users/m/code/ansible/configs

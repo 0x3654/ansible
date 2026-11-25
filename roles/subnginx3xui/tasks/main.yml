@@ -7,7 +7,38 @@
   tags: [sub_nginx_3xui]
   block:
     - name: Import certbot tasks
+      when: subnginx3xui_certbot_enabled | bool
       ansible.builtin.import_tasks: certbot.yml
+
+    - name: Ensure sub port in the firewall
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: firewall.yml
+      vars:
+        common_required_rules:
+          - "-A INPUT -p tcp -m tcp --dport {{ subnginx3xui_site_port }} -j ACCEPT"
+
+    - name: Bootstrap .env on first install
+      # mirrors only: the primary (es) has its .env set up by hand - the
+      # bootstrap never touches an existing file, SERVERS sync follows
+      when: not (lookup('ansible.builtin.file', path + '/.env', errors='ignore') | default('', true) | length > 0)
+      block:
+        - name: Ensure compose directory
+          ansible.builtin.file:
+            path: "{{ path }}"
+            state: directory
+            mode: "0755"
+        - name: Render initial .env
+          ansible.builtin.copy:
+            dest: "{{ path }}/.env"
+            mode: "0644"
+            content: |
+              PATH_SSL_KEY={{ pwd }}/certbot/live/{{ domain_name }}
+              SITE_HOST="{{ domain_name }}"
+              SITE_PORT="{{ subnginx3xui_site_port }}"
+              SERVERS=""
+              SUB="{{ subnginx3xui_sub_secret }}"
+              TLS_MODE={{ subnginx3xui_tls_mode }}
 
     - name: Set vpn_servers_sub variable
       # Апстримы берутся из vault-словаря three_ui_servers
