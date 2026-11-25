@@ -190,4 +190,14 @@ jobs:
             TEXT="🔴 vpnserver-xray: СБОРКА ПРОВАЛЕНА (${RESULT}) - :latest НЕ обновлён, флот отстал от апстрима (${CORE_VERSION:-версия неизвестна})"
           fi
           MSG="$(printf '%s\n%s' "$TEXT" "$RUN_URL")"
-          curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" --data-urlencode chat_id="$TG_CHAT" --data-urlencode text="$MSG" >/dev/null && echo "tg notified: $RESULT"
+          # retries: runner->telegram SSL flakes happen (exit 35 seen live);
+          # -f makes HTTP-level API errors visible instead of fake success
+          for i in 1 2 3 4 5; do
+            RESP=$(curl -fsS --retry 2 --retry-delay 3 --retry-all-errors \
+              "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              --data-urlencode chat_id="$TG_CHAT" \
+              --data-urlencode text="$MSG" 2>&1) && { echo "tg notified: $RESULT (attempt $i)"; exit 0; }
+            echo "attempt $i failed: $RESP"; sleep 5
+          done
+          echo "FAIL: telegram unreachable after 5 attempts"
+          exit 1
