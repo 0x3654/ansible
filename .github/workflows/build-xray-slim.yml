@@ -20,6 +20,7 @@ jobs:
       packages: write
     outputs:
       core_version: ${{ steps.e2e.outputs.core_version }}
+      skipped: ${{ steps.skipcheck.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
 
@@ -196,10 +197,13 @@ jobs:
           TG_CHAT: ${{ secrets.TG_CHAT_ID }}
           RESULT: ${{ needs.build-test-push.result }}
           CORE_VERSION: ${{ needs.build-test-push.outputs.core_version }}
+          SKIPPED: ${{ needs.build-test-push.outputs.skipped }}
         run: |
           [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "tg secrets not set - skip"; exit 0; }
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$RESULT" = "success" ]; then
+          if [ "$SKIPPED" = "1" ]; then
+            TEXT="✔️ vpnserver-xray ${CORE_VERSION}: e2e зелёный, версия без изменений - реестр не тронут"
+          elif [ "$RESULT" = "success" ]; then
             TEXT="✅ vpnserver-xray ${CORE_VERSION}: e2e зелёный, :latest обновлён - watchtower подкатит VPS"
           else
             TEXT="🔴 vpnserver-xray: СБОРКА ПРОВАЛЕНА (${RESULT}) - :latest НЕ обновлён, флот отстал от апстрима (${CORE_VERSION:-версия неизвестна})"
