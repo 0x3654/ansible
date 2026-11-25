@@ -19,15 +19,21 @@ path: "{{ pwd }}/3x-ui-sub"  # noqa: var-naming[no-role-prefix]
 subnginx3xui_nginx_proxy_sub: "{{ path }}"
 subnginx3xui_cert_path: "{{ pwd }}/certbot"
 
-# Mirror instances (RF-reachable sub endpoints): SITE_HOST is the host's own
-# domain - the vpnserver role already holds a live cert for it, so certbot
-# is skipped and TLS rides the existing certs. The primary instance (es)
-# keeps its manually-maintained .env (sub.0x3654.com) untouched.
+# Aggregator instances.
+# - Mirror on a host's own domain: SITE_HOST = that domain, the vpnserver
+#   role already holds a live cert for it, so certbot is off.
+# - Takeover of the primary name (sub.0x3654.com, DNS moved to this host):
+#   set site_host to the primary name, enable certbot, env_managed true.
+# The legacy primary (es) keeps its hand-made .env: env_managed stays false.
 subnginx3xui_site_host: "{{ domain_name }}"
 subnginx3xui_site_port: "2097"
 subnginx3xui_tls_mode: "on"
 subnginx3xui_sub_secret: ""   # from group_vars vault (the shared SUB path)
 subnginx3xui_certbot_enabled: true
+subnginx3xui_env_managed: false
+# directory under certbot live/ this instance mounts: own cert when certbot
+# runs here, otherwise the host domain's cert from the vpnserver role
+subnginx3xui_cert_domain: "{{ subnginx3xui_sub_all_url if subnginx3xui_certbot_enabled | bool else domain_name }}"
 
 # Эталонный каталог конфигов 3x-ui (gitignored, живёт в репо на moro);
 # из него собирается SERVERS для .env прокси

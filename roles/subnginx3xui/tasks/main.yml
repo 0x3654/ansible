@@ -33,12 +33,30 @@
             dest: "{{ path }}/.env"
             mode: "0644"
             content: |
-              PATH_SSL_KEY={{ pwd }}/certbot/live/{{ domain_name }}
-              SITE_HOST="{{ domain_name }}"
+              PATH_SSL_KEY={{ subnginx3xui_cert_path }}/live/{{ subnginx3xui_cert_domain }}
+              SITE_HOST="{{ subnginx3xui_site_host }}"
               SITE_PORT="{{ subnginx3xui_site_port }}"
               SERVERS=""
               SUB="{{ subnginx3xui_sub_secret }}"
               TLS_MODE={{ subnginx3xui_tls_mode }}
+
+    - name: Sync hostname and cert path in .env
+      # only where ansible owns .env (managed mirrors). The legacy primary
+      # keeps its hand-made .env: env_managed stays false there.
+      when: subnginx3xui_env_managed | bool
+      ansible.builtin.lineinfile:
+        path: "{{ path }}/.env"
+        regexp: "^{{ item.key }}="
+        line: '{{ item.key }}="{{ item.value }}"'
+        mode: "0644"
+      loop:
+        - key: SITE_HOST
+          value: "{{ subnginx3xui_site_host }}"
+        - key: PATH_SSL_KEY
+          value: "{{ subnginx3xui_cert_path }}/live/{{ subnginx3xui_cert_domain }}"
+        - key: SITE_PORT
+          value: "{{ subnginx3xui_site_port }}"
+      notify: docker up 3xuiproxy
 
     - name: Set vpn_servers_sub variable
       # Апстримы берутся из vault-словаря three_ui_servers
