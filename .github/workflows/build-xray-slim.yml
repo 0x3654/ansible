@@ -146,8 +146,22 @@ jobs:
           docker network rm ci-net >/dev/null
           rm -f server.json client.json
 
-      # 4. push only after green tests; xray-<version> tag = rollback anchor
+      # 4. scheduled runs must not republish an already shipped version:
+      #    builds are not reproducible, a same-version push would move
+      #    :latest to a fresh digest and watchtower would recreate every
+      #    host for nothing. Manual push/dispatch always publishes.
+      - name: Skip republish of a shipped version (scheduled runs)
+        id: skipcheck
+        if: github.event_name == 'schedule'
+        run: |
+          if docker manifest inspect "${IMAGE}:xray-${CORE_VERSION}" >/dev/null 2>&1; then
+            echo "xray-${CORE_VERSION} already shipped - registry untouched"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 5. push only after green tests; xray-<version> tag = rollback anchor
       - uses: docker/metadata-action@v5
+        if: steps.skipcheck.outputs.skip != '1'
         id: meta
         with:
           images: ${{ env.IMAGE }}
@@ -157,6 +171,7 @@ jobs:
             type=raw,value=latest
 
       - uses: docker/build-push-action@v6
+        if: steps.skipcheck.outputs.skip != '1'
         with:
           context: roles/vpnserver/xray-slim
           platforms: linux/amd64
