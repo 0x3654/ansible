@@ -25,6 +25,14 @@
           {{ vpnserver_firewall_rules
           + ['-A INPUT -p tcp -m tcp --dport ' + (vpnserver_xray_listen_port | string) + ' -j ACCEPT'] }}
 
+    - name: Add chain inbound ports
+      # entry/exit separation chains listen on their own ports
+      when: (vpnserver_entry.xray.chains | default([]) | length > 0) if (vpnserver_entry.xray.chains | default([])) is sequence else false
+      ansible.builtin.set_fact:
+        vpnserver_firewall_rules: >-
+          {{ vpnserver_firewall_rules
+          + (vpnserver_entry.xray.chains | default([]) | map(attribute='port') | map('string') | map('regex_replace', '^(.*)$', '-A INPUT -p tcp -m tcp --dport \1 -j ACCEPT') | list) }}
+
     - name: Call firewall role with dynamic rules
       ansible.builtin.include_role:
         name: common

@@ -33,17 +33,75 @@
         "enabled": true,
         "destOverride": ["http", "tls"]
       }
-    }
+    }{% for ch in vpnserver_entry.xray.chains | default([]) %},
+    {
+      "tag": "chain-{{ ch.name }}",
+      "listen": "0.0.0.0",
+      "port": {{ ch.port }},
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "{{ ch.uuid }}",
+            "email": "{{ ch.name }}",
+            "enable": true
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "xver": 0,
+          "target": "{{ vpnserver_x.reality_target | default(vpnserver_reality_target) }}",
+          "serverNames": [ "{{ vpnserver_x.reality_server_name | default(vpnserver_reality_server_name) }}" ],
+          "privateKey": "{{ vpnserver_x.reality_private_key }}",
+          "shortIds": {{ vpnserver_x.reality_short_ids | tojson }}
+        },
+        "xhttpSettings": { "path": "/", "mode": "auto" }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      }
+    }{% endfor %}
   ],
   "outbounds": [
     { "protocol": "freedom", "settings": {} },
-    { "tag": "blocked", "protocol": "blackhole", "settings": {} }
+    { "tag": "blocked", "protocol": "blackhole", "settings": {} }{% for ch in vpnserver_entry.xray.chains | default([]) %}{% set ex = three_ui_servers[ch.exit].xray %},
+    {
+      "tag": "via-{{ ch.name }}",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "{{ ch.exit }}",
+            "port": {{ ex.inbound_port | default(8443) }},
+            "users": [ { "id": "{{ ex.client_id }}", "encryption": "none" } ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "{{ ex.reality_server_name }}",
+          "fingerprint": "chrome",
+          "publicKey": "{{ ex.reality_public_key }}",
+          "shortId": "{{ ex.reality_short_ids | first }}"
+        },
+        "xhttpSettings": { "path": "/", "mode": "auto" }
+      }
+    }{% endfor %}
   ],
   "routing": {
     "domainStrategy": "AsIs",
     "rules": [
       { "type": "field", "outboundTag": "blocked", "protocol": ["bittorrent"] },
-      { "type": "field", "outboundTag": "blocked", "ip": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "127.0.0.0/8", "::1/128", "fc00::/7"] }
+      { "type": "field", "outboundTag": "blocked", "ip": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "127.0.0.0/8", "::1/128", "fc00::/7"] }{% for ch in vpnserver_entry.xray.chains | default([]) %},
+      { "type": "field", "inboundTag": ["chain-{{ ch.name }}"], "outboundTag": "via-{{ ch.name }}" }{% endfor %}
     ]
   }
 }

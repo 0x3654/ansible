@@ -152,15 +152,14 @@
             mode: "0644"
           notify: Reload nginx
 
-        - name: Render subscription link
-          # base64 WITHOUT anything after it: the aggregator's lua decoder
-          # is strict (ngx.decode_base64 = nil on a trailing newline, the
-          # upstream gets silently skipped). The panel-encoded a newline
-          # INSIDE; the template already ends with one, so no trim either.
+        - name: Render subscription links
+          # main link + chain links (entry/exit separation profiles) in one
+          # base64 body. No trailing bytes after the base64: the aggregator's
+          # lua decoder is strict; newlines live INSIDE the encoded text.
           ansible.builtin.copy:
             dest: "{{ vpnserver_sub_webroot }}/{{ vpnserver_sub_path }}/{{ vpnserver_sub_id }}"
             mode: "0644"
-            content: "{{ lookup('template', 'xray/sub-link.j2') | b64encode }}"
+            content: "{{ lookup('template', 'xray/sub-links.j2') | b64encode }}"
 
         - name: Remove the legacy 3x-ui container
           # it still holds the old inbound (8443) and the panel sub listener

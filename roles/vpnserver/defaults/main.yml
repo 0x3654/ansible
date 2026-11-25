@@ -34,6 +34,7 @@ vpnserver_fail2ban_path: "{{ path }}/fail2ban"
 # 443 -> 8443 by SNI, gateway hosts serve the camouflage page on 443 and
 # clients hit the xray port directly). Client-facing port differs: 443
 # behind the door, 8443 direct.
+vpnserver_xray_image: "ghcr.io/0x3654/vpnserver-xray:latest"
 vpnserver_xray_listen_port: "8443"
 vpnserver_xray_default_client_port: "{{ 443 if vpnserver_nginx_door_enabled | default(false) | bool else 8443 }}"
 # xray image: our own registry, :latest straight out of the box.
