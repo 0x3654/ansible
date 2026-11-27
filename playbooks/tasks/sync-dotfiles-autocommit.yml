@@ -5,7 +5,11 @@
 # Безопасность:
 #  - добавляются ТОЛЬКО явные collect-цели (никаких add -A / случайного мусора);
 #  - вебхуков у семафора нет: пуш не триггерит задач и не влияет на идущие;
-#  - коммиты подписаны (gpgsign настроен в обоих репо на moro).
+#  - коммиты подписаны (gpgsign настроен в обоих репо на moro);
+#  - пуш ansible идёт с --recurse-submodules=check: пушится весь HEAD моро,
+#    включая чужие незапушенные коммиты, поэтому указатель на незапушенный
+#    коммит сабмодуля = отказ пуша (26.11.2026: ночная автоматика так
+#    опубликовала пин inventory, 10 задач Semaphore встали на «not our ref»).
 # Откат фикса «moro при первичной важнее» не нужен: collect уже слил citrus-правки.
 
 - name: Dotfiles autocommit | есть ли изменения collect-целей
@@ -86,7 +90,7 @@
 
     - name: Dotfiles autocommit | пуш ansible main
       ansible.builtin.command:
-        argv: [git, push, -q, git@github.com:0x3654/ansible.git, HEAD:refs/heads/main]
+        argv: [git, push, -q, --recurse-submodules=check, git@github.com:0x3654/ansible.git, HEAD:refs/heads/main]
       args:
         chdir: "{{ sync_dotfiles_dir }}"
       delegate_to: "{{ source_host }}"
