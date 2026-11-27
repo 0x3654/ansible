@@ -81,7 +81,11 @@ jobs:
               vpnserver_xray_listen_port=18443,
               vpnserver_reality_server_name='api.ipify.org',
               vpnserver_reality_target='api.ipify.org:443',
-              vpnserver_entry={'server_info': {'location': 'ci'}},
+              # mirrors a production entry host: the template renders only
+              # when vpnserver_entry.xray exists (tasks/xray.yml), and
+              # StrictUndefined fails on vpnserver_entry.xray.chains before
+              # `| default([])` is reached - new template keys go here too
+              vpnserver_entry={'server_info': {'location': 'ci'}, 'xray': {'chains': []}},
               vpnserver_x={'client_id': '755a3bfd-d6a8-05b7-8c5f-b0a1cf9121b5',
                            'inbound_port': 18443,
                            'reality_server_name': 'api.ipify.org',
